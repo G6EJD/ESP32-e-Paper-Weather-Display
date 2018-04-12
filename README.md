@@ -11,7 +11,9 @@ Adjust your Country and Town location.
 
 Go to the Main tab and choose your Units display format, either M for Metric or I for Imperial
 
-GO to the time Setup function near the end of the programme and adjust your time zone to suit your location, there is a link to the list of avialable time zones.
+Go to the time Setup function near the end of the programme and adjust your time zone to suit your location, there is a link to the list of avialable time zones.
+
+Compile and upload the code - Enjoy!
 
 
 
