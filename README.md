@@ -13,8 +13,9 @@ latest version and install it. Make sure to come back to this dialog from time t
 time to keep each library up to date. Also make sure that you only have one
 version of each of the libraries installed.
 
-Mini Grafx by Daniel Eichhorn
-ESP8266 WeatherStation by Daniel Eichhorn (required for additional fonts)
+- Mini Grafx by Daniel Eichhorn
+
+- ESP8266 WeatherStation by Daniel Eichhorn (required for additional fonts)
 
 Edit the Credentials tab and place your netwrok SSID and passowrd in the variables provided.
 
