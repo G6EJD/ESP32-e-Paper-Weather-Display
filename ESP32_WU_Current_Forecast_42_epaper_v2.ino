@@ -53,7 +53,7 @@ String version = "1";       // Version of this program
 //################ VARIABLES ###########################
 
 unsigned long       lastConnectionTime = 0;          // Last time you connected to the server, in milliseconds
-const unsigned long postingInterval = 30L*60L*1000L; // Delay between updates, in milliseconds, WU allows 500 requests per-day maximum, set to every 15-mins or more
+const unsigned long postingInterval = 30L*60L*1000000L; // Delay between updates, in milliseconds, WU allows 500 requests per-day maximum, set to every 15-mins or more
 String Units     =  "M"; // M for Metric or I for Imperial
 bool LargeIcon   =  true;
 bool SmallIcon   =  false;
