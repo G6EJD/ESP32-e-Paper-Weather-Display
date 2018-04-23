@@ -19,7 +19,13 @@ version of each of the libraries installed.
 
 Edit the Credentials tab and place your network SSID and password in the variables provided.
 
-Adjust your Country and Town location.
+Adjust your Country and Town location. You need to select the correct country and city in the Credentials tab.
+
+1. Find your country here: https://www.wunderground.com/weather-by-country.asp
+
+2. Click on your Country and then it shows you all available City's that WU has data for, there are a lot...
+
+3. Or you can browser the Weather Underground map and choose a station from on the map. There are many PWS too that increase the volume of data available.
 
 Go to the Main tab and choose your Units display format, set to either 'M' for Metric or 'I' for Imperial
 
