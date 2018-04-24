@@ -3,6 +3,10 @@ An ESP32 and a 2.9" ePaper Display reads Weather Underground and displays the we
 
 Download the software and install all 3 files in the same sketch folder.
 
+1. ESP32_WU_Current_Forecast_XX_epaper_vX
+2. credentials.h
+3. ArialRounded.h 
+
 Install the libraries required via the Arduino IDE Library Manager, by:
 
 Go to Sketch > Include
@@ -13,11 +17,10 @@ latest version and install it. Make sure to come back to this dialog from time t
 time to keep each library up to date. Also make sure that you only have one
 version of each of the libraries installed.
 
-- 'Mini Grafx' by Daniel Eichhorn
+1. 'Mini Grafx' by Daniel Eichhorn
+2. 'ESP8266 WeatherStation' by Daniel Eichhorn (required for additional fonts)
 
-- 'ESP8266 WeatherStation' by Daniel Eichhorn (required for additional fonts)
-
-Edit the Credentials tab and place your network SSID and password in the variables provided.
+Edit the Credentials tab and enter your network SSID and password in the variable assignment places provided.
 
 Adjust your Country and Town location. You need to select the correct country and city in the Credentials tab.
 
