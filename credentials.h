@@ -13,3 +13,5 @@ String apikey     = "YOUR API KEY here"; // e.g. '2dbfa31748f4ab1'      // See: 
 const char* host    = "api.wunderground.com";
 String      City    = "Melksham";             // Your home city
 String      Country = "UK";                   // Your country  
+
+
