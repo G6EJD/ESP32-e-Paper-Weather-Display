@@ -103,7 +103,7 @@ void setup() {
   lastConnectionTime = millis();
   bool Received_Forecast_OK = obtain_forecast("conditions","forecast","astronomy");
   // Now only refresh the screen if all the data was received OK, otherwise wait until the next timed check
-  if (Received_Forecast_OK || (WiFi.status() == WL_CONNECTED)) { 
+  if (Received_Forecast_OK && (WiFi.status() == WL_CONNECTED)) { 
     //Received data OK at this point so turn off the WiFi to save power
     WiFi.mode(WIFI_OFF);
     gfx.init();
