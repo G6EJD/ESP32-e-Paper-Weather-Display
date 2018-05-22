@@ -558,6 +558,7 @@ int StartWiFi(){
 void SetupTime(){
   configTime(0, 0, "0.uk.pool.ntp.org", "time.nist.gov");
   setenv("TZ", "GMT0BST,M3.5.0/01,M10.5.0/02",1);
+  // https://github.com/nayarsystems/posix_tz_db 
   delay(200);
   UpdateLocalTime();
 }
