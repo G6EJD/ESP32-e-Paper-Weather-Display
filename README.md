@@ -36,6 +36,15 @@ Go to the time Setup function near the end of the programme and adjust your time
 
 UK is typically 'GMT0BST,M3.5.0/01,M10.5.0/02'  the 5 denotes the last Sunday in the month of 3 which is March and 10 October
 
+OPEN WEATHER MAP VERSION
+Download the software and install all 3 files in the same sketch folder.
+
+1. ESP32_OWM_Current_Forecast_42_epaper_v1 or latest version
+2. owm_credentials.h
+3. ArialRounded.h 
+Obtain your OWM API key - it's free.
+
+
 Compile and upload the code - Enjoy!
 
 
