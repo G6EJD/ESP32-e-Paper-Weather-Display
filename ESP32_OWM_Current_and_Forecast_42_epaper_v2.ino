@@ -122,7 +122,8 @@ void setup() {
     DrawBattery(320,0);
     SaveData();
     gfx.commit();
-    WaitForDisplayUpdate();
+    //WaitForDisplayUpdate();
+    delay(1000);
   }
   else { 
     WiFi.mode(WIFI_OFF); // To reduce power consumption
@@ -131,7 +132,8 @@ void setup() {
     gfx.setTextAlignment(TEXT_ALIGN_CENTER); 
     gfx.drawString(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, "Could not connect to WiFi...Check Network"); 
     gfx.commit(); 
-    WaitForDisplayUpdate();
+    //WaitForDisplayUpdate();
+    delay(1000);
   } 
   esp_sleep_enable_timer_wakeup(UpdateInterval);
   esp_deep_sleep_start(); // Sleep for e.g. 30 minutes
