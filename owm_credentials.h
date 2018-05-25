@@ -9,7 +9,8 @@ String apikey       = "your-Open-Weather_API_key";            // See: https://op
 const char server[] = "api.openweathermap.org";
 //http://api.openweathermap.org/data/2.5/forecast?q=Melksham,UK&APPID=your-OWM-api-key&mode=json&units=metric&cnt=2
 // Set your location according to OWM locations
-String City         = "Melksham";      // Your home city
-String Country      = "UK";            // Your country  
-String Hemisphere   = "north";         // or "south"   
+String City         = "Melksham"; // Your home city
+String Country      = "UK";       // Your country  
+String Hemisphere   = "north";    // or "south" 
+String Units        = "M";        // M for Metric or I for Imperial
 
