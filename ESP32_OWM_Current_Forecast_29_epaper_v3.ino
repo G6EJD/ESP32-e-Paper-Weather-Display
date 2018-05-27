@@ -18,7 +18,7 @@
  See more at http://www.dsbird.org.uk
 */
 
-#include "credentials.h"
+#include "owm_credentials.h"
 #include <ArduinoJson.h>     // https://github.com/bblanchon/ArduinoJson
 #include <WiFi.h>            // Built-in
 #include "time.h" 
