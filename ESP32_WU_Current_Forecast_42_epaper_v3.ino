@@ -49,7 +49,7 @@ EPD_WaveShare42 epd(EPD_SS, EPD_RST, EPD_DC, EPD_BUSY);
 MiniGrafx gfx = MiniGrafx(&epd, BITS_PER_PIXEL, palette); 
 
 //################  VERSION  ##########################
-String version = "1";       // Version of this program
+String version = "3";       // Version of this program
 //################ VARIABLES ###########################
 
 unsigned long       lastConnectionTime = 0;             // Last time you connected to the server, in milliseconds
