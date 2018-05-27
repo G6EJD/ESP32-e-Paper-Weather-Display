@@ -87,6 +87,8 @@ Conditions_record_type WxConditions[5] = {};
 // Astronomy
 String  Dhemisphere, DphaseofMoon, Sunrise, Sunset, Moonrise, Moonset, Moonlight;
 
+const char* host = "api.wunderground.com";
+
 WiFiClient client; // wifi client object
 
 // Wifi on section takes : 7.37 secs to complete at 119mA using a Lolin 32 (wifi on)
