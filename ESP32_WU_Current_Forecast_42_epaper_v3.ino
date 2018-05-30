@@ -254,7 +254,7 @@ void Draw_Pressure(int x, int y, String slope){
 //###########################################################################
 void DrawMoon(int16_t x0, int16_t y0, int16_t r, String hemisphere, String illumination, String Phase) {
   Phase.toLowerCase();
-  if (Phase != "new moon") if (Phase.indexOf("waxing")==0 || Phase.indexOf("first")==0) Phase = "First"; else Phase = "Second"; 
+  if (Phase != "new") if (Phase.indexOf("waxing")==0 || Phase.indexOf("first")==0) Phase = "First"; else Phase = "Second"; 
   int h = 2 * r;
   int m_illumination = 2*r-2*illumination.toInt()*r/50;
   x0 = x0 - m_illumination/2; 
@@ -263,7 +263,7 @@ void DrawMoon(int16_t x0, int16_t y0, int16_t r, String hemisphere, String illum
   int16_t y1 = y0 + h;
   //~~~~~~~~~~~~~~~~~~~~~~ based on R=50 
   gfx.setColor(EPD_BLACK);
-  if (Phase == "new moon") {
+  if (Phase == "new") {
     gfx.fillCircle(x0+m_illumination/2,y0+h/2,r);
   }
   else
