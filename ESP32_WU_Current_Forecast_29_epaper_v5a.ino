@@ -201,11 +201,11 @@ void DrawMoon(int16_t x, int16_t y, String hemisphere, String Phase) {
   }
   else
   {
-   if (Phase == "new moon")        gfx.drawPalettedBitmapFromPgm(x, y, New_Moon);
+   if (Phase == "new")             gfx.drawPalettedBitmapFromPgm(x, y, New_Moon);
    if (Phase == "waxing crescent") gfx.drawPalettedBitmapFromPgm(x, y, Waning_Crescent);
    if (Phase == "first quarter")   gfx.drawPalettedBitmapFromPgm(x, y, Last_Quarter);
    if (Phase == "waxing gibbous")  gfx.drawPalettedBitmapFromPgm(x, y, Waning_Gibbous);
-   if (Phase == "full moon")       gfx.drawPalettedBitmapFromPgm(x, y, Full_Moon);
+   if (Phase == "full")            gfx.drawPalettedBitmapFromPgm(x, y, Full_Moon);
    if (Phase == "waning gibbous")  gfx.drawPalettedBitmapFromPgm(x, y, Waxing_Gibbous);
    if (Phase == "last quarter")    gfx.drawPalettedBitmapFromPgm(x, y, First_Quarter);
    if (Phase == "waning crescent") gfx.drawPalettedBitmapFromPgm(x, y, Waxing_Crescent);
