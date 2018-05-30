@@ -115,7 +115,7 @@ void setup() {
     gfx.fillBuffer(EPD_WHITE);
     gfx.setTextAlignment(TEXT_ALIGN_LEFT);
     Display_Weather();
-    DrawBattery(SCREEN_WIDTH/SCREEN_HEIGHT*320, 0);
+    DrawBattery(SCREEN_WIDTH-80, 0);
     gfx.commit();
     delay(2000);
   }
@@ -212,7 +212,7 @@ void Draw_Main_Wx(int x, int y) {
   gfx.drawString(x, y - 28, String(WxConditions[0].High,0) + "° | " + String(WxConditions[0].Low,0) + "°"); // Show forecast high and Low
   gfx.setFont(ArialMT_Plain_24);
   gfx.drawString(x - 5, y - 10, String(WxConditions[0].Temperature,1) + "°"); // Show current Temperature
-    gfx.setFont(ArialRoundedMTBold_14);
+  gfx.setFont(ArialRoundedMTBold_14);
   gfx.setTextAlignment(TEXT_ALIGN_LEFT);  
   gfx.drawString(x+String(WxConditions[0].Temperature,1).length()*11/2,y-9,Units=="M"?"C":"F"); // Add in smaller Temperature unit
   gfx.setFont(ArialRoundedMTBold_14);
@@ -913,13 +913,13 @@ bool DecodeWeather(String json, String Type) {
     WxForecast[21].Pressure          = list21_main["pressure"];
     WxForecast[21].Humidity          = list21_main["humidity"];
     JsonObject& list21_weather0      = list21["weather"][0];
-    const char * list21_forecast     = list21_weather0["main"]; WxForecast[21].Forecast0 = String(list21_forecast);
+    const char * list21_forecast     = list21_weather0["main"];        WxForecast[21].Forecast0 = String(list21_forecast);
     const char * list21_description  = list21_weather0["description"]; WxForecast[21].Description = String(list21_description);
-    const char * list21_icon         = list21_weather0["icon"]; WxForecast[21].Icon = String(list21_icon);
+    const char * list21_icon         = list21_weather0["icon"];        WxForecast[21].Icon = String(list21_icon);
     WxForecast[21].Windspeed         = list21["wind"]["speed"];
     WxForecast[21].Winddir           = list21["wind"]["deg"];
     WxForecast[21].Rainfall          = list21["rain"]["3h"];
-    const char * list21_period       = list21["dt_txt"]; WxForecast[21].Period = String(list21_period);
+    const char * list21_period       = list21["dt_txt"];               WxForecast[21].Period = String(list21_period);
 
     Serial.print("22,");  //---------------------------
     JsonObject& list22               = list[22];
@@ -931,13 +931,13 @@ bool DecodeWeather(String json, String Type) {
     WxForecast[22].Pressure          = list22_main["pressure"];
     WxForecast[22].Humidity          = list22_main["humidity"];
     JsonObject& list22_weather0      = list22["weather"][0];
-    const char * list22_forecast     = list22_weather0["main"]; WxForecast[22].Forecast0 = String(list22_forecast);
+    const char * list22_forecast     = list22_weather0["main"];        WxForecast[22].Forecast0 = String(list22_forecast);
     const char * list22_description  = list22_weather0["description"]; WxForecast[22].Description = String(list22_description);
-    const char * list22_icon         = list22_weather0["icon"]; WxForecast[22].Icon = String(list22_icon);
+    const char * list22_icon         = list22_weather0["icon"];        WxForecast[22].Icon = String(list22_icon);
     WxForecast[22].Windspeed         = list22["wind"]["speed"];
     WxForecast[22].Winddir           = list22["wind"]["deg"];
     WxForecast[22].Rainfall          = list22["rain"]["3h"];
-    const char * list22_period       = list22["dt_txt"]; WxForecast[22].Period = String(list22_period);
+    const char * list22_period       = list22["dt_txt"];               WxForecast[22].Period = String(list22_period);
 
     Serial.print("23 ");  //---------------------------
     JsonObject& list23               = list[23];
@@ -949,13 +949,13 @@ bool DecodeWeather(String json, String Type) {
     WxForecast[23].Pressure          = list23_main["pressure"];
     WxForecast[23].Humidity          = list23_main["humidity"];
     JsonObject& list23_weather0      = list23["weather"][0];
-    const char * list23_forecast     = list23_weather0["main"]; WxForecast[23].Forecast0 = String(list23_forecast);
+    const char * list23_forecast     = list23_weather0["main"];        WxForecast[23].Forecast0 = String(list23_forecast);
     const char * list23_description  = list23_weather0["description"]; WxForecast[23].Description = String(list23_description);
-    const char * list23_icon         = list23_weather0["icon"]; WxForecast[23].Icon = String(list23_icon);
+    const char * list23_icon         = list23_weather0["icon"];        WxForecast[23].Icon = String(list23_icon);
     WxForecast[23].Windspeed         = list23["wind"]["speed"];
     WxForecast[23].Winddir           = list23["wind"]["deg"];
     WxForecast[23].Rainfall          = list23["rain"]["3h"];
-    const char * list23_period       = list23["dt_txt"]; WxForecast[23].Period = String(list23_period);
+    const char * list23_period       = list23["dt_txt"];               WxForecast[23].Period = String(list23_period);
 
     Serial.println(esp_get_free_heap_size());
 
@@ -1298,8 +1298,8 @@ void DrawBattery(int x, int y) {
   gfx.setTextAlignment(TEXT_ALIGN_RIGHT);
   gfx.drawString(x - 25, y, String(voltage, 2) + "V");
   gfx.drawRect(x - 22, y + 2, 19, 10);
-  gfx.fillRect(x - 2, y + 4, 2, 6);
-  gfx.fillRect(x - 20, y + 4, 16 * percentage / 100, 6);
+  gfx.fillRect(x - 2, y + 4, 3, 5);
+  gfx.fillRect(x - 20, y + 4, 17 * percentage / 100.0, 6);
 }
 //#########################################################################################
 /* (C) D L BIRD
