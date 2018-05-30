@@ -140,7 +140,7 @@ void Draw_Heading_Section() {
   gfx.drawString(SCREEN_WIDTH / 2, -2, City);
   gfx.setFont(ArialMT_Plain_10);
   gfx.setTextAlignment(TEXT_ALIGN_RIGHT);
-  gfx.drawString(SCREEN_WIDTH - 8, 0, Day_time_str);
+  gfx.drawString(SCREEN_WIDTH-3, 0, Day_time_str);
   gfx.setTextAlignment(TEXT_ALIGN_LEFT);
   gfx.drawString(5, 0, time_str);
   gfx.drawLine(0, 15, SCREEN_WIDTH, 15);
@@ -157,7 +157,7 @@ void Draw_Main_Weather_Section(int x, int y) {
   String Wx_Description = WxConditions[0].Forecast0;
   if (WxConditions[0].Forecast1 != "") Wx_Description += " & " +  WxConditions[0].Forecast1;
     if (WxConditions[0].Forecast2 != "" && WxConditions[0].Forecast1 != WxConditions[0].Forecast2) Wx_Description += " & " +  WxConditions[0].Forecast2;
-  gfx.drawString(x - 155, y + 70, Wx_Description);
+  gfx.drawString(x - 170, y + 70, Wx_Description);
   Draw_Main_Wx(x -98, y - 1);
   gfx.drawLine(0, y + 68, SCREEN_WIDTH, y + 68);
 }
@@ -1290,16 +1290,18 @@ void Nodata(int x, int y, int scale) {
 void DrawBattery(int x, int y) {
   uint8_t percentage = 100;
   float voltage = analogRead(35) / 4096.0 * 7.485;
-  if (voltage > 4.21) percentage = 100;
-  else if (voltage < 3.20) percentage = 0;
-  else percentage = (voltage - 3.20) * 100 / (4.21 - 3.20);
-  gfx.setColor(EPD_BLACK);
-  gfx.setFont(ArialMT_Plain_10);
-  gfx.setTextAlignment(TEXT_ALIGN_RIGHT);
-  gfx.drawString(x - 25, y, String(voltage, 2) + "V");
-  gfx.drawRect(x - 22, y + 2, 19, 10);
-  gfx.fillRect(x - 2, y + 4, 3, 5);
-  gfx.fillRect(x - 20, y + 4, 17 * percentage / 100.0, 6);
+  if (voltage !=0) {
+    if (voltage > 4.21) percentage = 100;
+    else if (voltage < 3.20) percentage = 0;
+    else percentage = (voltage - 3.20) * 100 / (4.21 - 3.20);
+    gfx.setColor(EPD_BLACK);
+    gfx.setFont(ArialMT_Plain_10);
+    gfx.setTextAlignment(TEXT_ALIGN_RIGHT);
+    gfx.drawString(x - 25, y, String(voltage, 2) + "V");
+    gfx.drawRect(x - 22, y + 2, 19, 10);
+    gfx.fillRect(x - 2, y + 4, 3, 5);
+    gfx.fillRect(x - 20, y + 4, 17 * percentage / 100.0, 6);
+  }
 }
 //#########################################################################################
 /* (C) D L BIRD
