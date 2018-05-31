@@ -39,11 +39,12 @@ UK is typically 'GMT0BST,M3.5.0/01,M10.5.0/02'  the 5 denotes the last Sunday in
 OPEN WEATHER MAP VERSION
 Download the software and install all 3 files in the same sketch folder.
 
-1. ESP32_OWM_Current_Forecast_42_epaper_v1 or latest version
-2. owm_credentials.h
+1. ESP32_OWM_Current_Forecast_42_epaper_vX always choose the latest version
+2. owm_credentials2.h
 3. ArialRounded.h 
-Obtain your OWM API key - it's free.
-
+Obtain your OWM API key - it's free
+Edit the owm_credentials2.h file in the IDE (TAB at top of IDE) and change your Language, Country, choose your units Metric or Imperial
+and be sure to find a vlaid weather station location on OpenWeatherMap, if your display has all blank values your location does not exist!.
 
 Compile and upload the code - Enjoy!
 
