@@ -5,6 +5,8 @@ THERE ARE TWO SETS OF INSTRUCTIONS HERE: WU and OWM
 
 Download the software and install all 3 files in the same sketch folder.
 
+**WEATHERUNDERGROUND VERSION**
+
 1. ESP32_WU_Current_Forecast_XX_epaper_vX
 2. credentials.h
 3. ArialRounded.h 
@@ -38,7 +40,7 @@ Go to the time Setup function near the end of the programme and adjust your time
 
 UK is typically 'GMT0BST,M3.5.0/01,M10.5.0/02'  the 5 denotes the last Sunday in the month of 3 which is March and 10 October
 
-OPEN WEATHER MAP VERSION
+**OPEN WEATHER MAP VERSION**
 Download the software and install all 3 files in the same sketch folder.
 
 1. ESP32_OWM_Current_Forecast_29_epaper_vX always choose the latest version
