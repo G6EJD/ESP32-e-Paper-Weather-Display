@@ -106,8 +106,8 @@ void setup() {
   wifi_signal = WiFi_Signal();
   SetupTime();
   bool Received_Forecast_OK = false;
-  obtain_wx_data("weather");  Received_Forecast_OK = DecodeWeather(rxtext, "weather");
-  obtain_wx_data("forecast"); Received_Forecast_OK = DecodeWeather(rxtext, "forecast");
+  if (obtain_wx_data("weather")) { Received_Forecast_OK = DecodeWeather(rxtext, "weather");}
+  if (obtain_wx_data("forecast")){ Received_Forecast_OK = DecodeWeather(rxtext, "forecast");}
   // Now only refresh the screen if all the data was received OK, otherwise wait until the next timed check otherwise wait until the next timed check
   if (Received_Forecast_OK) {
     StopWiFi(); // Reduces power consumption
@@ -1421,7 +1421,7 @@ void DrawBattery(int x, int y) {
 */
 void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], int readings, boolean auto_scale, boolean barchart_mode) {
 #define auto_scale_margin 0 // Sets the autoscale increment, so axis steps up in units of e.g. 3
-#define yticks 5            // 5 y-axis division markers
+#define y_minor_axis 5      // 5 y-axis division markers
   int maxYscale = -10000;
   int minYscale =  10000;
   int last_x, last_y;
@@ -1461,15 +1461,15 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
       last_y = y2;
   }
   //Draw the Y-axis scale
-  for (int spacing = 0; spacing <= yticks; spacing++) {
+  for (int spacing = 0; spacing <= y_minor_axis; spacing++) {
   #define number_of_dashes 20
     for (int j = 0; j < number_of_dashes; j++) { // Draw dashed graph grid lines
-      if (spacing < yticks) gfx.drawHorizontalLine((x_pos + 3 + j * gwidth / number_of_dashes), y_pos + (gheight * spacing / yticks), gwidth / (2 * number_of_dashes));
+      if (spacing < y_minor_axis) gfx.drawHorizontalLine((x_pos + 3 + j * gwidth / number_of_dashes), y_pos + (gheight * spacing / y_minor_axis), gwidth / (2 * number_of_dashes));
     }
-    if ( (Y1Max-(float)(Y1Max-Y1Min)/yticks*spacing) < 10) {gfx.drawString(x_pos-2, y_pos+gheight*spacing/yticks-5, String((Y1Max-(float)(Y1Max-Y1Min)/yticks*spacing+0.01), 1));}
+    if ( (Y1Max-(float)(Y1Max-Y1Min)/y_minor_axis*spacing) < 10) {gfx.drawString(x_pos-2, y_pos+gheight*spacing/y_minor_axis-5, String((Y1Max-(float)(Y1Max-Y1Min)/y_minor_axis*spacing+0.01), 1));}
     else {
-      if (Y1Min < 1 && Y1Max < 10) gfx.drawString(x_pos - 2, y_pos + gheight * spacing / yticks - 5, String((Y1Max - (float)(Y1Max - Y1Min) / yticks * spacing+0.01), 1));
-      else gfx.drawString(x_pos - 2, y_pos + gheight * spacing / yticks - 5, String((Y1Max - (float)(Y1Max - Y1Min) / yticks * spacing + 0.01), 0)); // +0.01 prevents -0.00 occurring
+      if (Y1Min < 1 && Y1Max < 10) gfx.drawString(x_pos - 2, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing+0.01), 1));
+      else gfx.drawString(x_pos - 2, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 0)); // +0.01 prevents -0.00 occurring
     }
   }
   for (int i = 0; i <= 3; i++) {
