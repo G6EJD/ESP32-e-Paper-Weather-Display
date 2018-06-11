@@ -1,6 +1,8 @@
 # ESP32-e-Paper-Weather-Display
 An ESP32 and a 2.9" ePaper Display reads Weather Underground and displays the weather
 
+THERE ARE TWO SETS OF INSTRUCTIONS HERE: WU and OWM
+
 Download the software and install all 3 files in the same sketch folder.
 
 1. ESP32_WU_Current_Forecast_XX_epaper_vX
@@ -50,6 +52,7 @@ or
 3. ArialRounded.h 
 
 Obtain your OWM API key - it's free
+
 4. Edit the owm_credentials2.h file in the IDE (TAB at top of IDE) and change your Language, Country, choose your units Metric or Imperial and be sure to find a valid weather station location on OpenWeatherMap, if your display has all blank values your location does not exist!.
 
 Compile and upload the code - Enjoy!
