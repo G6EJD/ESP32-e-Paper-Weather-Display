@@ -48,5 +48,5 @@ and be sure to find a vlaid weather station location on OpenWeatherMap, if your 
 
 Compile and upload the code - Enjoy!
 
-
+![alt text](https://github.com/G6EJD/ESP32-e-Paper-Weather-Display/blob/master/IMG_2096b.jpg)
 
