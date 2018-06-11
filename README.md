@@ -41,13 +41,16 @@ Go to the time Setup function near the end of the programme and adjust your time
 UK is typically 'GMT0BST,M3.5.0/01,M10.5.0/02'  the 5 denotes the last Sunday in the month of 3 which is March and 10 October
 
 **OPEN WEATHER MAP VERSION**
+
+Go to Sketch > Include Library... > Manage Libraries.... Then, for each library, put its name into the text field to have its metadata pulled from the internet and displayed below. Select the latest version and install it. Make sure to come back to this dialog from time to time to keep each library up to date. Also make sure that you only have one version of each of the libraries installed.
+
+'Mini Grafx' by Daniel Eichhorn
+'ESP8266 WeatherStation' by Daniel Eichhorn (required for additional fonts)
 Download the software and install all 3 files in the same sketch folder.
 
 1. ESP32_OWM_Current_Forecast_29_epaper_vX always choose the latest version
-or 
-1. ESP32_OWM_Current_Forecast_42_epaper_vX always choose the latest version
-or
-1. ESP32_OWM_Current_Forecast_75_epaper_vX always choose the latest version
+   ESP32_OWM_Current_Forecast_42_epaper_vX always choose the latest version
+   ESP32_OWM_Current_Forecast_75_epaper_vX always choose the latest version
 
 2. owm_credentials2.h
 
