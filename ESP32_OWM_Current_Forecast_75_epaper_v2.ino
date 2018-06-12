@@ -57,7 +57,7 @@ bool SmallIcon   =  false;
 #define Large  14
 #define Small  4
 String time_str, Day_time_str, rxtext; // strings to hold time and received weather data;
-int    wifi_signal,wifisection, displaysection, MoonDay, MoonMonth, MoonYear;
+int    wifi_signal,wifisection, displaysection, MoonDay, MoonMonth, MoonYear, start_time;
 int    Sunrise, Sunset;
 
 //################ PROGRAM VARIABLES and OBJECTS ################
@@ -101,6 +101,7 @@ WiFiClient client; // wifi client object
 
 //#########################################################################################
 void setup() {
+  start_time = millis();
   Serial.begin(115200);
   StartWiFi();
   wifi_signal = WiFi_Signal();
@@ -119,6 +120,7 @@ void setup() {
     Display_Weather();
     gfx.commit();
     delay(2000);
+    Serial.println("total time to update = "+String(millis()-start_time));
     begin_sleep();
   }
 }
@@ -541,8 +543,8 @@ bool obtain_wx_data(String RequestType) {
 // Problems with stucturing JSON decodes, see here: https://arduinojson.org/assistant/
 bool DecodeWeather(String json, String Type) {
   Serial.print(F("Creating object...and "));
-  DynamicJsonBuffer jsonBuffer (35 * 1024);
-  JsonObject& root = jsonBuffer.parseObject(json);
+  DynamicJsonBuffer jsonBuffer (36 * 1024);
+  JsonObject& root = jsonBuffer.parseObject(const_cast<char*>(json.c_str()));
   if (!root.success()) {
     Serial.print("ParseObject() failed");
     return false;
