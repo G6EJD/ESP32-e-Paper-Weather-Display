@@ -54,7 +54,7 @@ String version = "9";       // Version of this program
 const unsigned long UpdateInterval     = 30L * 60L * 1000000L; // Delay between updates, in milliseconds, WU allows 500 requests per-day maximum, set to every 15-mins or more
 bool LargeIcon   =  true;
 bool SmallIcon   =  false;
-#define Large  11
+#define Large  10
 #define Small  4
 String time_str, Day_time_str, rxtext; // strings to hold time and received weather data;
 int    wifisection, displaysection, MoonDay, MoonMonth, MoonYear;
@@ -104,8 +104,8 @@ void setup() {
   StartWiFi();
   SetupTime();
   bool Received_Forecast_OK = false;
-  obtain_wx_data("weather");  Received_Forecast_OK = DecodeWeather(rxtext, "weather");
-  obtain_wx_data("forecast"); Received_Forecast_OK = DecodeWeather(rxtext, "forecast");
+  if (obtain_wx_data("weather"))  { Received_Forecast_OK = DecodeWeather(rxtext, "weather");  }
+  if (obtain_wx_data("forecast")) { Received_Forecast_OK = DecodeWeather(rxtext, "forecast"); }
   // Now only refresh the screen if all the data was received OK, otherwise wait until the next timed check otherwise wait until the next timed check
   if (Received_Forecast_OK) {
     StopWiFi(); // Reduces power consumption
@@ -118,13 +118,17 @@ void setup() {
     DrawBattery(SCREEN_WIDTH-80, 0);
     gfx.commit();
     delay(2000);
+    begin_sleep();
   }
   Serial.println(F("Starting deep-sleep period..."));
-  esp_sleep_enable_timer_wakeup(UpdateInterval);
-  esp_deep_sleep_start(); // Sleep for e.g. 30 minutes
 }
 //#########################################################################################
 void loop() { // this will never run!
+}
+//#########################################################################################
+void begin_sleep(){
+  esp_sleep_enable_timer_wakeup(UpdateInterval);
+  esp_deep_sleep_start(); // Sleep for e.g. 30 minutes
 }
 //#########################################################################################
 void Display_Weather() {              // 4.2" e-paper display is 400x300 resolution
@@ -147,7 +151,7 @@ void Draw_Heading_Section() {
 }
 //#########################################################################################
 void Draw_Main_Weather_Section(int x, int y) {
-  DisplayWXicon(x + 5, y - 8, WxConditions[0].Icon, LargeIcon);
+  DisplayWXicon(x+5, y-5, WxConditions[0].Icon, LargeIcon);
   gfx.setFont(ArialRoundedMTBold_14);
   DrawPressureTrend(x, y + 50, WxConditions[0].Pressure, WxConditions[0].Trend);
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
@@ -178,9 +182,11 @@ void Draw_Forecast_Section(int x, int y) {
   Draw_Forecast_Weather(x + 112, y, 2);
   //       (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
   for (int r = 1; r <= max_readings; r++) {
-    pressure_readings[r]    = WxForecast[r].Pressure;
+    if (Units == "I") pressure_readings[r] = WxForecast[r].Pressure * 0.02953;  
+    else              pressure_readings[r] = WxForecast[r].Pressure;
     temperature_readings[r] = WxForecast[r].Temperature;
-    rain_readings[r]        = WxForecast[r].Rainfall;
+    if (Units == "I") rain_readings[r]     = WxForecast[r].Rainfall * 0.0393701;
+    else              rain_readings[r]     = WxForecast[r].Rainfall;
   }
   gfx.drawLine(0, y + 173, SCREEN_WIDTH, y + 173);
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
@@ -255,7 +261,8 @@ String WindDegToDirection(float winddirection) {
 }
 //#########################################################################################
 void DrawPressureTrend(int x, int y, float pressure, String slope) {
-  gfx.drawString(x - 25, y, String(pressure,1) + (Units == "M" ? "mb" : "in"));
+  gfx.setTextAlignment(TEXT_ALIGN_CENTER);
+  gfx.drawString(x, y, String(pressure,1) + (Units == "M" ? "mb" : "in"));
   x = x + 45; y = y + 8;
   if      (slope == "+") {
     gfx.drawLine(x,  y,  x + 4, y - 4);
@@ -274,7 +281,7 @@ void DrawPressureTrend(int x, int y, float pressure, String slope) {
 void Draw_Rain(int x, int y) {
   gfx.setFont(ArialRoundedMTBold_14);
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
-  if (WxForecast[1].Rainfall > 0) gfx.drawString(x, y + 14, String(WxForecast[1].Rainfall,1) + (Units == "M" ? "mm" : "in") + " Rainfall"); // Only display rainfall total today if > 0
+  if (WxForecast[1].Rainfall > 0) gfx.drawString(x, y + 14, String(WxForecast[1].Rainfall,2) + (Units == "M" ? "mm" : "in") + " Rainfall"); // Only display rainfall total today if > 0
   gfx.setFont(ArialMT_Plain_10);
 }
 //#########################################################################################
@@ -284,7 +291,7 @@ void Draw_Astronomy_Section(int x, int y) {
   gfx.drawRect(x, y + 64, 167, 53);
   gfx.drawString(x + 4, y + 65, "Sun Rise/Set");
   gfx.drawString(x + 20, y + 75, ConvertUnixTime(Sunrise).substring(0, 5));
-  gfx.drawString(x + 20, y + 85, ConvertUnixTime(Sunset).substring(0, 5));
+  gfx.drawString(x + 20, y + 88, ConvertUnixTime(Sunset).substring(0, 5));
   gfx.drawString(x + 4, y + 100, "Moon:");
   gfx.drawString(x + 35, y + 100, MoonPhase(MoonDay, MoonMonth, MoonYear, Hemisphere));
   DrawMoon(x + 103, y + 51, MoonDay, MoonMonth, MoonYear, Hemisphere);
@@ -412,19 +419,19 @@ void arrow(int x, int y, int asize, float aangle, int pwidth, int plength) {
 }
 //#########################################################################################
 void DisplayWXicon(int x, int y, String IconName, bool LargeSize) {
+  gfx.setTextAlignment(TEXT_ALIGN_CENTER);
   Serial.println(IconName);
-    if      (IconName == "01d" || IconName == "01n")  if (LargeSize) Sunny(x, y, Large); else Sunny(x, y, Small);
-    else if (IconName == "02d" || IconName == "02n")  if (LargeSize) MostlySunny(x, y, Large); else MostlySunny(x, y, Small);
-    else if (IconName == "03d" || IconName == "03n")  if (LargeSize) Cloudy(x, y, Large); else Cloudy(x, y, Small);
-    else if (IconName == "04d" || IconName == "04n")  if (LargeSize) MostlySunny(x, y, Large); else MostlySunny(x, y, Small);
-    else if (IconName == "09d" || IconName == "09n")  if (LargeSize) ChanceRain(x, y, Large); else ChanceRain(x, y, Small);
-    else if (IconName == "10d" || IconName == "10n")  if (LargeSize) Rain(x, y, Large); else Rain(x, y, Small);
-    else if (IconName == "11d" || IconName == "11n")  if (LargeSize) Tstorms(x, y, Large); else Tstorms(x, y, Small);
-    else if (IconName == "13d" || IconName == "13n")  if (LargeSize) Snow(x, y, Large); else Snow(x, y, Small);
-    else if (IconName == "50d")                       if (LargeSize) Haze(x, y - 5, Large); else Haze(x, y, Small);
-    else if (IconName == "50n")                       if (LargeSize) Fog(x, y - 5, Large); else Fog(x, y, Small);
-    else if (IconName == "probrain")                  if (LargeSize) ProbRain(x, y, Large); else ProbRain(x, y, Small);
-  else                                                if (LargeSize) Nodata(x, y, Large); else Nodata(x, y, Small);
+    if      (IconName == "01d" || IconName == "01n")  Sunny(x, y, LargeSize, IconName);
+    else if (IconName == "02d" || IconName == "02n")  MostlySunny(x, y, LargeSize, IconName);
+    else if (IconName == "03d" || IconName == "03n")  Cloudy(x, y, LargeSize, IconName);
+    else if (IconName == "04d" || IconName == "04n")  MostlySunny(x, y, LargeSize, IconName);
+    else if (IconName == "09d" || IconName == "09n")  ChanceRain(x, y, LargeSize, IconName);
+    else if (IconName == "10d" || IconName == "10n")  Rain(x, y, LargeSize, IconName);
+    else if (IconName == "11d" || IconName == "11n")  Tstorms(x, y, LargeSize, IconName); 
+    else if (IconName == "13d" || IconName == "13n")  Snow(x, y, LargeSize, IconName);
+    else if (IconName == "50d")                       Haze(x, y - 5, LargeSize, IconName);
+    else if (IconName == "50n")                       Fog(x, y - 5, LargeSize, IconName);
+    else                                              Nodata(x, y, LargeSize);
 }
 //#########################################################################################
 bool obtain_wx_data(String RequestType) {
@@ -487,8 +494,8 @@ bool obtain_wx_data(String RequestType) {
 // Problems with stucturing JSON decodes, see here: https://arduinojson.org/assistant/
 bool DecodeWeather(String json, String Type) {
   Serial.print(F("Creating object...and "));
-  DynamicJsonBuffer jsonBuffer (35 * 1024);
-  JsonObject& root = jsonBuffer.parseObject(json);
+  DynamicJsonBuffer jsonBuffer (25 * 1024);
+  JsonObject& root = jsonBuffer.parseObject(const_cast<char*>(json.c_str()));
   if (!root.success()) {
     Serial.print("ParseObject() failed");
     return false;
@@ -1008,8 +1015,7 @@ int StartWiFi() {
     delay(500); Serial.print(".");
     if (connAttempts > 20) {
       WiFi.disconnect();
-      WiFi.mode(WIFI_STA);
-      WiFi.begin(ssid2, password2);
+      begin_sleep();
     }
     connAttempts++;
   }
@@ -1189,96 +1195,146 @@ void addfog(int x, int y, int scale, int linesize) {
   }
 }
 //#########################################################################################
-void MostlyCloudy(int x, int y, int scale) {
+void MostlyCloudy(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
+  if (IconName.endsWith("n")) addmoon(x,y,scale);
   addcloud(x, y, scale, linesize);
   addsun(x - scale * 1.8, y - scale * 1.8, scale);
   addcloud(x, y, scale, linesize);
 }
 //#########################################################################################
-void MostlySunny(int x, int y, int scale) {
+void MostlySunny(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
+  if (IconName.endsWith("n")) addmoon(x,y,scale);
   addcloud(x, y, scale, linesize);
   addsun(x - scale * 1.8, y - scale * 1.8, scale);
 }
 //#########################################################################################
-void Rain(int x, int y, int scale) {
+void Rain(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
+  if (IconName.endsWith("n")) addmoon(x,y,scale);
   addcloud(x, y, scale, linesize);
   addrain(x, y, scale);
 }
 //#########################################################################################
-void ProbRain(int x, int y, int scale) {
-  x = x + 20;
-  y = y + 15;
-  addcloud(x, y, scale, 1);
-  y = y + scale / 2;
-  for (int i = 0; i < 6; i++) {
-    gfx.drawLine(x - scale * 4 + scale * i * 1.3 + 0, y + scale * 1.9, x - scale * 3.5 + scale * i * 1.3 + 0, y + scale);
+void Cloudy(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
+  int linesize = 3;
+  if (scale == Small) {
+    if (IconName.endsWith("n")) addmoon(x,y,scale);
+    linesize = 1;
+    addcloud(x, y, scale, linesize);
+  }
+  else {
+    y += 25;
+    if (IconName.endsWith("n")) addmoon(x,y-15,scale);
+    addcloud(x+30, y-35, 4, linesize); // Cloud top right
+    addcloud(x-20, y-25, 6, linesize); // Cloud top left
+    addcloud(x, y, scale, linesize);   // Main cloud
   }
 }
 //#########################################################################################
-void Cloudy(int x, int y, int scale) {
-  int linesize = 3;
-  if (scale == Small) linesize = 1;
-  addcloud(x, y, scale, linesize);
-}
-//#########################################################################################
-void Sunny(int x, int y, int scale) {
+void Sunny(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
+  if (IconName.endsWith("n")) addmoon(x,y,scale);
   scale = scale * 1.5;
   addsun(x, y, scale);
 }
 //#########################################################################################
-void ExpectRain(int x, int y, int scale) {
+void ExpectRain(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
+  if (IconName.endsWith("n")) addmoon(x,y,scale);
   addsun(x - scale * 1.8, y - scale * 1.8, scale);
   addcloud(x, y, scale, linesize);
   addrain(x, y, scale);
 }
 //#########################################################################################
-void ChanceRain(int x, int y, int scale) {
+void ChanceRain(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
+  if (IconName.endsWith("n")) addmoon(x,y,scale);
   addsun(x - scale * 1.8, y - scale * 1.8, scale);
   addcloud(x, y, scale, linesize);
   addrain(x, y, scale);
 }
 //#########################################################################################
-void Tstorms(int x, int y, int scale) {
+void Tstorms(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
+  if (IconName.endsWith("n")) addmoon(x,y,scale);
   addcloud(x, y, scale, linesize);
   addtstorm(x, y, scale);
 }
 //#########################################################################################
-void Snow(int x, int y, int scale) {
+void Snow(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
+  if (IconName.endsWith("n")) addmoon(x,y,scale);
   addcloud(x, y, scale, linesize);
   addsnow(x, y, scale);
 }
 //#########################################################################################
-void Fog(int x, int y, int scale) {
+void Fog(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
+  if (IconName.endsWith("n")) addmoon(x,y,scale);
   addcloud(x, y, scale, linesize);
   addfog(x, y, scale, linesize);
 }
 //#########################################################################################
-void Haze(int x, int y, int scale) {
+void Haze(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
-  addsun(x, y, scale);
-  addfog(x, y, scale, linesize);
+  if (IconName.endsWith("n")) addmoon(x,y,scale);
+  addsun(x, y, scale*1.4);
+  addfog(x, y, scale*1.4, linesize);
 }
 //#########################################################################################
-void Nodata(int x, int y, int scale) {
-  if (scale > 1) gfx.setFont(ArialMT_Plain_24); else gfx.setFont(ArialMT_Plain_10);
-  gfx.drawString(x - 10, y, "N/A");
+void addmoon (int x, int y, int scale){
+  if (scale == Large) {
+    gfx.fillCircle(x-37,y-33,scale);
+    gfx.setColor(EPD_WHITE);
+    gfx.fillCircle(x-27,y-33,scale*1.6);
+    gfx.setColor(EPD_BLACK);
+  }
+  else
+  {
+    gfx.fillCircle(x-20,y-15,scale);
+    gfx.setColor(EPD_WHITE);
+    gfx.fillCircle(x-15,y-15,scale*1.6);
+    gfx.setColor(EPD_BLACK);
+  }
+}
+//#########################################################################################
+void Nodata(int x, int y, bool LargeSize) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
+  if (scale == Large) gfx.setFont(ArialMT_Plain_24); else gfx.setFont(ArialMT_Plain_16);
+  gfx.drawString(x, y-10, "N/A");
 }
 //#########################################################################################
 void DrawBattery(int x, int y) {
@@ -1315,7 +1371,7 @@ void DrawBattery(int x, int y) {
 */
 void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], int readings, boolean auto_scale, boolean barchart_mode) {
 #define auto_scale_margin 0 // Sets the autoscale increment, so axis steps up in units of e.g. 3
-#define yticks 5            // 5 y-axis division markers
+#define y_minor_axis 5      // 5 y-axis division markers
   int maxYscale = -10000;
   int minYscale =  10000;
   int last_x, last_y;
@@ -1335,7 +1391,8 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
   last_y = y_pos + (Y1Max - constrain(DataArray[1], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight;
   gfx.setColor(EPD_BLACK);
   gfx.drawRect(x_pos, y_pos, gwidth + 3, gheight + 2);
-  gfx.setFont(ArialRoundedMTBold_14);
+  gfx.setFont(ArialMT_Plain_10);
+  //gfx.setFont(ArialRoundedMTBold_14);
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
   gfx.drawString(x_pos + gwidth / 2, y_pos - 17, title);
   gfx.setFont(ArialMT_Plain_10);
@@ -1355,18 +1412,19 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
       last_y = y2;
   }
   //Draw the Y-axis scale
-  for (int spacing = 0; spacing <= yticks; spacing++) {
+  for (int spacing = 0; spacing <= y_minor_axis; spacing++) {
   #define number_of_dashes 20
     for (int j = 0; j < number_of_dashes; j++) { // Draw dashed graph grid lines
-      if (spacing < yticks) gfx.drawHorizontalLine((x_pos + 3 + j * gwidth / number_of_dashes), y_pos + (gheight * spacing / yticks), gwidth / (2 * number_of_dashes));
+      if (spacing < y_minor_axis) gfx.drawHorizontalLine((x_pos + 3 + j * gwidth / number_of_dashes), y_pos + (gheight * spacing / y_minor_axis), gwidth / (2 * number_of_dashes));
     }
-    if ( (Y1Max-(float)(Y1Max-Y1Min)/yticks*spacing) < 10) {gfx.drawString(x_pos-2, y_pos+gheight*spacing/yticks-5, String((Y1Max-(float)(Y1Max-Y1Min)/yticks*spacing+0.01), 1));}
+    if ( (Y1Max-(float)(Y1Max-Y1Min)/y_minor_axis*spacing) < 10) {gfx.drawString(x_pos-2, y_pos+gheight*spacing/y_minor_axis-5, String((Y1Max-(float)(Y1Max-Y1Min)/y_minor_axis*spacing+0.01), 1));}
     else {
-      if (Y1Min < 1) gfx.drawString(x_pos - 2, y_pos + gheight * spacing / yticks - 5, String((Y1Max - (float)(Y1Max - Y1Min) / yticks * spacing+0.01), 1));
-      else gfx.drawString(x_pos - 2, y_pos + gheight * spacing / yticks - 5, String((Y1Max - (float)(Y1Max - Y1Min) / yticks * spacing + 0.01), 0)); // +0.01 prevents -0.00 occurring
+      if (Y1Min < 1) gfx.drawString(x_pos - 2, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing+0.01), 1));
+      else gfx.drawString(x_pos - 2, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 0)); // +0.01 prevents -0.00 occurring
     }
   }
   for (int i = 0; i <= 3; i++) {
     gfx.drawString(5 + x_pos + gwidth / 3 * i, y_pos + gheight + 3, String(i));
   }
+  gfx.drawString(x_pos+gwidth/2+12,y_pos+gheight+5,"Days");
 }
