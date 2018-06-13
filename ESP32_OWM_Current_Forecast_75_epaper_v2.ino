@@ -470,17 +470,17 @@ void Display_Conditions_Section(int x, int y, String IconName, bool LargeSize) {
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
   if (LargeSize) gfx.drawString(x, y-98, "Conditions");
   Serial.println(IconName);
-    if      (IconName == "01d" || IconName == "01n")  if (LargeSize) Sunny(x, y, Large, IconName);       else Sunny(x, y, Small, IconName);
-    else if (IconName == "02d" || IconName == "02n")  if (LargeSize) MostlySunny(x, y, Large, IconName); else MostlySunny(x, y, Small, IconName);
-    else if (IconName == "03d" || IconName == "03n")  if (LargeSize) Cloudy(x, y, Large, IconName);      else Cloudy(x, y, Small, IconName);
-    else if (IconName == "04d" || IconName == "04n")  if (LargeSize) MostlySunny(x, y, Large, IconName); else MostlySunny(x, y, Small, IconName);
-    else if (IconName == "09d" || IconName == "09n")  if (LargeSize) ChanceRain(x, y, Large, IconName);  else ChanceRain(x, y, Small, IconName);
-    else if (IconName == "10d" || IconName == "10n")  if (LargeSize) Rain(x, y, Large, IconName);        else Rain(x, y, Small, IconName);
-    else if (IconName == "11d" || IconName == "11n")  if (LargeSize) Tstorms(x, y, Large, IconName);     else Tstorms(x, y, Small, IconName);
-    else if (IconName == "13d" || IconName == "13n")  if (LargeSize) Snow(x, y, Large, IconName);        else Snow(x, y, Small, IconName);
-    else if (IconName == "50d")                       if (LargeSize) Haze(x, y - 5, Large, IconName);    else Haze(x, y, Small, IconName);
-    else if (IconName == "50n")                       if (LargeSize) Fog(x, y - 5, Large, IconName);     else Fog(x, y, Small, IconName);
-  else                                                if (LargeSize) Nodata(x, y, Large);                else Nodata(x, y, Small);
+  if      (IconName == "01d" || IconName == "01n")  Sunny(x, y, LargeSize, IconName);
+  else if (IconName == "02d" || IconName == "02n")  MostlySunny(x, y, LargeSize, IconName);
+  else if (IconName == "03d" || IconName == "03n")  Cloudy(x, y, LargeSize, IconName);
+  else if (IconName == "04d" || IconName == "04n")  MostlySunny(x, y, LargeSize, IconName);
+  else if (IconName == "09d" || IconName == "09n")  ChanceRain(x, y, LargeSize, IconName);
+  else if (IconName == "10d" || IconName == "10n")  Rain(x, y, LargeSize, IconName);
+  else if (IconName == "11d" || IconName == "11n")  Tstorms(x, y, LargeSize, IconName);
+  else if (IconName == "13d" || IconName == "13n")  Snow(x, y, LargeSize, IconName);
+  else if (IconName == "50d")                       Haze(x, y - 5, LargeSize, IconName);
+  else if (IconName == "50n")                       Fog(x, y - 5, LargeSize, IconName);
+  else                                              Nodata(x, y, LargeSize);
 }
 //#########################################################################################
 bool obtain_wx_data(String RequestType) {
@@ -543,7 +543,7 @@ bool obtain_wx_data(String RequestType) {
 // Problems with stucturing JSON decodes, see here: https://arduinojson.org/assistant/
 bool DecodeWeather(String json, String Type) {
   Serial.print(F("Creating object...and "));
-  DynamicJsonBuffer jsonBuffer (36 * 1024);
+  DynamicJsonBuffer jsonBuffer (22 * 1024);
   JsonObject& root = jsonBuffer.parseObject(const_cast<char*>(json.c_str()));
   if (!root.success()) {
     Serial.print("ParseObject() failed");
@@ -1270,7 +1270,9 @@ void addfog(int x, int y, int scale, int linesize) {
   }
 }
 //#########################################################################################
-void MostlyCloudy(int x, int y, int scale, String IconName) {
+void MostlyCloudy(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
   if (IconName.endsWith("n")) addmoon(x,y,scale);
@@ -1279,7 +1281,9 @@ void MostlyCloudy(int x, int y, int scale, String IconName) {
   addcloud(x, y, scale, linesize);
 }
 //#########################################################################################
-void MostlySunny(int x, int y, int scale, String IconName) {
+void MostlySunny(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
   if (IconName.endsWith("n")) addmoon(x,y,scale);
@@ -1287,7 +1291,9 @@ void MostlySunny(int x, int y, int scale, String IconName) {
   addsun(x - scale * 1.8, y - scale * 1.8, scale);
 }
 //#########################################################################################
-void Rain(int x, int y, int scale, String IconName) {
+void Rain(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
   if (IconName.endsWith("n")) addmoon(x,y,scale);
@@ -1295,7 +1301,9 @@ void Rain(int x, int y, int scale, String IconName) {
   addrain(x, y, scale);
 }
 //#########################################################################################
-void Cloudy(int x, int y, int scale, String IconName) {
+void Cloudy(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
   int linesize = 3;
   if (scale == Small) {
     if (IconName.endsWith("n")) addmoon(x,y,scale);
@@ -1311,13 +1319,17 @@ void Cloudy(int x, int y, int scale, String IconName) {
   }
 }
 //#########################################################################################
-void Sunny(int x, int y, int scale, String IconName) {
+void Sunny(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
   if (IconName.endsWith("n")) addmoon(x,y,scale);
   scale = scale * 1.6;
   addsun(x, y, scale);
 }
 //#########################################################################################
-void ExpectRain(int x, int y, int scale, String IconName) {
+void ExpectRain(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
   if (IconName.endsWith("n")) addmoon(x,y,scale);
@@ -1326,7 +1338,9 @@ void ExpectRain(int x, int y, int scale, String IconName) {
   addrain(x, y, scale);
 }
 //#########################################################################################
-void ChanceRain(int x, int y, int scale, String IconName) {
+void ChanceRain(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
   if (IconName.endsWith("n")) addmoon(x,y,scale);
@@ -1335,7 +1349,9 @@ void ChanceRain(int x, int y, int scale, String IconName) {
   addrain(x, y, scale);
 }
 //#########################################################################################
-void Tstorms(int x, int y, int scale, String IconName) {
+void Tstorms(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
   if (IconName.endsWith("n")) addmoon(x,y,scale);
@@ -1343,7 +1359,9 @@ void Tstorms(int x, int y, int scale, String IconName) {
   addtstorm(x, y, scale);
 }
 //#########################################################################################
-void Snow(int x, int y, int scale, String IconName) {
+void Snow(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
   if (IconName.endsWith("n")) addmoon(x,y,scale);
@@ -1351,7 +1369,9 @@ void Snow(int x, int y, int scale, String IconName) {
   addsnow(x, y, scale);
 }
 //#########################################################################################
-void Fog(int x, int y, int scale, String IconName) {
+void Fog(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
   if (IconName.endsWith("n")) addmoon(x,y,scale);
@@ -1359,7 +1379,9 @@ void Fog(int x, int y, int scale, String IconName) {
   addfog(x, y, scale, linesize);
 }
 //#########################################################################################
-void Haze(int x, int y, int scale, String IconName) {
+void Haze(int x, int y, bool LargeSize, String IconName) {
+  int scale = Small;
+  if (LargeSize) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
   if (IconName.endsWith("n")) addmoon(x,y,scale);
@@ -1367,7 +1389,7 @@ void Haze(int x, int y, int scale, String IconName) {
   addfog(x, y, scale*1.4, linesize);
 }
 //#########################################################################################
-void addmoon (int x, int y, int scale){
+void addmoon(int x, int y, int scale){
   if (scale == Large) {
     gfx.fillCircle(x-50,y-60,scale);
     gfx.setColor(EPD_WHITE);
@@ -1384,8 +1406,8 @@ void addmoon (int x, int y, int scale){
 }
 //#########################################################################################
 void Nodata(int x, int y, int scale) {
-  if (scale > 1) gfx.setFont(ArialMT_Plain_24); else gfx.setFont(ArialMT_Plain_10);
-  gfx.drawString(x - 10, y, "N/A");
+  if (scale == Large) gfx.setFont(ArialMT_Plain_24); else gfx.setFont(ArialMT_Plain_16);
+  gfx.drawString(x, y-10, "N/A");
 }
 //#########################################################################################
 void DrawBattery(int x, int y) {
