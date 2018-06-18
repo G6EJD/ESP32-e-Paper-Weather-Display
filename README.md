@@ -60,6 +60,12 @@ Obtain your OWM API key - it's free
 
 4. Edit the owm_credentials2.h file in the IDE (TAB at top of IDE) and change your Language, Country, choose your units Metric or Imperial and be sure to find a valid weather station location on OpenWeatherMap, if your display has all blank values your location does not exist!.
 
+**OPEN WEATHER MAP VERSION - STREAMING JSON**
+
+This version requires *** Arduino JSON v6 or above *** it streams the Openweather and processes the data as received, rather than downloading all the data first, then decoding it. It uses a lot less memory this way.
+
+Go to Sketch > Include Library... > Manage Libraries.... Then, for each library, put its name into the text field to have its metadata 
+
 Compile and upload the code - Enjoy!
 
 ![alt text](https://github.com/G6EJD/ESP32-e-Paper-Weather-Display/blob/master/IMG_2096b.jpg)
