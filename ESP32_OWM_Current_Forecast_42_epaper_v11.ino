@@ -118,9 +118,10 @@ void setup() {
     DrawBattery(SCREEN_WIDTH-80, 0);
     gfx.commit();
     delay(2000);
-    begin_sleep();
+    
   }
   Serial.println(F("Starting deep-sleep period..."));
+  begin_sleep();
 }
 //#########################################################################################
 void loop() { // this will never run!
