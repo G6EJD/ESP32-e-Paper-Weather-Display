@@ -105,7 +105,6 @@ float pressure_readings[max_readings]    = {0};
 float temperature_readings[max_readings] = {0};
 float humidity_readings[max_readings]    = {0};
 float rain_readings[max_readings]        = {0};
-
 WiFiClient client; // wifi client object
 
 //#########################################################################################
@@ -129,8 +128,8 @@ void setup() {
     gfx.commit();
     delay(2000);
     Serial.println("total time to update = "+String(millis()-start_time));
-    begin_sleep();
   }
+  begin_sleep();
 }
 //#########################################################################################
 void loop() { // this will never run!
