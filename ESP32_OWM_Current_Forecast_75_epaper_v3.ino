@@ -121,8 +121,8 @@ void setup() {
     gfx.commit();
     delay(2000);
     Serial.println("total time to update = "+String(millis()-start_time));
-    begin_sleep();
   }
+  begin_sleep();
 }
 //#########################################################################################
 void loop() { // this will never run!
