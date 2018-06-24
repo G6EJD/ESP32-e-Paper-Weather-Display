@@ -51,14 +51,13 @@ EPD_WaveShare epd(EPD2_9, EPD_SS, EPD_RST, EPD_DC, EPD_BUSY); // //EPD_WaveShare
 MiniGrafx gfx = MiniGrafx(&epd, BITS_PER_PIXEL, palette);
 
 //################# LIBRARIES ##########################
-String version = "5a";       // Version of this program
+String version = "6";       // Version of this program
 //################ VARIABLES ###########################
 
 //------ NETWORK VARIABLES-----------
 // Use your own API key by signing up for a free developer account at http://www.wunderground.com/weather/api/
 unsigned long        lastConnectionTime = 0;          // Last time you connected to the server, in milliseconds
 const unsigned long  UpdateInterval     = 30L*60L*1000000L; // Delay between updates, in milliseconds, WU allows 500 requests per-day maximum, set to every 15-mins or more
-String Units    =  "M"; // M for Metric or I for Imperial
 bool Largesize  = true;
 bool Smallsize  = false;
 #define Large 7
