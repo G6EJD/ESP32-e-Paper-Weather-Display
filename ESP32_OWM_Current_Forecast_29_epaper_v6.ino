@@ -422,7 +422,7 @@ bool obtain_wx_data(String RequestType) {
   if (client.connect(server, 80)) {
     // Serial.println("connecting...");
     // send the HTTP PUT request:
-    client.println("GET /data/2.5/"+RequestType+"?q=Melksham,UK&APPID="+ apikey +"&mode=json&units=metric&cnt=6 HTTP/1.1");
+    client.println("GET /data/2.5/"+RequestType+"?q="+City+","+Country+"&APPID="+ apikey +"&mode=json&units=metric&cnt=6 HTTP/1.1");
     client.println("Host: api.openweathermap.org");
     client.println("User-Agent: ESP OWM Receiver/1.1");
     client.println("Connection: close");
