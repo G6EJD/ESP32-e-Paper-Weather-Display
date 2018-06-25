@@ -62,7 +62,7 @@ const unsigned long  UpdateInterval     = 30L*60L*1000000L; // Delay between upd
 String Units    =  "M"; // M for Metric or I for Imperial
 bool Largesize  = true;
 bool Smallsize  = false;
-#define Large
+#define Large 7
 #define Small 3
 String time_str, currCondString; // strings to hold time and received weather data;
 String Ctemperature, Cweather, Cicon, Cwinddir, Cwinddegrees, Cwindspeed, Cpressure, Cptrend, Cprecip;
