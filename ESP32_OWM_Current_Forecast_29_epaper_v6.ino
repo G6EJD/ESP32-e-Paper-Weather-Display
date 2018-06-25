@@ -57,7 +57,7 @@ String version = "6";       // Version of this program
 //------ NETWORK VARIABLES-----------
 // Use your own API key by signing up for a free developer account at http://www.wunderground.com/weather/api/
 unsigned long        lastConnectionTime = 0;          // Last time you connected to the server, in milliseconds
-const unsigned long  UpdateInterval     = 30L*60L*1000000L; // Delay between updates, in milliseconds, WU allows 500 requests per-day maximum, set to every 15-mins or more
+const unsigned long  UpdateInterval     = 30L*60L*1000000L; // Delay between updates, in microseconds, WU allows 500 requests per-day maximum, set to every 15-mins or more
 bool Largesize  = true;
 bool Smallsize  = false;
 #define Large 7
