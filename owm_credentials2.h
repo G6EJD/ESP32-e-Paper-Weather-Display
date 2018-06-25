@@ -21,7 +21,7 @@ const char* Timezone = "GMT0BST,M3.5.0/01,M10.5.0/02";  // Choose your time zone
 // Example time zones
 //const char* Timezone = "MET-1METDST,M3.5.0/01,M10.5.0/02"; // Most of Europe
 //const char* Timezone = "CET-1CEST,M3.5.0,M10.5.0/3";       // Central Europe
-//const char* Timezone = "EST-1METDST,M3.5.0/01,M10.5.0/02"; // Most of Europe
+//const char* Timezone = "EST-2METDST,M3.5.0/01,M10.5.0/02"; // Most of Europe
 //const char* Timezone = "EST5EDT,M3.2.0,M11.1.0";           // EST USA  
 //const char* Timezone = "CST6CDT,M3.2.0,M11.1.0";           // CST USA
 //const char* Timezone = "MST7MDT,M4.1.0,M10.5.0";           // MST USA
