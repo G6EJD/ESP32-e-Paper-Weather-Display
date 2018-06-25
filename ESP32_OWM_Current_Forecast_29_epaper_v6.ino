@@ -591,6 +591,8 @@ void Convert_Readings_to_Imperial(){
    WxConditions[0].Pressure    = WxConditions[0].Pressure*0.02953;
    WxConditions[0].Rainfall    = WxConditions[0].Rainfall*0.0394; 
    WxConditions[0].Windspeed   = WxConditions[0].Windspeed*2.23694;
+   WxConditions[0].Low         = WxConditions[0].Low*1.8+32;
+   WxConditions[0].High        = WxConditions[0].High*1.8+32;
    WxConditions[1].Low         = WxConditions[1].Low*1.8+32;
    WxConditions[1].High        = WxConditions[1].High*1.8+32;
    WxConditions[2].Low         = WxConditions[2].Low*1.8+32;
