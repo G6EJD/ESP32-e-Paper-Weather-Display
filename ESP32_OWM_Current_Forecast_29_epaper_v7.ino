@@ -80,7 +80,7 @@ typedef struct { // For current Day and Day 1, 2, 3, etc
   String   Country;
   String   lat;
   String   lon;
-  String   Temperature;
+  float    Temperature;
   float    Humidity;
   float    High;
   float    Low;
@@ -172,9 +172,9 @@ void Draw_Main_Weather_Section(){
   //Period-0 (Main Icon/Report)
   DisplayWXicon(205,45,WxConditions[0].Icon,Largesize); 
   gfx.setFont(ArialMT_Plain_24);
-  gfx.drawString(5,32,String(WxConditions[0].Temperature)+"°");
+  gfx.drawString(5,32,String(WxConditions[0].Temperature,1)+"°");
   gfx.setFont(ArialRoundedMTBold_14);
-  gfx.drawString(String(WxConditions[0].Temperature).length()*13+8,33,(Units=="I"?"F":"C"));
+  gfx.drawString(String(WxConditions[0].Temperature,1).length()*13+8,33,(Units=="I"?"F":"C"));
   gfx.setFont(ArialMT_Plain_10);
   DrawWind(265,42,WxConditions[0].Winddir,WxConditions[0].Windspeed);
   if (WxConditions[0].Rainfall > 0) gfx.drawString(90,35,String(WxConditions[0].Rainfall,1)+(Units=="M"?"mm":"in")+" of rain");
