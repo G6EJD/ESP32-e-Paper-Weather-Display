@@ -51,7 +51,7 @@ MiniGrafx gfx = MiniGrafx(&epd, BITS_PER_PIXEL, palette);
 String version = "11";       // Version of this program
 //################ VARIABLES ###########################
 
-const unsigned long UpdateInterval = (30L * 60L - 13) * 1000000L; // Delay between updates, in milliseconds, WU allows 500 requests per-day maximum, set to every 15-mins or more
+const unsigned long UpdateInterval = (30L * 60L - 13) * 1000000L; // Delay between updates, in microseconds, WU allows 500 requests per-day maximum, set to every 15-mins or more
 bool LargeIcon   =  true;
 bool SmallIcon   =  false;
 #define Large  10
