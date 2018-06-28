@@ -42,6 +42,8 @@ UK is typically 'GMT0BST,M3.5.0/01,M10.5.0/02'  the 5 denotes the last Sunday in
 
 **OPEN WEATHER MAP VERSION**
 
+This version requires *** Arduino JSON v5.13.2 ***
+
 Go to Sketch > Include Library... > Manage Libraries.... Then, for each library, put its name into the text field to have its metadata pulled from the internet and displayed below. Select the latest version and install it. Make sure to come back to this dialog from time to time to keep each library up to date. Also make sure that you only have one version of each of the libraries installed.
 
 'Mini Grafx' by Daniel Eichhorn
