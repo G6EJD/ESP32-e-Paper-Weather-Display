@@ -971,7 +971,7 @@ void DrawBattery(int x, int y) {
   if (voltage > 1 ) { // Only display is there is a valid reading
     if (voltage >= 4.19) percentage = 100;
     else if (voltage < 3.20) percentage = 0;
-    else percentage = (voltage - 3.20) * 100 / (4.20 - 3.20);
+    else percentage = voltage/4.2 * 100;
     gfx.setColor(EPD_BLACK);
     gfx.setFont(ArialRoundedMTBold_14);
     gfx.drawString(x-30, y+15, String(voltage, 2) + "v");
