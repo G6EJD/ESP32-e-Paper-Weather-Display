@@ -68,6 +68,8 @@ This version requires *** Arduino JSON v6 or above *** it streams the Openweathe
 
 Go to Sketch > Include Library... > Manage Libraries.... Then, for each library, put its name into the text field to have its metadata 
 
+NOTE: See scematic for the wiring diagram, all displays are wired the same, so wire a 7.5" the same as a 1.54" or 2.9" display!
+
 Compile and upload the code - Enjoy!
 
 ![alt text](https://github.com/G6EJD/ESP32-e-Paper-Weather-Display/blob/master/IMG_2096b.jpg)
