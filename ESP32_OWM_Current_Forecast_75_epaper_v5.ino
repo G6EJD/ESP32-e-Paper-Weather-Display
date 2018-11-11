@@ -246,7 +246,6 @@ void Display_ForecastText_Section(int x, int y){
   WxConditions[0].Forecast0.toLowerCase();
   WxConditions[0].Forecast1.toLowerCase();
   WxConditions[0].Forecast2.toLowerCase();
-  WxConditions[0].Forecast1 = "Misty";
   String Wx_Description = WxConditions[0].Main0;
   if (WxConditions[0].Forecast1 != "") { // Clear & clear Sky)
     Wx_Description += " (" +  TitleCase(WxConditions[0].Forecast0) + " & " +  TitleCase(WxConditions[0].Forecast1) + ")";
