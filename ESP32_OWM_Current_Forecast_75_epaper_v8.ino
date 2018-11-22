@@ -364,7 +364,7 @@ void Display_Precip_Section(int x, int y) {
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
   gfx.drawString(x,y-24,"Precipitation (soon)");
   gfx.setFont(ArialRoundedMTBold_14);
-  if (WxForecast[1].Rainfall > 0) {
+  if (String(WxForecast[1].Rainfall,2) > "0.00") {
     gfx.drawString(x, y+3, String(WxForecast[1].Rainfall,2) + (Units == "M" ? "mm" : "in") + " Rain");  // Only display rainfall total today if > 0
   }
   else gfx.drawString(x, y+3, "= Rain"); // If no rainfall forecast
