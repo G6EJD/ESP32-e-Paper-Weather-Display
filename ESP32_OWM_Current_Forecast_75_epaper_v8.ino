@@ -1010,7 +1010,7 @@ void Fog(int x, int y, bool IconSize, String IconName) {
 //#########################################################################################
 void Haze(int x, int y, bool IconSize, String IconName) {
   int scale = Small;
-  if (IconSize == LargeIcon == LargeIcon) scale = Large;
+  if (IconSize == LargeIcon) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
   if (IconName.endsWith("n")) addmoon(x,y,scale);
