@@ -51,7 +51,7 @@ MiniGrafx gfx = MiniGrafx(&epd, BITS_PER_PIXEL, palette);
 String version = "8.0";      // Version of this program
 //################ VARIABLES ##########################
 
-const unsigned long UpdateInterval = (30L * 60L - 03) * 1000000L; // Update delay in microseconds, 13-secs is the time to update so compensate for that
+const unsigned long long UpdateInterval = (30LL * 60LL - 03) * 1000000LL; // Update delay in microseconds, 3-secs is the time to update so compensate for that
 bool LargeIcon =  true;
 bool SmallIcon =  false;
 #define Large  14
