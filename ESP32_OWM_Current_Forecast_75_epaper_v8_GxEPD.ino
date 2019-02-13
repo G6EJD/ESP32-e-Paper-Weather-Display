@@ -1,4 +1,4 @@
-/* ESP32 Weather Display using an EPD 4.2" Display, obtains data from Open Weather Map, decodes it and then displays it.
+/* ESP32 Weather Display using an EPD 7.5" Display, obtains data from Open Weather Map, decodes it and then displays it.
   ####################################################################################################################################
   This software, the ideas and concepts is Copyright (c) David Bird 2018. All rights to this software are reserved.
 
