@@ -27,6 +27,9 @@
 #include "MiniGrafx.h"         // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
 #include "DisplayDriver.h"     // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
 #include "ArialRounded.h"      // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
+#include "lang.h"              // Localisation (english)
+//#include "lang_fr.h"           // Localisation (french)
+
 
 #define SCREEN_WIDTH  640.0    // Set for landscape mode, don't remove the decimal place!
 #define SCREEN_HEIGHT 384.0
@@ -197,7 +200,7 @@ String TitleCase(String text) { // Not currently used
 void Display_Temperature_Section(int x, int y) {
   gfx.setFont(ArialMT_Plain_10);
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
-  gfx.drawString(x, y, "Temperatures");
+  gfx.drawString(x, y, TXT_TEMPERATURES);
   gfx.drawString(x, y + 63, String(WxConditions[0].High, 0) + "° | " + String(WxConditions[0].Low, 0) + "°"); // Show forecast high and Low
   gfx.setFont(ArialRoundedMTBold_36);
   gfx.drawString(x, y + 20, String(WxConditions[0].Temperature, 1)); // Show current Temperature
@@ -241,15 +244,15 @@ void Display_Forecast_Section(int x, int y) {
   int gy = 305;
   int gap = gwidth + gx;
   gfx.setFont(ArialRoundedMTBold_14);
-  gfx.drawString(SCREEN_WIDTH / 2, gy - 35, "3-Day Forecast Values"); // Based on a graph height of 60
+  gfx.drawString(SCREEN_WIDTH / 2, gy - 35, TXT_FORECAST_VALUES); // Based on a graph height of 60
   gfx.setTextAlignment(TEXT_ALIGN_LEFT);
   gfx.setFont(ArialMT_Plain_10);
-  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? "Pressure (hpa)" : "Pressure (in)", pressure_readings, max_readings, autoscale_on, barchart_off);
-  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,   Units == "M" ? "Temperature (°C)" : "Temperature (°F)", temperature_readings, max_readings, autoscale_on, barchart_off);
-  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,   "Humidity (%)", humidity_readings, max_readings, autoscale_off, barchart_off);
+  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure_readings, max_readings, autoscale_on, barchart_off);
+  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,   Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature_readings, max_readings, autoscale_on, barchart_off);
+  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,   TXT_HUMIDITY_PERCENT, humidity_readings, max_readings, autoscale_off, barchart_off);
   if (SumOfPrecip(rain_readings, max_readings) >= SumOfPrecip(snow_readings, max_readings))
-    DrawGraph(gx + 3 * gap, gy, gwidth, gheight, 0, 30, Units == "M" ? "Rainfall (mm)" : "Rainfall (in)", rain_readings, max_readings, autoscale_on, barchart_on);
-  else DrawGraph(gx + 3 * gap, gy, gwidth, gheight, 0, 30, Units == "M" ? "Snowfall (mm)" : "Snowfall (in)", snow_readings, max_readings, autoscale_on, barchart_on);
+    DrawGraph(gx + 3 * gap, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_readings, max_readings, autoscale_on, barchart_on);
+  else DrawGraph(gx + 3 * gap, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_SNOWFALL_MM : TXT_SNOWFALL_IN, snow_readings, max_readings, autoscale_on, barchart_on);
 }
 //#########################################################################################
 float SumOfPrecip(float DataArray[], int readings) {
@@ -267,7 +270,7 @@ void Display_ForecastText_Section(int x, int y) {
   WxConditions[0].Forecast0.toLowerCase();
   WxConditions[0].Forecast1.toLowerCase();
   WxConditions[0].Forecast2.toLowerCase();
-  String Wx_Description = WxConditions[0].Main0;
+  String Wx_Description = WxConditions[0].Forecast0;
   if (WxConditions[0].Forecast1 != "") { // Clear & clear Sky)
     Wx_Description += " (" +  TitleCase(WxConditions[0].Forecast0) + " & " +  TitleCase(WxConditions[0].Forecast1) + ")";
   }
@@ -293,7 +296,7 @@ void Display_Wind_Section(int x, int y, float angle, float windspeed, int Cradiu
   arrow(x, y, Cradius - 15, angle, 15, 27); // Show wind direction on outer circle of width and length
   gfx.setFont(ArialMT_Plain_10);
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
-  gfx.drawString(x, y - Cradius - 35, "Wind Speed & Direction");
+  gfx.drawString(x, y - Cradius - 35, TXT_WIND_SPEED_DIRECTION);
   int dxo, dyo, dxi, dyi;
   gfx.drawLine(0, 15, 0, y + Cradius + 30);
   gfx.drawCircle(x, y, Cradius);   // Draw compass circle
@@ -302,10 +305,10 @@ void Display_Wind_Section(int x, int y, float angle, float windspeed, int Cradiu
   for (float a = 0; a < 360; a = a + 22.5) {
     dxo = Cradius * cos((a - 90) * PI / 180);
     dyo = Cradius * sin((a - 90) * PI / 180);
-    if (a == 45)  gfx.drawString(dxo + x + 10, dyo + y - 10, "NE");
-    if (a == 135) gfx.drawString(dxo + x + 5, dyo + y + 5, "SE");
-    if (a == 225) gfx.drawString(dxo + x - 10, dyo + y, "SW");
-    if (a == 315) gfx.drawString(dxo + x - 10, dyo + y - 10, "NW");
+    if (a == 45)  gfx.drawString(dxo + x + 10, dyo + y - 10, TXT_NE);
+    if (a == 135) gfx.drawString(dxo + x + 5, dyo + y + 5, TXT_SE);
+    if (a == 225) gfx.drawString(dxo + x - 10, dyo + y, TXT_SW);
+    if (a == 315) gfx.drawString(dxo + x - 10, dyo + y - 10, TXT_NW);
     dxi = dxo * 0.9;
     dyi = dyo * 0.9;
     gfx.drawLine(dxo + x, dyo + y, dxi + x, dyi + y);
@@ -316,10 +319,10 @@ void Display_Wind_Section(int x, int y, float angle, float windspeed, int Cradiu
     gfx.drawLine(dxo + x, dyo + y, dxi + x, dyi + y);
   }
   gfx.setFont(ArialRoundedMTBold_14);
-  gfx.drawString(x, y - Cradius - 18, "N");
-  gfx.drawString(x, y + Cradius + 2, "S");
-  gfx.drawString(x - Cradius - 10, y - 10, "W");
-  gfx.drawString(x + Cradius + 10, y - 10, "E");
+  gfx.drawString(x, y - Cradius - 18, TXT_N);
+  gfx.drawString(x, y + Cradius + 2, TXT_S);
+  gfx.drawString(x - Cradius - 10, y - 10, TXT_W);
+  gfx.drawString(x + Cradius + 10, y - 10, TXT_E);
   gfx.drawString(x, y - 35, WindDegToDirection(angle));
   gfx.drawString(x, y + 24, String(angle, 0) + "°");
   gfx.setFont(ArialMT_Plain_24);
@@ -331,49 +334,49 @@ void Display_Wind_Section(int x, int y, float angle, float windspeed, int Cradiu
 }
 //#########################################################################################
 String WindDegToDirection(float winddirection) {
-  if (winddirection >= 348.75 || winddirection < 11.25)  return "N";
-  if (winddirection >=  11.25 && winddirection < 33.75)  return "NNE";
-  if (winddirection >=  33.75 && winddirection < 56.25)  return "NE";
-  if (winddirection >=  56.25 && winddirection < 78.75)  return "ENE";
-  if (winddirection >=  78.75 && winddirection < 101.25) return "E";
-  if (winddirection >= 101.25 && winddirection < 123.75) return "ESE";
-  if (winddirection >= 123.75 && winddirection < 146.25) return "SE";
-  if (winddirection >= 146.25 && winddirection < 168.75) return "SSE";
-  if (winddirection >= 168.75 && winddirection < 191.25) return "S";
-  if (winddirection >= 191.25 && winddirection < 213.75) return "SSW";
-  if (winddirection >= 213.75 && winddirection < 236.25) return "SW";
-  if (winddirection >= 236.25 && winddirection < 258.75) return "WSW";
-  if (winddirection >= 258.75 && winddirection < 281.25) return "W";
-  if (winddirection >= 281.25 && winddirection < 303.75) return "WNW";
-  if (winddirection >= 303.75 && winddirection < 326.25) return "NW";
-  if (winddirection >= 326.25 && winddirection < 348.75) return "NNW";
+  if (winddirection >= 348.75 || winddirection < 11.25)  return TXT_N;
+  if (winddirection >=  11.25 && winddirection < 33.75)  return TXT_NNE;
+  if (winddirection >=  33.75 && winddirection < 56.25)  return TXT_NE;
+  if (winddirection >=  56.25 && winddirection < 78.75)  return TXT_ENE;
+  if (winddirection >=  78.75 && winddirection < 101.25) return TXT_E;
+  if (winddirection >= 101.25 && winddirection < 123.75) return TXT_ESE;
+  if (winddirection >= 123.75 && winddirection < 146.25) return TXT_SE;
+  if (winddirection >= 146.25 && winddirection < 168.75) return TXT_SSE;
+  if (winddirection >= 168.75 && winddirection < 191.25) return TXT_S;
+  if (winddirection >= 191.25 && winddirection < 213.75) return TXT_SSW;
+  if (winddirection >= 213.75 && winddirection < 236.25) return TXT_SW;
+  if (winddirection >= 236.25 && winddirection < 258.75) return TXT_WSW;
+  if (winddirection >= 258.75 && winddirection < 281.25) return TXT_W;
+  if (winddirection >= 281.25 && winddirection < 303.75) return TXT_WNW;
+  if (winddirection >= 303.75 && winddirection < 326.25) return TXT_NW;
+  if (winddirection >= 326.25 && winddirection < 348.75) return TXT_NNW;
   return "?";
 }
 //#########################################################################################
 void Display_Pressure_Section(int x, int y, float pressure, String slope) {
   gfx.setFont(ArialMT_Plain_10);
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
-  gfx.drawString(x, y - 24, "Pressure");
+  gfx.drawString(x, y - 24, TXT_PRESSURE);
   gfx.setFont(ArialRoundedMTBold_14);
-  String slope_direction = "\nSteady";
-  if (slope == "+") slope_direction = "\nRising";
-  if (slope == "-") slope_direction = "\nFalling";
+  String slope_direction = TXT_PRESSURE_STEADY;
+  if (slope == "+") slope_direction = TXT_PRESSURE_RISING;
+  if (slope == "-") slope_direction = TXT_PRESSURE_FALLING;
   gfx.drawString(x, y + 5, String(pressure, 1) + (Units == "M" ? " mb" : " in") + slope_direction);
 }
 //#########################################################################################
 void Display_Precip_Section(int x, int y) {
   gfx.setFont(ArialMT_Plain_10);
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
-  gfx.drawString(x, y - 24, "Precipitation (soon)");
+  gfx.drawString(x, y - 24, TXT_PRECIPITATION_SOON);
   gfx.setFont(ArialRoundedMTBold_14);
   if (String(WxForecast[1].Rainfall, 2) > "0.00") {
-    gfx.drawString(x, y + 3, String(WxForecast[1].Rainfall, 2) + (Units == "M" ? "mm" : "in") + " Rain"); // Only display rainfall total today if > 0
+    gfx.drawString(x, y + 3, String(WxForecast[1].Rainfall, 2) + (Units == "M" ? "mm" : "in") + TXT_RAIN); // Only display rainfall total today if > 0
   }
-  else gfx.drawString(x, y + 3, "= Rain"); // If no rainfall forecast
+  else gfx.drawString(x, y + 3, TXT_EQUAL_RAIN); // If no rainfall forecast
   if (String(WxForecast[1].Snowfall, 2) > "0.00") { //Sometimes very small amounts of snow are forecast, so ignore them
-    gfx.drawString(x, y + 23, String(WxForecast[1].Snowfall, 2) + (Units == "M" ? "mm" : "in") + " Snow");; // Only display snowfall total today if > 0
+    gfx.drawString(x, y + 23, String(WxForecast[1].Snowfall, 2) + (Units == "M" ? "mm" : "in") + TXT_SNOW);; // Only display snowfall total today if > 0
   }
-  else gfx.drawString(x, y + 23, "= Snow"); // If no snowfall forecast
+  else gfx.drawString(x, y + 23, TXT_EQUAL_SNOW); // If no snowfall forecast
   gfx.setFont(ArialMT_Plain_10);
 }
 //#########################################################################################
@@ -382,10 +385,10 @@ void Display_Astronomy_Section(int x, int y) {
   gfx.setFont(ArialMT_Plain_10);
   gfx.drawRect(x, y + 13, 173, 52);
   gfx.drawRect(x, y + 13, 82, 29);
-  gfx.drawString(x + 5,  y + 15, "Sun Rise: " + ConvertUnixTime(WxConditions[0].Sunrise).substring(0, 5));
-  gfx.drawString(x + 16, y + 28, "     Set: " + ConvertUnixTime(WxConditions[0].Sunset).substring(0, 5));
-  gfx.drawString(x + 88, y + 15, "Moon");
-  gfx.drawString(x + 5,  y + 47, "Phase: "   + MoonPhase(MoonDay, MoonMonth, MoonYear, Hemisphere));
+  gfx.drawString(x + 5,  y + 15, TXT_SUNRISE + ConvertUnixTime(WxConditions[0].Sunrise).substring(0, 5));
+  gfx.drawString(x + TXT_X_SUNSET,  y + 28, TXT_SUNSET + ConvertUnixTime(WxConditions[0].Sunset).substring(0, 5));
+  gfx.drawString(x + 88, y + 15, TXT_MOON);
+  gfx.drawString(x + 5,  y + 47, TXT_PHASE   + MoonPhase(MoonDay, MoonMonth, MoonYear, Hemisphere));
   DrawMoon(x + 104, y, MoonDay, MoonMonth, MoonYear, Hemisphere);
 }
 //#########################################################################################
@@ -472,14 +475,14 @@ String MoonPhase(int d, int m, int y, String hemisphere) {
   b   = jd * 8 + 0.5;                    /* scale fraction from 0-8 and round by adding 0.5 */
   b   = b & 7;                           /* 0 and 8 are the same phase so modulo 8 for 0 */
   if (hemisphere == "south") b = 7 - b;
-  if (b == 0) return "New";              // New;              0%  illuminated
-  if (b == 1) return "Waxing Crescent";  // Waxing crescent; 25%  illuminated
-  if (b == 2) return "First Quarter";    // First quarter;   50%  illuminated
-  if (b == 3) return "Waxing Gibbous";   // Waxing gibbous;  75%  illuminated
-  if (b == 4) return "Full";             // Full;            100% illuminated
-  if (b == 5) return "Waning Gibbous";   // Waning gibbous;  75%  illuminated
-  if (b == 6) return "Third Quarter";    // Third quarter;   50%  illuminated
-  if (b == 7) return "Waning Crescent";  // Waning crescent; 25%  illuminated
+  if (b == 0) return TXT_MOON_NEW;              // New;              0%  illuminated
+  if (b == 1) return TXT_MOON_WAXING_CRESCENT;  // Waxing crescent; 25%  illuminated
+  if (b == 2) return TXT_MOON_FIRST_QUARTER;    // First quarter;   50%  illuminated
+  if (b == 3) return TXT_MOON_WAXING_GIBBOUS;   // Waxing gibbous;  75%  illuminated
+  if (b == 4) return TXT_MOON_FULL;             // Full;            100% illuminated
+  if (b == 5) return TXT_MOON_WANING_GIBBOUS;   // Waning gibbous;  75%  illuminated
+  if (b == 6) return TXT_MOON_THIRD_QUARTER;    // Third quarter;   50%  illuminated
+  if (b == 7) return TXT_MOON_WANING_CRESCENT;  // Waning crescent; 25%  illuminated
   return "";
 }
 //#########################################################################################
@@ -502,7 +505,7 @@ void arrow(int x, int y, int asize, float aangle, int pwidth, int plength) {
 void Display_Conditions_Section(int x, int y, String IconName, bool IconSize) {
   gfx.setFont(ArialMT_Plain_10);
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
-  if (IconSize == LargeIcon) gfx.drawString(x, y - 99, "Conditions");
+  if (IconSize == LargeIcon) gfx.drawString(x, y - 99, TXT_CONDITIONS);
   Serial.println(IconName);
   if      (IconName == "01d" || IconName == "01n")  Sunny(x, y, IconSize, IconName);
   else if (IconName == "02d" || IconName == "02n")  MostlySunny(x, y, IconSize, IconName);
@@ -692,8 +695,8 @@ void Display_Status_Section(int x, int y, int rssi) {
   gfx.drawRect(x - 32, y - 26, 121, 53);
   gfx.drawLine(x - 32, y - 14, x - 32 + 121, y - 14);
   gfx.drawLine(x - 32 + 121 / 2, y - 15, x - 32 + 121 / 2, y - 26);
-  gfx.drawString(x - 15, y - 26, "WiFi");
-  gfx.drawString(x + 45, y - 26, "Power");
+  gfx.drawString(x - 15, y - 26, TXT_WIFI);
+  gfx.drawString(x + TXT_X_POWER, y - 26, TXT_POWER);
   DrawRSSI(x - 20, y + 5, rssi);
   DrawBattery(x + 55, y + 3);;
 }
@@ -728,6 +731,9 @@ void SetupTime() {
 void UpdateLocalTime() {
   struct tm timeinfo;
   char output[30], day_output[30];
+  char day_number[30], day_year[30];
+  char day_lang[4], month_lang[4];
+  char update_time[30];
   while (!getLocalTime(&timeinfo)) {
     Serial.println(F("Failed to obtain time"));
   }
@@ -737,16 +743,96 @@ void UpdateLocalTime() {
   //Serial.println(&timeinfo, "%a %b %d %Y   %H:%M:%S");      // Displays: Saturday, June 24 2017 14:05:49
   Serial.println(&timeinfo, "%H:%M:%S");                      // Displays: 14:05:49
   if (Units == "M") {
-    strftime(day_output, 30, "%a  %d-%b-%y", &timeinfo);      // Displays: Sat 24/Jun/17
-    strftime(output, 30, "( Updated: %H:%M:%S )", &timeinfo); // Creates: '@ 14:05:49'
+    //French translation Day
+    strftime(day_lang, 4, "%a", &timeinfo);
+    if (strcmp(day_lang, "Mon") == 0) {
+      strcpy(day_lang, TXT_MONDAY);
+    }
+    if (strcmp(day_lang, "Tue") == 0) {
+      strcpy(day_lang, TXT_TUESDAY);
+    }
+    if (strcmp(day_lang, "Wed") == 0) {
+      strcpy(day_lang, TXT_WEDNESDAY);
+    }
+    if (strcmp(day_lang, "Thu") == 0) {
+      strcpy(day_lang, TXT_THURSDAY);
+    }
+    if (strcmp(day_lang, "Fri") == 0) {
+      strcpy(day_lang, TXT_FRIDAY);
+    }
+    if (strcmp(day_lang, "Sat") == 0) {
+      strcpy(day_lang, TXT_SATURDAY);
+    }
+
+    if (strcmp(day_lang, "Sun") == 0) {
+      strcpy(day_lang, TXT_SUNDAY);
+    }
+
+    //French Translation Month
+    strftime(month_lang, 4, "%b", &timeinfo);
+    if (strcmp(month_lang, "Jan") == 0) {
+      strcpy(month_lang, TXT_JANUARY);
+    }
+
+    if (strcmp(month_lang, "Feb") == 0) {
+      strcpy(month_lang, TXT_FEBRUARY);
+    }
+
+    if (strcmp(month_lang, "Mar") == 0) {
+      strcpy(month_lang, TXT_MARCH);
+    }
+
+    if (strcmp(month_lang, "Apr") == 0) {
+      strcpy(month_lang, TXT_APRIL);
+    }
+    if (strcmp(month_lang, "May") == 0) {
+      strcpy(month_lang, TXT_MAY);
+    }
+    if (strcmp(month_lang, "Jun") == 0) {
+      strcpy(month_lang, TXT_JUNE);
+    }
+    if (strcmp(month_lang, "Jul") == 0) {
+      strcpy(month_lang, TXT_JULY);
+    }
+    if (strcmp(month_lang, "Aug") == 0) {
+      strcpy(month_lang, TXT_AUGUST);
+    }
+
+    if (strcmp(month_lang, "Sep") == 0) {
+      strcpy(month_lang, TXT_SEPTEMBER);
+    }
+
+    if (strcmp(month_lang, "Oct") == 0) {
+      strcpy(month_lang, TXT_OCTOBER);
+    }
+
+    if (strcmp(month_lang, "Nov") == 0) {
+      strcpy(month_lang, TXT_NOVEMBER);
+    }
+
+    if (strcmp(month_lang, "Dec") == 0) {
+      strcpy(month_lang, TXT_DECEMBER);
+    }
+
+    strftime(day_number, 30, "%d", &timeinfo);
+    strftime(day_year, 30, "%y", &timeinfo);      // Displays: Sat 24/Jun/17
+    sprintf(day_output, "%s %s-%s-%s", day_lang, day_number, month_lang, day_year);
+    strftime(update_time, 30, "%H:%M:%S", &timeinfo); // Creates: '@ 14:05:49'
+    sprintf(output, "( %s %s )", TXT_UPDATED, update_time);
   }
   else {
-    strftime(day_output, 30, "%a  %b-%d-%y", &timeinfo);      // Creates: Sat Jun/24/17
-    strftime(output, 30, "( Updated: %r )", &timeinfo);       // Creates: '@ 2:05:49pm'
+    strftime(day_number, 30, "%d", &timeinfo);
+    strftime(day_year, 30, "%y", &timeinfo);      // Displays: Sat 24/Jun/17
+    sprintf(day_output, "%s %s-%s-%s", day_lang, month_lang, day_number, day_year);
+    strftime(update_time, 30, "%r", &timeinfo);       // Creates: '@ 2:05:49pm'
+    sprintf(output, "( %s %s )", TXT_UPDATED, update_time);
   }
   date_str = day_output;
   time_str     = output;
 }
+
+
+
 //#########################################################################################
 String ConvertUnixTime(int unix_time) {
   struct tm *now_tm;
@@ -1119,6 +1205,6 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
     gfx.drawString(5 + x_pos + gwidth / 3 * i, y_pos + gheight + 3, String(i));
   }
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
-  gfx.drawString(x_pos + gwidth / 2, y_pos + gheight + 7, "(Days)");
+  gfx.drawString(x_pos + gwidth / 2, y_pos + gheight + 7, TXT_DAYS);
   gfx.setTextAlignment(TEXT_ALIGN_LEFT);
 }
