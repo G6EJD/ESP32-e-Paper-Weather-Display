@@ -57,7 +57,7 @@ bool SmallIcon =  false;
 #define Large  14
 #define Small  4
 String time_str, date_str, rxtext; // strings to hold time and received weather data;
-int    wifi_signal,wifisection, displaysection, MoonDay, MoonMonth, MoonYear, start_time, wakeup_hour;
+int    wifi_signal, wifisection, displaysection, MoonDay, MoonMonth, MoonYear, start_time, wakeup_hour;
 int    Sunrise, Sunset;
 
 //################ PROGRAM VARIABLES and OBJECTS ################
@@ -117,8 +117,8 @@ void setup() {
   wifi_signal = WiFi_Signal();
   SetupTime();
   bool Received_WxData_OK = false;
-  if (wakeup_hour >=8 && wakeup_hour <=23) {
-   Received_WxData_OK = (obtain_wx_data("weather") && obtain_wx_data("forecast"));
+  if (wakeup_hour >= 8 && wakeup_hour <= 23) {
+    Received_WxData_OK = (obtain_wx_data("weather") && obtain_wx_data("forecast"));
   }
   // Now only refresh the screen if all the data was received OK, otherwise wait until the next timed check otherwise wait until the next timed check
   if (Received_WxData_OK) {
@@ -131,7 +131,7 @@ void setup() {
     Display_Weather();
     gfx.commit();
     delay(1000);
-    Serial.println("Total time to update = "+String(millis()-start_time)+"mS");
+    Serial.println("Total time to update = " + String(millis() - start_time) + "mS");
   }
   begin_sleep();
 }
@@ -139,13 +139,13 @@ void setup() {
 void loop() { // this will never run!
 }
 //#########################################################################################
-void begin_sleep(){
+void begin_sleep() {
   esp_sleep_enable_timer_wakeup(UpdateInterval);
-  #ifdef BUILTIN_LED
-    pinMode(BUILTIN_LED,INPUT);     // In case it's on, turn output off, sometimes PIN-5 on some boards is used for SPI-SS
-    digitalWrite(BUILTIN_LED,HIGH); // In case it's on, turn LED off, as sometimes PIN-5 on some boards is used for SPI-SS
-  #endif
-  Serial.println("Awake for : "+String(millis()-start_time)+"mS");
+#ifdef BUILTIN_LED
+  pinMode(BUILTIN_LED, INPUT);    // In case it's on, turn output off, sometimes PIN-5 on some boards is used for SPI-SS
+  digitalWrite(BUILTIN_LED, HIGH); // In case it's on, turn LED off, as sometimes PIN-5 on some boards is used for SPI-SS
+#endif
+  Serial.println("Awake for : " + String(millis() - start_time) + "mS");
   Serial.println(F("Starting deep-sleep period..."));
   delay(200);
   esp_deep_sleep_start();           // Sleep for e.g. 30 minutes
@@ -153,7 +153,7 @@ void begin_sleep(){
 //#########################################################################################
 void Display_Weather() {                         // 7.5" e-paper display is 640x384 resolution
   Display_GeneralInfo_Section();                 // Top line of the display
-  Display_Wind_Section(87,117, WxConditions[0].Winddir, WxConditions[0].Windspeed, 65);
+  Display_Wind_Section(87, 117, WxConditions[0].Winddir, WxConditions[0].Windspeed, 65);
   Display_Main_Weather_Section(241, 80);         // Centre section of display for Location, temperature, Weather report, current Wx Symbol and wind direction
   Display_Forecast_Section(174, 196);            // 3hr forecast boxes
   Display_Astronomy_Section(0, 196);             // Astronomy section Sun rise/set, Moon phase and Moon icon
@@ -162,27 +162,27 @@ void Display_Weather() {                         // 7.5" e-paper display is 640x
 //#########################################################################################
 void Display_GeneralInfo_Section() {
   gfx.setFont(ArialMT_Plain_10);
-  gfx.drawString(5,0,"[ Version: "+version+" ]"); // Programme version
+  gfx.drawString(5, 0, "[ Version: " + version + " ]"); // Programme version
   gfx.setFont(ArialRoundedMTBold_14);
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
   gfx.drawString(SCREEN_WIDTH / 2, -2, City);
   gfx.drawString(415, 153, date_str);
   gfx.drawString(415, 175, time_str);
-  gfx.drawLine(0,15, SCREEN_WIDTH, 15);
+  gfx.drawLine(0, 15, SCREEN_WIDTH, 15);
 }
 //#########################################################################################
 void Display_Main_Weather_Section(int x, int y) {
-  gfx.drawRect(x-67, y-65, 140,182);
-  gfx.drawRect(x+74, y-65, 100,80); // temp outline
-  gfx.drawRect(x+175,y-65, 90,80);  // pressure outline
-  gfx.drawRect(x+266,y-65, 130,80); // precipitation outline
-  gfx.drawRect(x+74, y+14, 322,51); // forecast text outline
-  gfx.drawLine(0,30,SCREEN_WIDTH,30);
-  Display_Conditions_Section(x+2, y+35, WxConditions[0].Icon, LargeIcon);
-  Display_Pressure_Section(x+220, y-40, WxConditions[0].Pressure, WxConditions[0].Trend);
-  Display_Precip_Section(x+330, y-40);
+  gfx.drawRect(x - 67, y - 65, 140, 182);
+  gfx.drawRect(x + 74, y - 65, 100, 80); // temp outline
+  gfx.drawRect(x + 175, y - 65, 90, 80); // pressure outline
+  gfx.drawRect(x + 266, y - 65, 130, 80); // precipitation outline
+  gfx.drawRect(x + 74, y + 14, 322, 51); // forecast text outline
+  gfx.drawLine(0, 30, SCREEN_WIDTH, 30);
+  Display_Conditions_Section(x + 2, y + 35, WxConditions[0].Icon, LargeIcon);
+  Display_Pressure_Section(x + 220, y - 40, WxConditions[0].Pressure, WxConditions[0].Trend);
+  Display_Precip_Section(x + 330, y - 40);
   Display_ForecastText_Section(x + 80, y + 17);
-  Display_Temperature_Section(x+125,y-64);
+  Display_Temperature_Section(x + 125, y - 64);
 }
 //#########################################################################################
 String TitleCase(String text) { // Not currently used
@@ -194,18 +194,18 @@ String TitleCase(String text) { // Not currently used
   return "";
 }
 //#########################################################################################
-void Display_Temperature_Section(int x, int y){
+void Display_Temperature_Section(int x, int y) {
   gfx.setFont(ArialMT_Plain_10);
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
   gfx.drawString(x, y, "Temperatures");
-  gfx.drawString(x,y+63, String(WxConditions[0].High,0) + "° | " + String(WxConditions[0].Low,0) + "°"); // Show forecast high and Low
+  gfx.drawString(x, y + 63, String(WxConditions[0].High, 0) + "° | " + String(WxConditions[0].Low, 0) + "°"); // Show forecast high and Low
   gfx.setFont(ArialRoundedMTBold_36);
-  gfx.drawString(x,y+20, String(WxConditions[0].Temperature,1)); // Show current Temperature
+  gfx.drawString(x, y + 20, String(WxConditions[0].Temperature, 1)); // Show current Temperature
   gfx.setFont(ArialRoundedMTBold_14);
-  gfx.setTextAlignment(TEXT_ALIGN_LEFT);  
-  gfx.drawString(x+String(WxConditions[0].Temperature,1).length()*19/2,y+25,"°"); // Add in smaller Temperature unit
-  gfx.drawString(x+33,y+60,Units=="M"?"°C":"°F"); // Add in smaller Temperature unit
-  gfx.drawRect(x+32,y+60,17,19);
+  gfx.setTextAlignment(TEXT_ALIGN_LEFT);
+  gfx.drawString(x + String(WxConditions[0].Temperature, 1).length() * 19 / 2, y + 25, "°"); // Add in smaller Temperature unit
+  gfx.drawString(x + 33, y + 60, Units == "M" ? "°C" : "°F"); // Add in smaller Temperature unit
+  gfx.drawRect(x + 32, y + 60, 17, 19);
 }
 //#########################################################################################
 void Display_Forecast_Section(int x, int y) {
@@ -221,44 +221,46 @@ void Display_Forecast_Section(int x, int y) {
   // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
   // Pre-load temporary arrays with with data - because C parses by reference
   for (int r = 1; r <= max_readings; r++) {
-   if (Units == "I") {
-     pressure_readings[r]  = WxForecast[r].Pressure * 0.02953;  
-     rain_readings[r]      = WxForecast[r].Rainfall * 0.0393701;
-     snow_readings[r]      = WxForecast[r].Snowfall * 0.0393701;
-   }
-   else {
-     pressure_readings[r]  = WxForecast[r].Pressure;
-     rain_readings[r]      = WxForecast[r].Rainfall;
-     snow_readings[r]      = WxForecast[r].Snowfall;
-   }
-   temperature_readings[r] = WxForecast[r].Temperature;
-   humidity_readings[r]    = WxForecast[r].Humidity;
+    if (Units == "I") {
+      pressure_readings[r]  = WxForecast[r].Pressure * 0.02953;
+      rain_readings[r]      = WxForecast[r].Rainfall * 0.0393701;
+      snow_readings[r]      = WxForecast[r].Snowfall * 0.0393701;
+    }
+    else {
+      pressure_readings[r]  = WxForecast[r].Pressure;
+      rain_readings[r]      = WxForecast[r].Rainfall;
+      snow_readings[r]      = WxForecast[r].Snowfall;
+    }
+    temperature_readings[r] = WxForecast[r].Temperature;
+    humidity_readings[r]    = WxForecast[r].Humidity;
   }
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
   int gwidth = 120;
   int gheight = 58;
-  int gx = (SCREEN_WIDTH - gwidth*4)/5 + 3;
+  int gx = (SCREEN_WIDTH - gwidth * 4) / 5 + 3;
   int gy = 305;
   int gap = gwidth + gx;
   gfx.setFont(ArialRoundedMTBold_14);
-  gfx.drawString(SCREEN_WIDTH/2, gy-35, "3-Day Forecast Values"); // Based on a graph height of 60
+  gfx.drawString(SCREEN_WIDTH / 2, gy - 35, "3-Day Forecast Values"); // Based on a graph height of 60
   gfx.setTextAlignment(TEXT_ALIGN_LEFT);
   gfx.setFont(ArialMT_Plain_10);
-  DrawGraph(gx+0*gap, gy, gwidth, gheight, 900,1050,Units=="M"?"Pressure (hpa)":"Pressure (in)", pressure_readings, max_readings, autoscale_on, barchart_off);
-  DrawGraph(gx+1*gap, gy, gwidth, gheight, 10,30,   Units=="M"?"Temperature (°C)":"Temperature (°F)", temperature_readings, max_readings, autoscale_on, barchart_off);
-  DrawGraph(gx+2*gap, gy, gwidth, gheight, 0,100,   "Humidity (%)", humidity_readings, max_readings, autoscale_off, barchart_off);
-  if (SumOfPrecip(rain_readings,max_readings) >= SumOfPrecip(snow_readings,max_readings))
-       DrawGraph(gx+3*gap, gy, gwidth, gheight, 0,30, Units=="M"?"Rainfall (mm)":"Rainfall (in)", rain_readings, max_readings, autoscale_on, barchart_on);
-  else DrawGraph(gx+3*gap, gy, gwidth, gheight, 0,30, Units=="M"?"Snowfall (mm)":"Snowfall (in)", snow_readings, max_readings, autoscale_on, barchart_on);
+  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? "Pressure (hpa)" : "Pressure (in)", pressure_readings, max_readings, autoscale_on, barchart_off);
+  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,   Units == "M" ? "Temperature (°C)" : "Temperature (°F)", temperature_readings, max_readings, autoscale_on, barchart_off);
+  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,   "Humidity (%)", humidity_readings, max_readings, autoscale_off, barchart_off);
+  if (SumOfPrecip(rain_readings, max_readings) >= SumOfPrecip(snow_readings, max_readings))
+    DrawGraph(gx + 3 * gap, gy, gwidth, gheight, 0, 30, Units == "M" ? "Rainfall (mm)" : "Rainfall (in)", rain_readings, max_readings, autoscale_on, barchart_on);
+  else DrawGraph(gx + 3 * gap, gy, gwidth, gheight, 0, 30, Units == "M" ? "Snowfall (mm)" : "Snowfall (in)", snow_readings, max_readings, autoscale_on, barchart_on);
 }
 //#########################################################################################
-float SumOfPrecip(float DataArray[],int readings){
+float SumOfPrecip(float DataArray[], int readings) {
   float sum = 0;
-  for (int i=0; i <= readings; i++){ sum += DataArray[i]; }
+  for (int i = 0; i <= readings; i++) {
+    sum += DataArray[i];
+  }
   return sum;
 }
 //#########################################################################################
-void Display_ForecastText_Section(int x, int y){
+void Display_ForecastText_Section(int x, int y) {
   gfx.setFont(ArialRoundedMTBold_14);
   gfx.setTextAlignment(TEXT_ALIGN_LEFT);
   WxConditions[0].Main0.toLowerCase();
@@ -278,53 +280,53 @@ void Display_Forecast_Weather(int x, int y, int index) {
   x = x + fwidth * index;
   gfx.setFont(ArialMT_Plain_10);
   gfx.setColor(EPD_BLACK); // Sometimes gets set to WHITE, so change back
-  gfx.drawRect(x, y, fwidth-1, 65);
+  gfx.drawRect(x, y, fwidth - 1, 65);
   gfx.drawLine(x, y + 13, x + fwidth, y + 13);
-  Display_Conditions_Section(x + fwidth/2, y + 35, WxForecast[index].Icon, SmallIcon);
+  Display_Conditions_Section(x + fwidth / 2, y + 35, WxForecast[index].Icon, SmallIcon);
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
   gfx.setFont(ArialMT_Plain_10);
-  gfx.drawString(x + fwidth/2, y, String(WxForecast[index].Period.substring(11,16)));
-  gfx.drawString(x + fwidth/2, y + 50, String(WxForecast[index].High,0) + "° / " + String(WxForecast[index].Low,0) + "°");
+  gfx.drawString(x + fwidth / 2, y, String(WxForecast[index].Period.substring(11, 16)));
+  gfx.drawString(x + fwidth / 2, y + 50, String(WxForecast[index].High, 0) + "° / " + String(WxForecast[index].Low, 0) + "°");
 }
 //#########################################################################################
 void Display_Wind_Section(int x, int y, float angle, float windspeed, int Cradius) {
   arrow(x, y, Cradius - 15, angle, 15, 27); // Show wind direction on outer circle of width and length
   gfx.setFont(ArialMT_Plain_10);
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
-  gfx.drawString(x,y-Cradius-35,"Wind Speed & Direction");
+  gfx.drawString(x, y - Cradius - 35, "Wind Speed & Direction");
   int dxo, dyo, dxi, dyi;
-  gfx.drawLine(0,15,0,y+Cradius+30);
-  gfx.drawCircle(x,y,Cradius);     // Draw compass circle
-  gfx.drawCircle(x,y,Cradius+1);   // Draw compass circle
-  gfx.drawCircle(x,y,Cradius*0.7); // Draw compass inner circle
-  for (float a = 0; a <360; a = a + 22.5) {
-    dxo = Cradius * cos((a-90)*PI/180);
-    dyo = Cradius * sin((a-90)*PI/180);
-    if (a == 45)  gfx.drawString(dxo+x+10,dyo+y-10,"NE");
-    if (a == 135) gfx.drawString(dxo+x+5,dyo+y+5,"SE");
-    if (a == 225) gfx.drawString(dxo+x-10,dyo+y,"SW");
-    if (a == 315) gfx.drawString(dxo+x-10,dyo+y-10,"NW");
+  gfx.drawLine(0, 15, 0, y + Cradius + 30);
+  gfx.drawCircle(x, y, Cradius);   // Draw compass circle
+  gfx.drawCircle(x, y, Cradius + 1); // Draw compass circle
+  gfx.drawCircle(x, y, Cradius * 0.7); // Draw compass inner circle
+  for (float a = 0; a < 360; a = a + 22.5) {
+    dxo = Cradius * cos((a - 90) * PI / 180);
+    dyo = Cradius * sin((a - 90) * PI / 180);
+    if (a == 45)  gfx.drawString(dxo + x + 10, dyo + y - 10, "NE");
+    if (a == 135) gfx.drawString(dxo + x + 5, dyo + y + 5, "SE");
+    if (a == 225) gfx.drawString(dxo + x - 10, dyo + y, "SW");
+    if (a == 315) gfx.drawString(dxo + x - 10, dyo + y - 10, "NW");
     dxi = dxo * 0.9;
     dyi = dyo * 0.9;
-    gfx.drawLine(dxo+x,dyo+y,dxi+x,dyi+y);   
+    gfx.drawLine(dxo + x, dyo + y, dxi + x, dyi + y);
     dxo = dxo * 0.7;
     dyo = dyo * 0.7;
     dxi = dxo * 0.9;
     dyi = dyo * 0.9;
-    gfx.drawLine(dxo+x,dyo+y,dxi+x,dyi+y);   
+    gfx.drawLine(dxo + x, dyo + y, dxi + x, dyi + y);
   }
   gfx.setFont(ArialRoundedMTBold_14);
-  gfx.drawString(x,y-Cradius-18,"N");
-  gfx.drawString(x,y+Cradius+2,"S");
-  gfx.drawString(x-Cradius-10,y-10,"W");
-  gfx.drawString(x+Cradius+10,y-10,"E");
-  gfx.drawString(x, y-35, WindDegToDirection(angle));
-  gfx.drawString(x, y+24, String(angle,0) + "°");
+  gfx.drawString(x, y - Cradius - 18, "N");
+  gfx.drawString(x, y + Cradius + 2, "S");
+  gfx.drawString(x - Cradius - 10, y - 10, "W");
+  gfx.drawString(x + Cradius + 10, y - 10, "E");
+  gfx.drawString(x, y - 35, WindDegToDirection(angle));
+  gfx.drawString(x, y + 24, String(angle, 0) + "°");
   gfx.setFont(ArialMT_Plain_24);
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
-  gfx.drawString(x, y-12, String(windspeed,1));
+  gfx.drawString(x, y - 12, String(windspeed, 1));
   gfx.setFont(ArialRoundedMTBold_14);
-  gfx.drawString(x-3,y+8,(Units == "M" ? " m/s" : " mph"));
+  gfx.drawString(x - 3, y + 8, (Units == "M" ? " m/s" : " mph"));
   gfx.setTextAlignment(TEXT_ALIGN_LEFT);
 }
 //#########################################################################################
@@ -351,40 +353,40 @@ String WindDegToDirection(float winddirection) {
 void Display_Pressure_Section(int x, int y, float pressure, String slope) {
   gfx.setFont(ArialMT_Plain_10);
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
-  gfx.drawString(x,y-24,"Pressure");
+  gfx.drawString(x, y - 24, "Pressure");
   gfx.setFont(ArialRoundedMTBold_14);
   String slope_direction = "\nSteady";
   if (slope == "+") slope_direction = "\nRising";
   if (slope == "-") slope_direction = "\nFalling";
-  gfx.drawString(x, y+5, String(pressure,1) + (Units == "M" ? " mb" : " in")+slope_direction);
+  gfx.drawString(x, y + 5, String(pressure, 1) + (Units == "M" ? " mb" : " in") + slope_direction);
 }
 //#########################################################################################
 void Display_Precip_Section(int x, int y) {
   gfx.setFont(ArialMT_Plain_10);
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
-  gfx.drawString(x,y-24,"Precipitation (soon)");
+  gfx.drawString(x, y - 24, "Precipitation (soon)");
   gfx.setFont(ArialRoundedMTBold_14);
-  if (String(WxForecast[1].Rainfall,2) > "0.00") {
-    gfx.drawString(x, y+3, String(WxForecast[1].Rainfall,2) + (Units == "M" ? "mm" : "in") + " Rain");  // Only display rainfall total today if > 0
+  if (String(WxForecast[1].Rainfall, 2) > "0.00") {
+    gfx.drawString(x, y + 3, String(WxForecast[1].Rainfall, 2) + (Units == "M" ? "mm" : "in") + " Rain"); // Only display rainfall total today if > 0
   }
-  else gfx.drawString(x, y+3, "= Rain"); // If no rainfall forecast
-  if (String(WxForecast[1].Snowfall,2) > "0.00") { //Sometimes very small amounts of snow are forecast, so ignore them
-    gfx.drawString(x, y+23, String(WxForecast[1].Snowfall,2) + (Units == "M" ? "mm" : "in") + " Snow");; // Only display snowfall total today if > 0
+  else gfx.drawString(x, y + 3, "= Rain"); // If no rainfall forecast
+  if (String(WxForecast[1].Snowfall, 2) > "0.00") { //Sometimes very small amounts of snow are forecast, so ignore them
+    gfx.drawString(x, y + 23, String(WxForecast[1].Snowfall, 2) + (Units == "M" ? "mm" : "in") + " Snow");; // Only display snowfall total today if > 0
   }
-  else gfx.drawString(x, y+23, "= Snow"); // If no snowfall forecast
+  else gfx.drawString(x, y + 23, "= Snow"); // If no snowfall forecast
   gfx.setFont(ArialMT_Plain_10);
 }
 //#########################################################################################
 void Display_Astronomy_Section(int x, int y) {
   gfx.setTextAlignment(TEXT_ALIGN_LEFT);
   gfx.setFont(ArialMT_Plain_10);
-  gfx.drawRect(x, y+13, 173, 52);
-  gfx.drawRect(x, y+13, 82, 29);
-  gfx.drawString(x+5,  y+15, "Sun Rise: "+ ConvertUnixTime(WxConditions[0].Sunrise).substring(0,5));
-  gfx.drawString(x+16, y+28, "     Set: "+ ConvertUnixTime(WxConditions[0].Sunset).substring(0,5));
-  gfx.drawString(x+88, y+15, "Moon");
-  gfx.drawString(x+5,  y+47, "Phase: "   + MoonPhase(MoonDay, MoonMonth, MoonYear, Hemisphere));
-  DrawMoon(x+104, y, MoonDay, MoonMonth, MoonYear, Hemisphere);
+  gfx.drawRect(x, y + 13, 173, 52);
+  gfx.drawRect(x, y + 13, 82, 29);
+  gfx.drawString(x + 5,  y + 15, "Sun Rise: " + ConvertUnixTime(WxConditions[0].Sunrise).substring(0, 5));
+  gfx.drawString(x + 16, y + 28, "     Set: " + ConvertUnixTime(WxConditions[0].Sunset).substring(0, 5));
+  gfx.drawString(x + 88, y + 15, "Moon");
+  gfx.drawString(x + 5,  y + 47, "Phase: "   + MoonPhase(MoonDay, MoonMonth, MoonYear, Hemisphere));
+  DrawMoon(x + 104, y, MoonDay, MoonMonth, MoonYear, Hemisphere);
 }
 //#########################################################################################
 void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
@@ -500,7 +502,7 @@ void arrow(int x, int y, int asize, float aangle, int pwidth, int plength) {
 void Display_Conditions_Section(int x, int y, String IconName, bool IconSize) {
   gfx.setFont(ArialMT_Plain_10);
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
-  if (IconSize == LargeIcon) gfx.drawString(x, y-99, "Conditions");
+  if (IconSize == LargeIcon) gfx.drawString(x, y - 99, "Conditions");
   Serial.println(IconName);
   if      (IconName == "01d" || IconName == "01n")  Sunny(x, y, IconSize, IconName);
   else if (IconName == "02d" || IconName == "02n")  MostlySunny(x, y, IconSize, IconName);
@@ -517,15 +519,15 @@ void Display_Conditions_Section(int x, int y, String IconName, bool IconSize) {
 //#########################################################################################
 bool obtain_wx_data(String RequestType) {
   rxtext = "";
-  String units = (Units == "M"?"metric":"imperial");
+  String units = (Units == "M" ? "metric" : "imperial");
   client.stop(); // close connection before sending a new request
   if (client.connect(server, 80)) { // if the connection succeeds
     // Serial.println("connecting...");
     // send the HTTP PUT request:
     if (RequestType == "weather")
-      client.println("GET /data/2.5/" + RequestType + "?q=" + City + "," + Country + "&APPID=" + apikey + "&mode=json&units="+units+"&lang="+Language+" HTTP/1.1");
+      client.println("GET /data/2.5/" + RequestType + "?q=" + City + "," + Country + "&APPID=" + apikey + "&mode=json&units=" + units + "&lang=" + Language + " HTTP/1.1");
     else
-      client.println("GET /data/2.5/" + RequestType + "?q=" + City + "," + Country + "&APPID=" + apikey + "&mode=json&units="+units+"&lang="+Language+"&cnt=24 HTTP/1.1");
+      client.println("GET /data/2.5/" + RequestType + "?q=" + City + "," + Country + "&APPID=" + apikey + "&mode=json&units=" + units + "&lang=" + Language + "&cnt=24 HTTP/1.1");
     client.println("Host: api.openweathermap.org");
     client.println("User-Agent: ESP OWM Receiver/1.1");
     client.println("Connection: close");
@@ -548,13 +550,17 @@ bool obtain_wx_data(String RequestType) {
         startJson = true; // set true to indicate JSON message has started
         jsonend++;
       }
-      if (c == '}') { jsonend--; }
-      if (startJson == true) { rxtext += c; } // Add in the received character
+      if (c == '}') {
+        jsonend--;
+      }
+      if (startJson == true) {
+        rxtext += c;  // Add in the received character
+      }
       // if jsonend = 0 then we have have received equal number of curly braces
       if (jsonend == 0 && startJson == true) {
         Serial.println(F("Received OK..."));
         //Serial.println(rxtext);
-        if (!DecodeWeather(rxtext,RequestType)) return false;
+        if (!DecodeWeather(rxtext, RequestType)) return false;
         client.stop();
         return true;
       }
@@ -571,10 +577,10 @@ bool obtain_wx_data(String RequestType) {
 //#########################################################################################
 // Problems with stucturing JSON decodes, see here: https://arduinojson.org/assistant/
 bool DecodeWeather(String json, String Type) {
-  Serial.println("Received a JSON string of size : "+String(json.length()));
+  Serial.println("Received a JSON string of size : " + String(json.length()));
   Serial.print(F("Creating object...and "));
   // allocate the JsonDocument
-  DynamicJsonDocument doc(20*1024);
+  DynamicJsonDocument doc(20 * 1024);
   // Deserialize the JSON document
   DeserializationError error = deserializeJson(doc, json);
   // Test if parsing succeeds.
@@ -587,7 +593,7 @@ bool DecodeWeather(String json, String Type) {
   JsonObject root = doc.as<JsonObject>();
   Serial.println(" Decoding " + Type + " data");
   if (Type == "weather") {
-    // All Serial.println statements are for diagnostic purposes and not required, remove if not needed 
+    // All Serial.println statements are for diagnostic purposes and not required, remove if not needed
     WxConditions[0].lon         = root["coord"]["lon"].as<float>();              Serial.println(WxConditions[0].lon);
     WxConditions[0].lat         = root["coord"]["lat"].as<float>();              Serial.println(WxConditions[0].lat);
     WxConditions[0].Main0       = root["weather"][0]["main"].as<char*>();        Serial.println(WxConditions[0].Main0);
@@ -611,13 +617,13 @@ bool DecodeWeather(String json, String Type) {
   if (Type == "forecast") {
     //Serial.println(json);
     const char* cod                 = root["cod"]; // "200"
-    float message                   = root["message"]; 
-    int cnt                         = root["cnt"]; 
+    float message                   = root["message"];
+    int cnt                         = root["cnt"];
     JsonArray list                  = root["list"];
     Serial.print(F("\nReceiving Forecast period - ")); //------------------------------------------------
-    for (byte r=0; r < max_readings; r++) {
-      Serial.println("\nPeriod-"+String(r)+"--------------"); 
-      WxForecast[r].Dt                = list[r]["dt"].as<char*>(); 
+    for (byte r = 0; r < max_readings; r++) {
+      Serial.println("\nPeriod-" + String(r) + "--------------");
+      WxForecast[r].Dt                = list[r]["dt"].as<char*>();
       WxForecast[r].Temperature       = list[r]["main"]["temp"].as<float>();              Serial.println(WxForecast[r].Temperature);
       WxForecast[r].Low               = list[r]["main"]["temp_min"].as<float>();          Serial.println(WxForecast[r].Low);
       WxForecast[r].High              = list[r]["main"]["temp_max"].as<float>();          Serial.println(WxForecast[r].High);
@@ -682,17 +688,17 @@ int WiFi_Signal() {
   return WiFi.RSSI();
 }
 //#########################################################################################
-void Display_Status_Section(int x, int y, int rssi){
-  gfx.drawRect(x-32,y-26,121,53);
-  gfx.drawLine(x-32,y-14,x-32+121,y-14);
-  gfx.drawLine(x-32+121/2,y-15,x-32+121/2,y-26);
-  gfx.drawString(x-15,y-26,"WiFi");
-  gfx.drawString(x+45,y-26,"Power");
-  DrawRSSI(x-20,y+5,rssi);
-  DrawBattery(x+55, y+3);;
+void Display_Status_Section(int x, int y, int rssi) {
+  gfx.drawRect(x - 32, y - 26, 121, 53);
+  gfx.drawLine(x - 32, y - 14, x - 32 + 121, y - 14);
+  gfx.drawLine(x - 32 + 121 / 2, y - 15, x - 32 + 121 / 2, y - 26);
+  gfx.drawString(x - 15, y - 26, "WiFi");
+  gfx.drawString(x + 45, y - 26, "Power");
+  DrawRSSI(x - 20, y + 5, rssi);
+  DrawBattery(x + 55, y + 3);;
 }
 //#########################################################################################
-void DrawRSSI(int x, int y, int rssi){
+void DrawRSSI(int x, int y, int rssi) {
   int WIFIsignal = 0;
   int xpos = 1;
   for (int _rssi = -100; _rssi <= rssi; _rssi = _rssi + 20) {
@@ -701,15 +707,15 @@ void DrawRSSI(int x, int y, int rssi){
     if (_rssi <= -60)  WIFIsignal = 12; //  -60dbm to  -41dbm displays 3-bars
     if (_rssi <= -80)  WIFIsignal = 8;  //  -80dbm to  -61dbm displays 2-bars
     if (_rssi <= -100) WIFIsignal = 4;  // -100dbm to  -81dbm displays 1-bar
-    gfx.fillRect(x+xpos*5,y-WIFIsignal,4,WIFIsignal);
+    gfx.fillRect(x + xpos * 5, y - WIFIsignal, 4, WIFIsignal);
     xpos++;
   }
-  gfx.fillRect(x,y-1,4,1);
+  gfx.fillRect(x, y - 1, 4, 1);
   gfx.setFont(ArialRoundedMTBold_14);
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
-  gfx.drawString(x+5,y+2,String(rssi));
+  gfx.drawString(x + 5, y + 2, String(rssi));
   gfx.setFont(ArialMT_Plain_10);
-  gfx.drawString(x+30,y+5,"dbm");
+  gfx.drawString(x + 30, y + 5, "dbm");
 }
 //#########################################################################################
 void SetupTime() {
@@ -780,16 +786,16 @@ void DrawBattery(int x, int y) {
   if (voltage > 1 ) { // Only display if there is a valid reading
     if (voltage >= 4.19) percentage = 100;
     else if (voltage < 3.20) percentage = 0;
-    else percentage = voltage/4.2 * 100;
+    else percentage = voltage / 4.2 * 100;
     gfx.setColor(EPD_BLACK);
     gfx.setFont(ArialRoundedMTBold_14);
     gfx.setTextAlignment(TEXT_ALIGN_CENTER);
-    gfx.drawRect(x-22, y+5, 19, 10);
-    gfx.fillRect(x-2, y+7, 3, 6);
-    gfx.fillRect(x-20, y+7, 17 * percentage / 100.0, 6);
+    gfx.drawRect(x - 22, y + 5, 19, 10);
+    gfx.fillRect(x - 2, y + 7, 3, 6);
+    gfx.fillRect(x - 20, y + 7, 17 * percentage / 100.0, 6);
     gfx.setFont(ArialMT_Plain_10);
-    gfx.drawString(x+5, y-10,   String(percentage) + "%");
-    gfx.drawString(x+18, y+4, String(voltage, 2) + "v");
+    gfx.drawString(x + 5, y - 10,   String(percentage) + "%");
+    gfx.drawString(x + 18, y + 4, String(voltage, 2) + "v");
   }
 }
 //#########################################################################################
@@ -904,7 +910,7 @@ void MostlyCloudy(int x, int y, bool IconSize, String IconName) {
   if (IconSize == LargeIcon) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
-  if (IconName.endsWith("n")) addmoon(x,y,scale);
+  if (IconName.endsWith("n")) addmoon(x, y, scale);
   addcloud(x, y, scale, linesize);
   addsun(x - scale * 1.8, y - scale * 1.8, scale);
   addcloud(x, y, scale, linesize);
@@ -915,7 +921,7 @@ void MostlySunny(int x, int y, bool IconSize, String IconName) {
   if (IconSize == LargeIcon) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
-  if (IconName.endsWith("n")) addmoon(x,y,scale);
+  if (IconName.endsWith("n")) addmoon(x, y, scale);
   addcloud(x, y, scale, linesize);
   addsun(x - scale * 1.8, y - scale * 1.8, scale);
 }
@@ -925,7 +931,7 @@ void Rain(int x, int y, bool IconSize, String IconName) {
   if (IconSize == LargeIcon) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
-  if (IconName.endsWith("n")) addmoon(x,y,scale);
+  if (IconName.endsWith("n")) addmoon(x, y, scale);
   addcloud(x, y, scale, linesize);
   addrain(x, y, scale);
 }
@@ -935,15 +941,15 @@ void Cloudy(int x, int y, bool IconSize, String IconName) {
   if (IconSize == LargeIcon) scale = Large;
   int linesize = 3;
   if (scale == Small) {
-    if (IconName.endsWith("n")) addmoon(x,y,scale);
+    if (IconName.endsWith("n")) addmoon(x, y, scale);
     linesize = 1;
     addcloud(x, y, scale, linesize);
   }
   else {
     y += 10;
-    if (IconName.endsWith("n")) addmoon(x,y,scale);
-    addcloud(x+30, y-45, 5, linesize); // Cloud top right
-    addcloud(x-20, y-30, 7, linesize); // Cloud top left
+    if (IconName.endsWith("n")) addmoon(x, y, scale);
+    addcloud(x + 30, y - 45, 5, linesize); // Cloud top right
+    addcloud(x - 20, y - 30, 7, linesize); // Cloud top left
     addcloud(x, y, scale, linesize);   // Main cloud
   }
 }
@@ -951,7 +957,7 @@ void Cloudy(int x, int y, bool IconSize, String IconName) {
 void Sunny(int x, int y, bool IconSize, String IconName) {
   int scale = Small;
   if (IconSize == LargeIcon) scale = Large;
-  if (IconName.endsWith("n")) addmoon(x,y,scale);
+  if (IconName.endsWith("n")) addmoon(x, y, scale);
   scale = scale * 1.6;
   addsun(x, y, scale);
 }
@@ -961,7 +967,7 @@ void ExpectRain(int x, int y, bool IconSize, String IconName) {
   if (IconSize == LargeIcon) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
-  if (IconName.endsWith("n")) addmoon(x,y,scale);
+  if (IconName.endsWith("n")) addmoon(x, y, scale);
   addsun(x - scale * 1.8, y - scale * 1.8, scale);
   addcloud(x, y, scale, linesize);
   addrain(x, y, scale);
@@ -972,7 +978,7 @@ void ChanceRain(int x, int y, bool IconSize, String IconName) {
   if (IconSize == LargeIcon) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
-  if (IconName.endsWith("n")) addmoon(x,y,scale);
+  if (IconName.endsWith("n")) addmoon(x, y, scale);
   addsun(x - scale * 1.8, y - scale * 1.8, scale);
   addcloud(x, y, scale, linesize);
   addrain(x, y, scale);
@@ -983,7 +989,7 @@ void Tstorms(int x, int y, bool IconSize, String IconName) {
   if (IconSize == LargeIcon) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
-  if (IconName.endsWith("n")) addmoon(x,y,scale);
+  if (IconName.endsWith("n")) addmoon(x, y, scale);
   addcloud(x, y, scale, linesize);
   addtstorm(x, y, scale);
 }
@@ -993,7 +999,7 @@ void Snow(int x, int y, bool IconSize, String IconName) {
   if (IconSize == LargeIcon) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
-  if (IconName.endsWith("n")) addmoon(x,y,scale);
+  if (IconName.endsWith("n")) addmoon(x, y, scale);
   addcloud(x, y, scale, linesize);
   addsnow(x, y, scale);
 }
@@ -1003,9 +1009,9 @@ void Fog(int x, int y, bool IconSize, String IconName) {
   if (IconSize == LargeIcon) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
-  if (IconName.endsWith("n")) addmoon(x,y,scale);
-  addcloud(x, y-5, scale, linesize);
-  addfog(x, y-5, scale, linesize);
+  if (IconName.endsWith("n")) addmoon(x, y, scale);
+  addcloud(x, y - 5, scale, linesize);
+  addfog(x, y - 5, scale, linesize);
 }
 //#########################################################################################
 void Haze(int x, int y, bool IconSize, String IconName) {
@@ -1013,30 +1019,30 @@ void Haze(int x, int y, bool IconSize, String IconName) {
   if (IconSize == LargeIcon) scale = Large;
   int linesize = 3;
   if (scale == Small) linesize = 1;
-  if (IconName.endsWith("n")) addmoon(x,y,scale);
-  addsun(x, y-5, scale*1.4);
-  addfog(x, y-5, scale*1.4, linesize);
+  if (IconName.endsWith("n")) addmoon(x, y, scale);
+  addsun(x, y - 5, scale * 1.4);
+  addfog(x, y - 5, scale * 1.4, linesize);
 }
 //#########################################################################################
-void addmoon(int x, int y, int scale){
+void addmoon(int x, int y, int scale) {
   if (scale == Large) {
-    gfx.fillCircle(x-50,y-60,scale);
+    gfx.fillCircle(x - 50, y - 60, scale);
     gfx.setColor(EPD_WHITE);
-    gfx.fillCircle(x-35,y-60,scale*1.6);
+    gfx.fillCircle(x - 35, y - 60, scale * 1.6);
     gfx.setColor(EPD_BLACK);
   }
   else
   {
-    gfx.fillCircle(x-20,y-15,scale);
+    gfx.fillCircle(x - 20, y - 15, scale);
     gfx.setColor(EPD_WHITE);
-    gfx.fillCircle(x-15,y-15,scale*1.6);
+    gfx.fillCircle(x - 15, y - 15, scale * 1.6);
     gfx.setColor(EPD_BLACK);
   }
 }
 //#########################################################################################
 void Nodata(int x, int y, int scale) {
   if (scale == Large) gfx.setFont(ArialMT_Plain_24); else gfx.setFont(ArialMT_Plain_16);
-  gfx.drawString(x, y-10, "N/A");
+  gfx.drawString(x, y - 10, "N/A");
 }
 //#########################################################################################
 /* (C) D L BIRD
@@ -1067,7 +1073,7 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
       if (DataArray[i] <= minYscale) minYscale = DataArray[i];
     }
     maxYscale = round(maxYscale + auto_scale_margin); // Auto scale the graph and round to the nearest value defined, default was Y1Max
-    Y1Max = round(maxYscale+0.5);
+    Y1Max = round(maxYscale + 0.5);
     if (minYscale != 0) minYscale = round(minYscale - auto_scale_margin); // Auto scale the graph and round to the nearest value defined, default was Y1Min
     Y1Min = round(minYscale);
   }
@@ -1083,27 +1089,29 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
   gfx.setTextAlignment(TEXT_ALIGN_RIGHT);
   // Draw the data
   for (int gx = 1; gx < readings; gx++) {
-      x1 = last_x;
-      y1 = last_y;
-      x2 = x_pos + gx * gwidth/(readings-1)-1 ; // max_readings is the global variable that sets the maximum data that can be plotted
-      y2 = y_pos + (Y1Max - constrain(DataArray[gx], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight + 1;
-      if (barchart_mode) {
-        gfx.fillRect(x2, y2, (gwidth/readings)-1, y_pos + gheight - y2 + 1);
-      } else {
-        gfx.drawLine(last_x, last_y, x2, y2);
-      }
-      last_x = x2;
-      last_y = y2;
+    x1 = last_x;
+    y1 = last_y;
+    x2 = x_pos + gx * gwidth / (readings - 1) - 1 ; // max_readings is the global variable that sets the maximum data that can be plotted
+    y2 = y_pos + (Y1Max - constrain(DataArray[gx], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight + 1;
+    if (barchart_mode) {
+      gfx.fillRect(x2, y2, (gwidth / readings) - 1, y_pos + gheight - y2 + 1);
+    } else {
+      gfx.drawLine(last_x, last_y, x2, y2);
+    }
+    last_x = x2;
+    last_y = y2;
   }
   //Draw the Y-axis scale
   for (int spacing = 0; spacing <= y_minor_axis; spacing++) {
-  #define number_of_dashes 20
+#define number_of_dashes 20
     for (int j = 0; j < number_of_dashes; j++) { // Draw dashed graph grid lines
       if (spacing < y_minor_axis) gfx.drawHorizontalLine((x_pos + 3 + j * gwidth / number_of_dashes), y_pos + (gheight * spacing / y_minor_axis), gwidth / (2 * number_of_dashes));
     }
-    if ( (Y1Max-(float)(Y1Max-Y1Min)/y_minor_axis*spacing) < 10) {gfx.drawString(x_pos-2, y_pos+gheight*spacing/y_minor_axis-5, String((Y1Max-(float)(Y1Max-Y1Min)/y_minor_axis*spacing+0.01), 1));}
+    if ( (Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing) < 10) {
+      gfx.drawString(x_pos - 2, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1));
+    }
     else {
-      if (Y1Min < 1 && Y1Max < 10) gfx.drawString(x_pos - 2, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing+0.01), 1));
+      if (Y1Min < 1 && Y1Max < 10) gfx.drawString(x_pos - 2, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1));
       else gfx.drawString(x_pos - 2, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 0)); // +0.01 prevents -0.00 occurring
     }
   }
@@ -1111,6 +1119,6 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
     gfx.drawString(5 + x_pos + gwidth / 3 * i, y_pos + gheight + 3, String(i));
   }
   gfx.setTextAlignment(TEXT_ALIGN_CENTER);
-  gfx.drawString(x_pos+gwidth/2,y_pos+gheight+7,"(Days)");
+  gfx.drawString(x_pos + gwidth / 2, y_pos + gheight + 7, "(Days)");
   gfx.setTextAlignment(TEXT_ALIGN_LEFT);
 }
