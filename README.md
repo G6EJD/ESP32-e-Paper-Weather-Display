@@ -64,7 +64,7 @@ Obtain your OWM API key - it's free
 
 **OPEN WEATHER MAP VERSION - STREAMING JSON**
 
-This version requires *** Arduino JSON v6 or above *** it streams the Openweather and processes the data as received, rather than downloading all the data first, then decoding it. It uses a lot less memory this way.
+V8 onwards versions require *** Arduino JSON v6 or above *** it streams the Openweather and processes the data as received, rather than downloading all the data first, then decoding it. It uses a lot less memory this way.
 
 Go to Sketch > Include Library... > Manage Libraries.... Then, for each library, put its name into the text field to have its metadata 
 
