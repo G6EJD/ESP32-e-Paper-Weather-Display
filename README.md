@@ -13,13 +13,13 @@ Download the software and install all 3 files in the same sketch folder.
    ESP32_OWM_Current_Forecast_42_epaper_vX always choose the latest version
    ESP32_OWM_Current_Forecast_75_epaper_vX always choose the latest version
 
-2. owm_credentials2.h
+2. owm_credentials.h
 
 3. ArialRounded.h 
 
 Obtain your OWM API key - it's free
 
-4. Edit the owm_credentials2.h file in the IDE (TAB at top of IDE) and change your Language, Country, choose your units Metric or Imperial and be sure to find a valid weather station location on OpenWeatherMap, if your display has all blank values your location does not exist!.
+4. Edit the owm_credentials.h file in the IDE (TAB at top of IDE) and change your Language, Country, choose your units Metric or Imperial and be sure to find a valid weather station location on OpenWeatherMap, if your display has all blank values your location does not exist!.
 
 **OPEN WEATHER MAP VERSION - STREAMING JSON**
 
