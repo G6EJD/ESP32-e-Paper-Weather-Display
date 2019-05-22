@@ -478,18 +478,25 @@ bool obtain_wx_data(String RequestType) {
 //#########################################################################################
 // Problems with stucturing JSON decodes, see here: https://arduinojson.org/assistant/
 bool DecodeWeather(String json, String Type) {
+  Serial.println("Received a JSON string of size : " + String(json.length()));
   Serial.print(F("Creating object...and "));
-  DynamicJsonBuffer jsonBuffer (50*1024);
-  JsonObject& root = jsonBuffer.parseObject(const_cast<char*>(json.c_str()));
-  if (!root.success()) {
-    Serial.print("ParseObject() failed");
+  // allocate the JsonDocument
+  DynamicJsonDocument doc(20 * 1024);
+  // Deserialize the JSON document
+  DeserializationError error = deserializeJson(doc, json);
+  // Test if parsing succeeds.
+  if (error) {
+    Serial.print(F("deserializeJson() failed: "));
+    Serial.println(error.c_str());
     return false;
   }
+  // convert it to a JsonObject
+  JsonObject root = doc.as<JsonObject>();
   Serial.println(" Decoding " + Type + " data");
   if (Type == "weather") {
-    // All Serial.println statements are for diagnostic purposes and not required, remove if not needed 
-    WxConditions[0].lon         = root["coord"]["lon"].as<String>();             Serial.println(WxConditions[0].lon);
-    WxConditions[0].lat         = root["coord"]["lat"].as<String>();             Serial.println(WxConditions[0].lat);
+    // All Serial.println statements are for diagnostic purposes and not required, remove if not needed
+    WxConditions[0].lon         = root["coord"]["lon"].as<float>();              Serial.println(WxConditions[0].lon);
+    WxConditions[0].lat         = root["coord"]["lat"].as<float>();              Serial.println(WxConditions[0].lat);
     WxConditions[0].Main0       = root["weather"][0]["main"].as<char*>();        Serial.println(WxConditions[0].Main0);
     WxConditions[0].Forecast0   = root["weather"][0]["description"].as<char*>(); Serial.println(WxConditions[0].Forecast0);
     WxConditions[0].Icon        = root["weather"][0]["icon"].as<char*>();        Serial.println(WxConditions[0].Icon);
@@ -511,16 +518,16 @@ bool DecodeWeather(String json, String Type) {
   if (Type == "forecast") {
     //Serial.println(json);
     const char* cod                 = root["cod"]; // "200"
-    float message                   = root["message"]; 
-    int cnt                         = root["cnt"]; 
-    JsonArray& list                 = root["list"];
-    Serial.print("\nReceiving Forecast period - "); //------------------------------------------------
-    for (byte r=0; r < max_readings; r++) {
-      Serial.println("\nPeriod-"+String(r)+"--------------"); 
-      WxForecast[r].Dt                = list[r]["dt"].as<char*>(); 
-      WxForecast[r].Temperature       = list[r]["main"]["temp"].as<float>();               Serial.println(WxForecast[r].Temperature);
-      WxForecast[r].Low               = list[r]["main"]["temp_min"].as<float>();           Serial.println(WxForecast[r].Low);
-      WxForecast[r].High              = list[r]["main"]["temp_max"].as<float>();           Serial.println(WxForecast[r].High);
+    float message                   = root["message"];
+    int cnt                         = root["cnt"];
+    JsonArray list                  = root["list"];
+    Serial.print(F("\nReceiving Forecast period - ")); //------------------------------------------------
+    for (byte r = 0; r < max_readings; r++) {
+      Serial.println("\nPeriod-" + String(r) + "--------------");
+      WxForecast[r].Dt                = list[r]["dt"].as<char*>();
+      WxForecast[r].Temperature       = list[r]["main"]["temp"].as<float>();              Serial.println(WxForecast[r].Temperature);
+      WxForecast[r].Low               = list[r]["main"]["temp_min"].as<float>();          Serial.println(WxForecast[r].Low);
+      WxForecast[r].High              = list[r]["main"]["temp_max"].as<float>();          Serial.println(WxForecast[r].High);
       WxForecast[r].Pressure          = list[r]["main"]["pressure"].as<float>();          Serial.println(WxForecast[r].Pressure);
       WxForecast[r].Humidity          = list[r]["main"]["humidity"].as<float>();          Serial.println(WxForecast[r].Humidity);
       WxForecast[r].Forecast0         = list[r]["weather"][0]["main"].as<char*>();        Serial.println(WxForecast[r].Forecast0);
@@ -532,7 +539,7 @@ bool DecodeWeather(String json, String Type) {
       WxForecast[r].Windspeed         = list[r]["wind"]["speed"].as<float>();             Serial.println(WxForecast[r].Windspeed);
       WxForecast[r].Winddir           = list[r]["wind"]["deg"].as<float>();               Serial.println(WxForecast[r].Winddir);
       WxForecast[r].Rainfall          = list[r]["rain"]["3h"].as<float>();                Serial.println(WxForecast[r].Rainfall);
-      WxForecast[r].Snowfall          = list[r]["snow"]["3h"].as<float>();                Serial.println(WxForecast[r].Rainfall);
+      WxForecast[r].Snowfall          = list[r]["snow"]["3h"].as<float>();                Serial.println(WxForecast[r].Snowfall);
       WxForecast[r].Period            = list[r]["dt_txt"].as<char*>();                    Serial.println(WxForecast[r].Period);
     }
     //------------------------------------------
