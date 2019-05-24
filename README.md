@@ -6,16 +6,21 @@ Go to Sketch > Include Library... > Manage Libraries.... Then, for each library,
 - 'Mini Grafx' by Daniel Eichhorn
 - 'ESP8266 WeatherStation' by Daniel Eichhorn (required for additional fonts)
 - 'Arduino JSON' v6 or above
+-  Adafruit_GFX
+-  GxEPD2
 
 Download the software and install all 3 files in the same sketch folder.
 
 1. - ESP32_OWM_Current_Forecast_29_epaper_vX always choose the latest version
    - ESP32_OWM_Current_Forecast_42_epaper_vX always choose the latest version (This version requires *** Arduino JSON v5.13.2 ***)
    - ESP32_OWM_Current_Forecast_75_epaper_vX always choose the latest version
+   - ESP32_OWM_Current_Forecast_75_epaper_v10 now requires GxEPD22 library 
+   
 
 2. owm_credentials.h
 
-3. ArialRounded.h 
+3. ArialRounded.h
+   epaper_fonts.h (for v10 onwards)
 
 Obtain your OWM API key - it's free
 
