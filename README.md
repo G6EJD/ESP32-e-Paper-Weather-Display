@@ -10,7 +10,7 @@ Download the software and install all 3 files in the same sketch folder.
 
 1. One of the following sketches
    - ESP32_OWM_Current_Forecast_29_epaper_vX always choose the latest version
-   - ESP32_OWM_Current_Forecast_42_epaper_vX always choose the latest version (This version requires *** Arduino JSON v5.13.2 ***)
+   - ESP32_OWM_Current_Forecast_42_epaper_vX always choose the latest version
    - ESP32_OWM_Current_Forecast_75_epaper_vX always choose the latest version
    - ESP32_OWM_Current_Forecast_75_epaper_v10 (instead of Mini Grafx requires [GxEPD2 library](https://github.com/ZinggJM/GxEPD2), which needs [Adafruit_GFX](https://github.com/adafruit/Adafruit-GFX-Library))
 

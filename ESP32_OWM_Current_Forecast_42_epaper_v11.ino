@@ -62,24 +62,33 @@ int    Sunrise, Sunset;
 
 //################ PROGRAM VARIABLES and OBJECTS ################
 
-typedef struct { // For current Day and Day 1, 2, 3
+typedef struct { // For current Day and Day 1, 2, 3, etc
+  String   Dt;
   String   Period;
-  float    Temperature;
-  float    Humidity;
   String   Icon;
-  float    High;
-  float    Low;
-  float    Rainfall;
-  float    Pressure;
-  int      Cloudcover;
   String   Trend;
-  float    Winddir;
-  float    Windspeed;
+  String   Main0;
   String   Forecast0;
   String   Forecast1;
   String   Forecast2;
   String   Description;
   String   Time;
+  String   Country;
+  String   lat;
+  String   lon;
+  float    Temperature;
+  float    Humidity;
+  float    High;
+  float    Low;
+  float    Winddir;
+  float    Windspeed;
+  float    Rainfall;
+  float    Snowfall;
+  float    Pressure;
+  int      Cloudcover;
+  int      Visibility;
+  int      Sunrise;
+  int      Sunset;
 } Forecast_record_type;
 
 #define max_readings 24
@@ -493,502 +502,72 @@ bool obtain_wx_data(String RequestType) {
 //#########################################################################################
 // Problems with stucturing JSON decodes, see here: https://arduinojson.org/assistant/
 bool DecodeWeather(String json, String Type) {
+  Serial.println("Received a JSON string of size : " + String(json.length()));
   Serial.print(F("Creating object...and "));
-  DynamicJsonBuffer jsonBuffer (30*1024);
-  JsonObject& root = jsonBuffer.parseObject(const_cast<char*>(json.c_str()));
-  if (!root.success()) {
-    Serial.print("ParseObject() failed");
+  // allocate the JsonDocument
+  DynamicJsonDocument doc(20 * 1024);
+  // Deserialize the JSON document
+  DeserializationError error = deserializeJson(doc, json);
+  // Test if parsing succeeds.
+  if (error) {
+    Serial.print(F("deserializeJson() failed: "));
+    Serial.println(error.c_str());
     return false;
   }
-  Serial.println("Decoding " + Type + " data");
+  // convert it to a JsonObject
+  JsonObject root = doc.as<JsonObject>();
+  Serial.println(" Decoding " + Type + " data");
   if (Type == "weather") {
-    //Serial.println(json);
-    // All Serial.println statements are for diagnostic purposes and not required, remove if not needed 
-    String lon                  = root["coord"]["lon"];                                                                 Serial.println("Lon:" + lon);
-    String lat                  = root["coord"]["lat"];                                                                 Serial.println("Lat:" + lat);
-    JsonObject& weather         = root["weather"][0];
-    const char* main0           = weather["main"];       if (main0 != NULL) {WxConditions[0].Forecast0 = String(main0); Serial.println(WxConditions[0].Forecast0);}
-    const char* icon            = weather["icon"];       if (icon  != NULL) {WxConditions[0].Icon      = String(icon);  Serial.println(WxConditions[0].Icon);}
-    JsonObject& weather1        = root["weather"][1];
-    const char* main1           = weather1["main"];      if (main1 != NULL) {WxConditions[0].Forecast1 = String(main1); Serial.println(WxConditions[0].Forecast1);}
-    JsonObject& weather2        = root["weather"][2];            
-    const char* main2           = weather1["main"];      if (main2 != NULL) {WxConditions[0].Forecast2 = String(main2); Serial.println(WxConditions[0].Forecast2);}
-    JsonObject& main            = root["main"];
-    WxConditions[0].Temperature = main["temp"];          Serial.println(WxConditions[0].Temperature);
-    WxConditions[0].Pressure    = main["pressure"];      Serial.println(WxConditions[0].Pressure);
-    WxConditions[0].Humidity    = main["humidity"];      Serial.println(WxConditions[0].Humidity);
-    WxConditions[0].Low         = main["temp_min"];      Serial.println(WxConditions[0].Low);
-    WxConditions[0].High        = main["temp_max"];      Serial.println(WxConditions[0].High);
-    WxConditions[0].Windspeed   = root["wind"]["speed"]; Serial.println(WxConditions[0].Windspeed);
-    WxConditions[0].Winddir     = root["wind"]["deg"];   Serial.println(WxConditions[0].Winddir);
-    WxConditions[0].Cloudcover  = root["clouds"]["all"]; Serial.println(WxConditions[0].Cloudcover); // in % of cloud cover
-    JsonObject& sys             = root["sys"];
-    String country              = sys["country"];        Serial.println(country);
-    int    sunrise              = sys["sunrise"];        Serial.println(sunrise);
-    int    sunset               = sys["sunset"];         Serial.println(sunset);
-    Sunrise = sunrise;
-    Sunset  = sunset;
+    // All Serial.println statements are for diagnostic purposes and not required, remove if not needed
+    WxConditions[0].lon         = root["coord"]["lon"].as<float>();              Serial.println(WxConditions[0].lon);
+    WxConditions[0].lat         = root["coord"]["lat"].as<float>();              Serial.println(WxConditions[0].lat);
+    WxConditions[0].Main0       = root["weather"][0]["main"].as<char*>();        Serial.println(WxConditions[0].Main0);
+    WxConditions[0].Forecast0   = root["weather"][0]["description"].as<char*>(); Serial.println(WxConditions[0].Forecast0);
+    WxConditions[0].Icon        = root["weather"][0]["icon"].as<char*>();        Serial.println(WxConditions[0].Icon);
+    WxConditions[0].Forecast1   = root["weather"][1]["main"].as<char*>();        Serial.println(WxConditions[0].Forecast1);
+    WxConditions[0].Forecast2   = root["weather"][2]["main"].as<char*>();        Serial.println(WxConditions[0].Forecast2);
+    WxConditions[0].Temperature = root["main"]["temp"].as<float>();              Serial.println(WxConditions[0].Temperature);
+    WxConditions[0].Pressure    = root["main"]["pressure"].as<float>();          Serial.println(WxConditions[0].Pressure);
+    WxConditions[0].Humidity    = root["main"]["humidity"].as<float>();          Serial.println(WxConditions[0].Humidity);
+    WxConditions[0].Low         = root["main"]["temp_min"].as<float>();          Serial.println(WxConditions[0].Low);
+    WxConditions[0].High        = root["main"]["temp_max"].as<float>();          Serial.println(WxConditions[0].High);
+    WxConditions[0].Windspeed   = root["wind"]["speed"].as<float>();             Serial.println(WxConditions[0].Windspeed);
+    WxConditions[0].Winddir     = root["wind"]["deg"].as<float>();               Serial.println(WxConditions[0].Winddir);
+    WxConditions[0].Cloudcover  = root["clouds"]["all"].as<int>();               Serial.println(WxConditions[0].Cloudcover); // in % of cloud cover
+    WxConditions[0].Visibility  = root["visibility"].as<int>();                  Serial.println(WxConditions[0].Visibility); // in metres
+    WxConditions[0].Country     = root["sys"]["country"].as<char*>();            Serial.println(WxConditions[0].Country);
+    WxConditions[0].Sunrise     = root["sys"]["sunrise"].as<int>();              Serial.println(WxConditions[0].Sunrise);
+    WxConditions[0].Sunset      = root["sys"]["sunset"].as<int>();               Serial.println(WxConditions[0].Sunset);
   }
   if (Type == "forecast") {
     //Serial.println(json);
-    Serial.print("\nReceiving Forecast period - 0,"); //------------------------------------------------
     const char* cod                 = root["cod"]; // "200"
-    float message                   = root["message"]; 
-    int cnt                         = root["cnt"]; 
-    JsonArray& list                 = root["list"];
-
-    JsonObject& list0               = list[0];
-    int list0_dt                    = list0["dt"]; 
-    JsonObject& list0_main          = list0["main"];
-    WxForecast[0].Temperature       = list0_main["temp"];
-    WxForecast[0].Low               = list0_main["temp_min"];
-    WxForecast[0].High              = list0_main["temp_max"];
-    WxForecast[0].Pressure          = list0_main["pressure"];
-    WxForecast[0].Humidity          = list0_main["humidity"];
-    JsonObject& list0_weather0      = list0["weather"][0];
-    const char * list0_forecast     = list0_weather0["main"];        if (list0_forecast != NULL) WxForecast[0].Forecast0 = String(list0_forecast);
-    const char * list0_description  = list0_weather0["description"]; if (list0_description != NULL) WxForecast[0].Description = String(list0_description);
-    const char * list0_icon         = list0_weather0["icon"];        if (list0_icon != NULL) WxForecast[0].Icon = String(list0_icon);
-    WxForecast[0].Windspeed         = list0["wind"]["speed"];
-    WxForecast[0].Winddir           = list0["wind"]["deg"];
-    WxForecast[0].Rainfall          = list0["rain"]["3h"];
-    const char * list0_period       = list0["dt_txt"];               if (list0_period != NULL) WxForecast[0].Period = String(list0_period);
-
-    Serial.print("1,"); //------------------------------------------------
-    JsonObject& list1               = list[1];
-    long list1_dt                   = list1["dt"]; 
-    JsonObject& list1_main          = list1["main"];
-    WxForecast[1].Temperature       = list1_main["temp"];
-    WxForecast[1].Low               = list1_main["temp_min"];
-    WxForecast[1].High              = list1_main["temp_max"];
-    WxForecast[1].Pressure          = list1_main["pressure"];
-    WxForecast[1].Humidity          = list1_main["humidity"];
-    JsonObject& list1_weather0      = list1["weather"][0];
-    const char * list1_forecast     = list1_weather0["main"];        if (list1_forecast != NULL) WxForecast[1].Forecast0 = String(list1_forecast);
-    const char * list1_description  = list1_weather0["description"]; if (list1_description != NULL) WxForecast[1].Description = String(list1_description);
-    const char * list1_icon         = list1_weather0["icon"];        if (list1_icon != NULL) WxForecast[1].Icon = String(list1_icon);
-    WxForecast[1].Windspeed         = list1["wind"]["speed"];
-    WxForecast[1].Winddir           = list1["wind"]["deg"];
-    WxForecast[1].Rainfall          = list1["rain"]["3h"];
-    const char * list1_period       = list1["dt_txt"];               if (list1_period != NULL) WxForecast[1].Period = String(list1_period);
-
-    Serial.print("2,"); //------------------------------------------------
-    JsonObject& list2               = list[2];
-    long list2_dt                   = list2["dt"]; 
-    JsonObject& list2_main          = list2["main"];
-    WxForecast[2].Temperature       = list2_main["temp"];
-    WxForecast[2].Low               = list2_main["temp_min"];
-    WxForecast[2].High              = list2_main["temp_max"];
-    WxForecast[2].Pressure          = list2_main["pressure"];
-    WxForecast[2].Humidity          = list2_main["humidity"]; 
-    JsonObject& list2_weather0      = list2["weather"][0];
-    const char * list2_forecast     = list2_weather0["main"];        if (list2_forecast != NULL) WxForecast[2].Forecast0 = String(list2_forecast);
-    const char * list2_description  = list2_weather0["description"]; if (list2_description != NULL) WxForecast[2].Description = String(list2_description);
-    const char * list2_icon         = list2_weather0["icon"];        if (list2_icon != NULL) WxForecast[2].Icon = String(list2_icon);
-    WxForecast[2].Windspeed         = list2["wind"]["speed"]; 
-    WxForecast[2].Winddir           = list2["wind"]["deg"]; 
-    WxForecast[2].Rainfall          = list2["rain"]["3h"]; 
-    const char * list2_period       = list2["dt_txt"];               if (list2_period != NULL) WxForecast[2].Period = String(list2_period);
-
-    Serial.print("3,"); //------------------------------------------------
-    JsonObject& list3               = list[3];
-    long list3_dt                   = list3["dt"]; 
-    JsonObject& list3_main          = list3["main"];
-    WxForecast[3].Temperature       = list3_main["temp"];
-    WxForecast[3].Low               = list3_main["temp_min"];
-    WxForecast[3].High              = list3_main["temp_max"];
-    WxForecast[3].Pressure          = list3_main["pressure"];
-    WxForecast[3].Humidity          = list3_main["humidity"]; 
-    JsonObject& list3_weather0      = list3["weather"][0];
-    const char * list3_forecast     = list3_weather0["main"];        if (list3_forecast != NULL) WxForecast[3].Forecast0 = String(list3_forecast);
-    const char * list3_description  = list3_weather0["description"]; if (list3_description != NULL)WxForecast[3].Description = String(list3_description);
-    const char * list3_icon         = list3_weather0["icon"];        if (list3_icon != NULL)WxForecast[3].Icon = String(list3_icon);
-    WxForecast[3].Windspeed         = list3["wind"]["speed"]; 
-    WxForecast[3].Winddir           = list3["wind"]["deg"]; 
-    WxForecast[3].Rainfall          = list3["rain"]["3h"]; 
-    const char * list3_period       = list3["dt_txt"];               if (list3_period != NULL)WxForecast[3].Period = String(list3_period);
-
-    Serial.print("4,");  //---------------------------
-    JsonObject& list4               = list[4];
-    long list4_dt                   = list4["dt"];
-    JsonObject& list4_main          = list4["main"];
-    WxForecast[4].Temperature       = list4_main["temp"];
-    WxForecast[4].Low               = list4_main["temp_min"];
-    WxForecast[4].High              = list4_main["temp_max"];
-    WxForecast[4].Pressure          = list4_main["pressure"];
-    WxForecast[4].Humidity          = list4_main["humidity"];
-    JsonObject& list4_weather0      = list4["weather"][0];
-    const char * list4_forecast     = list4_weather0["main"];        if (list4_forecast != NULL) WxForecast[4].Forecast0 = String(list4_forecast);
-    const char * list4_description  = list4_weather0["description"]; if (list4_description != NULL) WxForecast[4].Description = String(list4_description);
-    const char * list4_icon         = list4_weather0["icon"];        if (list4_icon != NULL) WxForecast[4].Icon = String(list4_icon);
-    WxForecast[4].Windspeed         = list4["wind"]["speed"];
-    WxForecast[4].Winddir           = list4["wind"]["deg"];
-    WxForecast[4].Rainfall          = list4["rain"]["3h"];
-    const char * list4_period       = list4["dt_txt"];               if (list4_period != NULL) WxForecast[4].Period = String(list4_period);
-
-    Serial.print("5,");  //---------------------------
-    JsonObject& list5               = list[5];
-    long list5_dt                   = list5["dt"];
-    JsonObject& list5_main          = list5["main"];
-    WxForecast[5].Temperature       = list5_main["temp"];
-    WxForecast[5].Low               = list5_main["temp_min"];
-    WxForecast[5].High              = list5_main["temp_max"];
-    WxForecast[5].Pressure          = list5_main["pressure"];
-    WxForecast[5].Humidity          = list5_main["humidity"];
-    JsonObject& list5_weather0      = list5["weather"][0];
-    const char * list5_forecast     = list5_weather0["main"];        if (list5_forecast != NULL) WxForecast[5].Forecast0 = String(list5_forecast);
-    const char * list5_description  = list5_weather0["description"]; if (list5_description != NULL) WxForecast[5].Description = String(list5_description);
-    const char * list5_icon         = list5_weather0["icon"];        if (list5_icon != NULL) WxForecast[5].Icon = String(list5_icon);
-    WxForecast[5].Windspeed         = list5["wind"]["speed"];
-    WxForecast[5].Winddir           = list5["wind"]["deg"];
-    WxForecast[5].Rainfall          = list5["rain"]["3h"];
-    const char * list5_period       = list5["dt_txt"];               if (list5_period != NULL) WxForecast[5].Period = String(list5_period);
-
-    Serial.print("6,");  //---------------------------
-    JsonObject& list6               = list[6];
-    long list6_dt                   = list6["dt"];
-    JsonObject& list6_main          = list6["main"];
-    WxForecast[6].Temperature       = list6_main["temp"];
-    WxForecast[6].Low               = list6_main["temp_min"];
-    WxForecast[6].High              = list6_main["temp_max"];
-    WxForecast[6].Pressure          = list6_main["pressure"];
-    WxForecast[6].Humidity          = list6_main["humidity"];
-    JsonObject& list6_weather0      = list6["weather"][0];
-    const char * list6_forecast     = list6_weather0["main"];        if (list6_forecast != NULL) WxForecast[6].Forecast0 = String(list6_forecast);
-    const char * list6_description  = list6_weather0["description"]; if (list6_description != NULL) WxForecast[6].Description = String(list6_description);
-    const char * list6_icon         = list6_weather0["icon"];        if (list6_icon != NULL) WxForecast[6].Icon = String(list6_icon);
-    WxForecast[6].Windspeed         = list6["wind"]["speed"];
-    WxForecast[6].Winddir           = list6["wind"]["deg"];
-    WxForecast[6].Rainfall          = list6["rain"]["3h"];
-    const char * list6_period       = list6["dt_txt"];               if (list6_period != NULL) WxForecast[6].Period = String(list6_period);
-
-    Serial.print("7,");  //---------------------------
-    JsonObject& list7               = list[7];
-    long list7_dt                   = list7["dt"];
-    JsonObject& list7_main          = list7["main"];
-    WxForecast[7].Temperature       = list7_main["temp"];
-    WxForecast[7].Low               = list7_main["temp_min"];
-    WxForecast[7].High              = list7_main["temp_max"];
-    WxForecast[7].Pressure          = list7_main["pressure"];
-    WxForecast[7].Humidity          = list7_main["humidity"];
-    JsonObject& list7_weather0      = list7["weather"][0];
-    const char * list7_forecast     = list7_weather0["main"];        if (list7_forecast != NULL) WxForecast[7].Forecast0 = String(list7_forecast);
-    const char * list7_description  = list7_weather0["description"]; if (list7_description != NULL) WxForecast[7].Description = String(list7_description);
-    const char * list7_icon         = list7_weather0["icon"];        if (list7_icon != NULL) WxForecast[7].Icon = String(list7_icon);
-    WxForecast[7].Windspeed         = list7["wind"]["speed"];
-    WxForecast[7].Winddir           = list7["wind"]["deg"];
-    WxForecast[7].Rainfall          = list7["rain"]["3h"];
-    const char * list7_period       = list7["dt_txt"];               if (list7_period != NULL) WxForecast[7].Period = String(list7_period);
-
-    Serial.print("8,");  //---------------------------
-    JsonObject& list8               = list[8];
-    long list8_dt                   = list8["dt"];
-    JsonObject& list8_main          = list8["main"];
-    WxForecast[8].Temperature       = list8_main["temp"];
-    WxForecast[8].Low               = list8_main["temp_min"];
-    WxForecast[8].High              = list8_main["temp_max"];
-    WxForecast[8].Pressure          = list8_main["pressure"];
-    WxForecast[8].Humidity          = list8_main["humidity"];
-    JsonObject& list8_weather0      = list8["weather"][0];
-    const char * list8_forecast     = list8_weather0["main"];        if (list8_forecast != NULL) WxForecast[8].Forecast0 = String(list8_forecast);
-    const char * list8_description  = list8_weather0["description"]; if (list8_description != NULL) WxForecast[8].Description = String(list8_description);
-    const char * list8_icon         = list8_weather0["icon"];        if (list8_icon != NULL) WxForecast[8].Icon = String(list8_icon);
-    WxForecast[8].Windspeed         = list8["wind"]["speed"];
-    WxForecast[8].Winddir           = list8["wind"]["deg"];
-    WxForecast[8].Rainfall          = list8["rain"]["3h"];
-    const char * list8_period       = list8["dt_txt"];               if (list8_period != NULL) WxForecast[8].Period = String(list8_period);
-
-    Serial.print("9,");  //---------------------------
-    JsonObject& list9               = list[9];
-    long list9_dt                   = list9["dt"];
-    JsonObject& list9_main          = list9["main"];
-    WxForecast[9].Temperature       = list9_main["temp"];
-    WxForecast[9].Low               = list9_main["temp_min"];
-    WxForecast[9].High              = list9_main["temp_max"];
-    WxForecast[9].Pressure          = list9_main["pressure"];
-    WxForecast[9].Humidity          = list9_main["humidity"];
-    JsonObject& list9_weather0      = list9["weather"][0];
-    const char * list9_forecast     = list9_weather0["main"];        if (list9_forecast != NULL) WxForecast[9].Forecast0 = String(list9_forecast);
-    const char * list9_description  = list9_weather0["description"]; if (list9_description != NULL) WxForecast[9].Description = String(list9_description);
-    const char * list9_icon         = list9_weather0["icon"];        if (list9_icon != NULL) WxForecast[9].Icon = String(list9_icon);
-    WxForecast[9].Windspeed         = list9["wind"]["speed"];
-    WxForecast[9].Winddir           = list9["wind"]["deg"];
-    WxForecast[9].Rainfall          = list9["rain"]["3h"];
-    const char * list9_period       = list9["dt_txt"];               if (list9_period != NULL) WxForecast[9].Period = String(list9_period);
-
-    Serial.print("10,");  //---------------------------
-    JsonObject& list10               = list[10];
-    long list10_dt                   = list10["dt"];
-    JsonObject& list10_main          = list10["main"];
-    WxForecast[10].Temperature       = list10_main["temp"];
-    WxForecast[10].Low               = list10_main["temp_min"];
-    WxForecast[10].High              = list10_main["temp_max"];
-    WxForecast[10].Pressure          = list10_main["pressure"];
-    WxForecast[10].Humidity          = list10_main["humidity"];
-    JsonObject& list10_weather0      = list10["weather"][0];
-    const char * list10_forecast     = list10_weather0["main"];        if (list10_forecast != NULL) WxForecast[10].Forecast0 = String(list10_forecast);
-    const char * list10_description  = list10_weather0["description"]; if (list10_description != NULL) WxForecast[10].Description = String(list10_description);
-    const char * list10_icon         = list10_weather0["icon"];        if (list10_icon != NULL) WxForecast[10].Icon = String(list10_icon);
-    WxForecast[10].Windspeed         = list10["wind"]["speed"];
-    WxForecast[10].Winddir           = list10["wind"]["deg"];
-    WxForecast[10].Rainfall          = list10["rain"]["3h"];
-    const char * list10_period       = list10["dt_txt"];               if (list10_period != NULL) WxForecast[10].Period = String(list10_period);
-
-    Serial.print("11,");  //---------------------------
-    JsonObject& list11               = list[11];
-    long list11_dt                   = list11["dt"];
-    JsonObject& list11_main          = list11["main"];
-    WxForecast[11].Temperature       = list11_main["temp"];
-    WxForecast[11].Low               = list11_main["temp_min"];
-    WxForecast[11].High              = list11_main["temp_max"];
-    WxForecast[11].Pressure          = list11_main["pressure"];
-    WxForecast[11].Humidity          = list11_main["humidity"];
-    JsonObject& list11_weather0      = list11["weather"][0];
-    const char * list11_forecast     = list11_weather0["main"];        if (list11_forecast != NULL) WxForecast[11].Forecast0 = String(list11_forecast);
-    const char * list11_description  = list11_weather0["description"]; if (list11_description != NULL) WxForecast[11].Description = String(list11_description);
-    const char * list11_icon         = list11_weather0["icon"];        if (list11_icon != NULL) WxForecast[11].Icon = String(list11_icon);
-    WxForecast[11].Windspeed         = list11["wind"]["speed"];
-    WxForecast[11].Winddir           = list11["wind"]["deg"];
-    WxForecast[11].Rainfall          = list11["rain"]["3h"];
-    const char * list11_period       = list11["dt_txt"];               if (list11_period != NULL) WxForecast[11].Period = String(list11_period);
-
-    Serial.print("12,");  //---------------------------
-    JsonObject& list12               = list[12];
-    long list12_dt                   = list12["dt"];
-    JsonObject& list12_main          = list12["main"];
-    WxForecast[12].Temperature       = list12_main["temp"];
-    WxForecast[12].Low               = list12_main["temp_min"];
-    WxForecast[12].High              = list12_main["temp_max"];
-    WxForecast[12].Pressure          = list12_main["pressure"];
-    WxForecast[12].Humidity          = list12_main["humidity"];
-    JsonObject& list12_weather0      = list12["weather"][0];
-    const char * list12_forecast     = list12_weather0["main"];        if (list12_forecast != NULL) WxForecast[12].Forecast0 = String(list12_forecast);
-    const char * list12_description  = list12_weather0["description"]; if (list12_description != NULL) WxForecast[12].Description = String(list12_description);
-    const char * list12_icon         = list12_weather0["icon"];        if (list12_icon != NULL) WxForecast[12].Icon = String(list12_icon);
-    WxForecast[12].Windspeed         = list12["wind"]["speed"];
-    WxForecast[12].Winddir           = list12["wind"]["deg"];
-    WxForecast[12].Rainfall          = list12["rain"]["3h"];
-    const char * list12_period       = list12["dt_txt"];               if (list12_period != NULL) WxForecast[12].Period = String(list12_period);
-
-    Serial.print("13,");  //---------------------------
-    JsonObject& list13               = list[13];
-    long list13_dt                   = list13["dt"];
-    JsonObject& list13_main          = list13["main"];
-    WxForecast[13].Temperature       = list13_main["temp"];
-    WxForecast[13].Low               = list13_main["temp_min"];
-    WxForecast[13].High              = list13_main["temp_max"];
-    WxForecast[13].Pressure          = list13_main["pressure"];
-    WxForecast[13].Humidity          = list13_main["humidity"];
-    JsonObject& list13_weather0      = list13["weather"][0];
-    const char * list13_forecast     = list13_weather0["main"];        if (list13_forecast != NULL) WxForecast[13].Forecast0 = String(list13_forecast);
-    const char * list13_description  = list13_weather0["description"]; if (list13_description != NULL) WxForecast[13].Description = String(list13_description);
-    const char * list13_icon         = list13_weather0["icon"];        if (list13_icon != NULL) WxForecast[13].Icon = String(list13_icon);
-    WxForecast[13].Windspeed         = list13["wind"]["speed"];
-    WxForecast[13].Winddir           = list13["wind"]["deg"];
-    WxForecast[13].Rainfall          = list13["rain"]["3h"];
-    const char * list13_period       = list13["dt_txt"];               if (list13_period != NULL) WxForecast[13].Period = String(list13_period);
-
-    Serial.print("14,");  //---------------------------
-    JsonObject& list14               = list[14];
-    long list14_dt                   = list14["dt"];
-    JsonObject& list14_main          = list14["main"];
-    WxForecast[14].Temperature       = list14_main["temp"];
-    WxForecast[14].Low               = list14_main["temp_min"];
-    WxForecast[14].High              = list14_main["temp_max"];
-    WxForecast[14].Pressure          = list14_main["pressure"];
-    WxForecast[14].Humidity          = list14_main["humidity"];
-    JsonObject& list14_weather0      = list14["weather"][0];
-    const char * list14_forecast     = list14_weather0["main"];        if (list14_forecast != NULL) WxForecast[14].Forecast0 = String(list14_forecast);
-    const char * list14_description  = list14_weather0["description"]; if (list14_description != NULL) WxForecast[14].Description = String(list14_description);
-    const char * list14_icon         = list14_weather0["icon"];        if (list14_icon != NULL) WxForecast[14].Icon = String(list14_icon);
-    WxForecast[14].Windspeed         = list14["wind"]["speed"];
-    WxForecast[14].Winddir           = list14["wind"]["deg"];
-    WxForecast[14].Rainfall          = list14["rain"]["3h"];
-    const char * list14_period       = list14["dt_txt"];               if (list14_period != NULL) WxForecast[14].Period = String(list14_period);
-
-    Serial.print("15,");  //---------------------------
-    JsonObject& list15               = list[15];
-    long list15_dt                   = list15["dt"];
-    JsonObject& list15_main          = list15["main"];
-    WxForecast[15].Temperature       = list15_main["temp"];
-    WxForecast[15].Low               = list15_main["temp_min"];
-    WxForecast[15].High              = list15_main["temp_max"];
-    WxForecast[15].Pressure          = list15_main["pressure"];
-    WxForecast[15].Humidity          = list15_main["humidity"];
-    JsonObject& list15_weather0      = list15["weather"][0];
-    const char * list15_forecast     = list15_weather0["main"];        if (list15_forecast != NULL) WxForecast[15].Forecast0 = String(list15_forecast);
-    const char * list15_description  = list15_weather0["description"]; if (list15_description != NULL) WxForecast[15].Description = String(list15_description);
-    const char * list15_icon         = list15_weather0["icon"];        if (list15_icon != NULL) WxForecast[15].Icon = String(list15_icon);
-    WxForecast[15].Windspeed         = list15["wind"]["speed"];
-    WxForecast[15].Winddir           = list15["wind"]["deg"];
-    WxForecast[15].Rainfall          = list15["rain"]["3h"];
-    const char * list15_period       = list15["dt_txt"];               if (list15_period != NULL) WxForecast[15].Period = String(list15_period);
-
-    Serial.print("16,");  //---------------------------
-    JsonObject& list16               = list[16];
-    long list16_dt                   = list16["dt"];
-    JsonObject& list16_main          = list16["main"];
-    WxForecast[16].Temperature       = list16_main["temp"];
-    WxForecast[16].Low               = list16_main["temp_min"];
-    WxForecast[16].High              = list16_main["temp_max"];
-    WxForecast[16].Pressure          = list16_main["pressure"];
-    WxForecast[16].Humidity          = list16_main["humidity"];
-    JsonObject& list16_weather0      = list16["weather"][0];
-    const char * list16_forecast     = list16_weather0["main"];        if (list16_forecast != NULL) WxForecast[16].Forecast0 = String(list16_forecast);
-    const char * list16_description  = list16_weather0["description"]; if (list16_description != NULL) WxForecast[16].Description = String(list16_description);
-    const char * list16_icon         = list16_weather0["icon"];        if (list16_icon != NULL) WxForecast[16].Icon = String(list16_icon);
-    WxForecast[16].Windspeed         = list16["wind"]["speed"];
-    WxForecast[16].Winddir           = list16["wind"]["deg"];
-    WxForecast[16].Rainfall          = list16["rain"]["3h"];
-    const char * list16_period       = list16["dt_txt"];               if (list16_period != NULL) WxForecast[16].Period = String(list16_period);
-
-    Serial.print("17,");  //---------------------------
-    JsonObject& list17               = list[17];
-    long list17_dt                   = list17["dt"];
-    JsonObject& list17_main          = list17["main"];
-    WxForecast[17].Temperature       = list17_main["temp"];
-    WxForecast[17].Low               = list17_main["temp_min"];
-    WxForecast[17].High              = list17_main["temp_max"];
-    WxForecast[17].Pressure          = list17_main["pressure"];
-    WxForecast[17].Humidity          = list17_main["humidity"];
-    JsonObject& list17_weather0      = list17["weather"][0];
-    const char * list17_forecast     = list17_weather0["main"];        if (list17_forecast != NULL) WxForecast[17].Forecast0 = String(list17_forecast);
-    const char * list17_description  = list17_weather0["description"]; if (list17_description != NULL) WxForecast[17].Description = String(list17_description);
-    const char * list17_icon         = list17_weather0["icon"];        if (list17_icon != NULL) WxForecast[17].Icon = String(list17_icon);
-    WxForecast[17].Windspeed         = list17["wind"]["speed"];
-    WxForecast[17].Winddir           = list17["wind"]["deg"];
-    WxForecast[17].Rainfall          = list17["rain"]["3h"];
-    const char * list17_period       = list17["dt_txt"];               if (list17_period != NULL) WxForecast[17].Period = String(list17_period);
-
-    Serial.print("18,");  //---------------------------
-    JsonObject& list18               = list[18];
-    long list18_dt                   = list18["dt"];
-    JsonObject& list18_main          = list18["main"];
-    WxForecast[18].Temperature       = list18_main["temp"];
-    WxForecast[18].Low               = list18_main["temp_min"];
-    WxForecast[18].High              = list18_main["temp_max"];
-    WxForecast[18].Pressure          = list18_main["pressure"];
-    WxForecast[18].Humidity          = list18_main["humidity"];
-    JsonObject& list18_weather0      = list18["weather"][0];
-    const char * list18_forecast     = list18_weather0["main"];        if (list18_forecast != NULL) WxForecast[18].Forecast0 = String(list18_forecast);
-    const char * list18_description  = list18_weather0["description"]; if (list18_description != NULL) WxForecast[18].Description = String(list18_description);
-    const char * list18_icon         = list18_weather0["icon"];        if (list18_icon != NULL) WxForecast[18].Icon = String(list18_icon);
-    WxForecast[18].Windspeed         = list18["wind"]["speed"];
-    WxForecast[18].Winddir           = list18["wind"]["deg"];
-    WxForecast[18].Rainfall          = list18["rain"]["3h"];
-    const char * list18_period       = list18["dt_txt"];               if (list18_period != NULL) WxForecast[18].Period = String(list18_period);
-
-    Serial.print("19,");  //---------------------------
-    JsonObject& list19               = list[19];
-    long list19_dt                   = list19["dt"];
-    JsonObject& list19_main          = list19["main"];
-    WxForecast[19].Temperature       = list19_main["temp"];
-    WxForecast[19].Low               = list19_main["temp_min"];
-    WxForecast[19].High              = list19_main["temp_max"];
-    WxForecast[19].Pressure          = list19_main["pressure"];
-    WxForecast[19].Humidity          = list19_main["humidity"];
-    JsonObject& list19_weather0      = list19["weather"][0];
-    const char * list19_forecast     = list19_weather0["main"];        if (list19_forecast != NULL) WxForecast[19].Forecast0 = String(list19_forecast);
-    const char * list19_description  = list19_weather0["description"]; if (list19_description != NULL) WxForecast[19].Description = String(list19_description);
-    const char * list19_icon         = list19_weather0["icon"];        if (list19_icon != NULL) WxForecast[19].Icon = String(list19_icon);
-    WxForecast[19].Windspeed         = list19["wind"]["speed"];
-    WxForecast[19].Winddir           = list19["wind"]["deg"];
-    WxForecast[19].Rainfall          = list19["rain"]["3h"];
-    const char * list19_period       = list19["dt_txt"];               if (list19_period != NULL) WxForecast[19].Period = String(list19_period);
-
-    Serial.print("20,");  //---------------------------
-    JsonObject& list20               = list[20];
-    long list20_dt                   = list20["dt"];
-    JsonObject& list20_main          = list20["main"];
-    WxForecast[20].Temperature       = list20_main["temp"];
-    WxForecast[20].Low               = list20_main["temp_min"];
-    WxForecast[20].High              = list20_main["temp_max"];
-    WxForecast[20].Pressure          = list20_main["pressure"];
-    WxForecast[20].Humidity          = list20_main["humidity"];
-    JsonObject& list20_weather0      = list20["weather"][0];
-    const char * list20_forecast     = list20_weather0["main"];        if (list20_forecast != NULL) WxForecast[20].Forecast0 = String(list20_forecast);
-    const char * list20_description  = list20_weather0["description"]; if (list20_description != NULL) WxForecast[20].Description = String(list20_description);
-    const char * list20_icon         = list20_weather0["icon"];        if (list20_icon != NULL) WxForecast[20].Icon = String(list20_icon);
-    WxForecast[20].Windspeed         = list20["wind"]["speed"];
-    WxForecast[20].Winddir           = list20["wind"]["deg"];
-    WxForecast[20].Rainfall          = list20["rain"]["3h"];
-    const char * list20_period       = list20["dt_txt"];               if (list20_period != NULL) WxForecast[20].Period = String(list20_period);
-
-    Serial.print("21,");  //---------------------------
-    JsonObject& list21               = list[21];
-    long list21_dt                   = list21["dt"];
-    JsonObject& list21_main          = list21["main"];
-    WxForecast[21].Temperature       = list21_main["temp"];
-    WxForecast[21].Low               = list21_main["temp_min"];
-    WxForecast[21].High              = list21_main["temp_max"];
-    WxForecast[21].Pressure          = list21_main["pressure"];
-    WxForecast[21].Humidity          = list21_main["humidity"];
-    JsonObject& list21_weather0      = list21["weather"][0];
-    const char * list21_forecast     = list21_weather0["main"];        if (list21_forecast != NULL) WxForecast[21].Forecast0 = String(list21_forecast);
-    const char * list21_description  = list21_weather0["description"]; if (list21_description != NULL) WxForecast[21].Description = String(list21_description);
-    const char * list21_icon         = list21_weather0["icon"];        if (list21_icon != NULL) WxForecast[21].Icon = String(list21_icon);
-    WxForecast[21].Windspeed         = list21["wind"]["speed"];
-    WxForecast[21].Winddir           = list21["wind"]["deg"];
-    WxForecast[21].Rainfall          = list21["rain"]["3h"];
-    const char * list21_period       = list21["dt_txt"];               if (list21_period != NULL) WxForecast[21].Period = String(list21_period);
-
-    Serial.print("22,");  //---------------------------
-    JsonObject& list22               = list[22];
-    long list22_dt                   = list22["dt"];
-    JsonObject& list22_main          = list22["main"];
-    WxForecast[22].Temperature       = list22_main["temp"];
-    WxForecast[22].Low               = list22_main["temp_min"];
-    WxForecast[22].High              = list22_main["temp_max"];
-    WxForecast[22].Pressure          = list22_main["pressure"];
-    WxForecast[22].Humidity          = list22_main["humidity"];
-    JsonObject& list22_weather0      = list22["weather"][0];
-    const char * list22_forecast     = list22_weather0["main"];        if (list22_forecast != NULL) WxForecast[22].Forecast0 = String(list22_forecast);
-    const char * list22_description  = list22_weather0["description"]; if (list22_description != NULL) WxForecast[22].Description = String(list22_description);
-    const char * list22_icon         = list22_weather0["icon"];        if (list22_icon != NULL) WxForecast[22].Icon = String(list22_icon);
-    WxForecast[22].Windspeed         = list22["wind"]["speed"];
-    WxForecast[22].Winddir           = list22["wind"]["deg"];
-    WxForecast[22].Rainfall          = list22["rain"]["3h"];
-    const char * list22_period       = list22["dt_txt"];               if (list22_period != NULL) WxForecast[22].Period = String(list22_period);
-
-    Serial.print("23 ");  //---------------------------
-    JsonObject& list23               = list[23];
-    long list23_dt                   = list23["dt"];
-    JsonObject& list23_main          = list23["main"];
-    WxForecast[23].Temperature       = list23_main["temp"];
-    WxForecast[23].Low               = list23_main["temp_min"];
-    WxForecast[23].High              = list23_main["temp_max"];
-    WxForecast[23].Pressure          = list23_main["pressure"];
-    WxForecast[23].Humidity          = list23_main["humidity"];
-    JsonObject& list23_weather0      = list23["weather"][0];
-    const char * list23_forecast     = list23_weather0["main"];        if (list23_forecast != NULL) WxForecast[23].Forecast0 = String(list23_forecast);
-    const char * list23_description  = list23_weather0["description"]; if (list23_description != NULL) WxForecast[23].Description = String(list23_description);
-    const char * list23_icon         = list23_weather0["icon"];        if (list23_icon != NULL) WxForecast[23].Icon = String(list23_icon);
-    WxForecast[23].Windspeed         = list23["wind"]["speed"];
-    WxForecast[23].Winddir           = list23["wind"]["deg"];
-    WxForecast[23].Rainfall          = list23["rain"]["3h"];
-    const char * list23_period       = list23["dt_txt"];               if (list23_period != NULL) WxForecast[23].Period = String(list23_period);
-
-    Serial.println(esp_get_free_heap_size());
-
-    for (int i = 0; i < 24; i++){
-      Serial.println("\nPeriod-"+String(i));
-      Serial.println(WxForecast[i].Temperature);
-      Serial.println(WxForecast[i].Low);
-      Serial.println(WxForecast[i].High);
-      Serial.println(WxForecast[i].Pressure);
-      Serial.println(WxForecast[i].Humidity);
-      Serial.println(WxForecast[i].Forecast0);
-      Serial.println(WxForecast[i].Forecast1);
-      Serial.println(WxForecast[i].Forecast2);
-      Serial.println(WxForecast[i].Icon);
-      Serial.println(WxForecast[i].Windspeed);
-      Serial.println(WxForecast[i].Winddir);
-      Serial.println(WxForecast[i].Rainfall);
-      Serial.println(WxForecast[i].Period);
-    }    
-
+    float message                   = root["message"];
+    int cnt                         = root["cnt"];
+    JsonArray list                  = root["list"];
+    Serial.print(F("\nReceiving Forecast period - ")); //------------------------------------------------
+    for (byte r = 0; r < max_readings; r++) {
+      Serial.println("\nPeriod-" + String(r) + "--------------");
+      WxForecast[r].Dt                = list[r]["dt"].as<char*>();
+      WxForecast[r].Temperature       = list[r]["main"]["temp"].as<float>();              Serial.println(WxForecast[r].Temperature);
+      WxForecast[r].Low               = list[r]["main"]["temp_min"].as<float>();          Serial.println(WxForecast[r].Low);
+      WxForecast[r].High              = list[r]["main"]["temp_max"].as<float>();          Serial.println(WxForecast[r].High);
+      WxForecast[r].Pressure          = list[r]["main"]["pressure"].as<float>();          Serial.println(WxForecast[r].Pressure);
+      WxForecast[r].Humidity          = list[r]["main"]["humidity"].as<float>();          Serial.println(WxForecast[r].Humidity);
+      WxForecast[r].Forecast0         = list[r]["weather"][0]["main"].as<char*>();        Serial.println(WxForecast[r].Forecast0);
+      WxForecast[r].Forecast0         = list[r]["weather"][1]["main"].as<char*>();        Serial.println(WxForecast[r].Forecast1);
+      WxForecast[r].Forecast0         = list[r]["weather"][2]["main"].as<char*>();        Serial.println(WxForecast[r].Forecast2);
+      WxForecast[r].Description       = list[r]["weather"][0]["description"].as<char*>(); Serial.println(WxForecast[r].Description);
+      WxForecast[r].Icon              = list[r]["weather"][0]["icon"].as<char*>();        Serial.println(WxForecast[r].Icon);
+      WxForecast[r].Cloudcover        = list[r]["clouds"]["all"].as<int>();               Serial.println(WxForecast[0].Cloudcover); // in % of cloud cover
+      WxForecast[r].Windspeed         = list[r]["wind"]["speed"].as<float>();             Serial.println(WxForecast[r].Windspeed);
+      WxForecast[r].Winddir           = list[r]["wind"]["deg"].as<float>();               Serial.println(WxForecast[r].Winddir);
+      WxForecast[r].Rainfall          = list[r]["rain"]["3h"].as<float>();                Serial.println(WxForecast[r].Rainfall);
+      WxForecast[r].Snowfall          = list[r]["snow"]["3h"].as<float>();                Serial.println(WxForecast[r].Snowfall);
+      WxForecast[r].Period            = list[r]["dt_txt"].as<char*>();                    Serial.println(WxForecast[r].Period);
+    }
     //------------------------------------------
-    float pressure_trend = WxForecast[1].Pressure - WxForecast[5].Pressure; // Measure pressure slope between ~now and later
+    float pressure_trend = WxForecast[0].Pressure - WxForecast[2].Pressure; // Measure pressure slope between ~now and later
     pressure_trend = ((int)(pressure_trend * 10)) / 10.0; // Remove any small variations less than 0.1
     WxConditions[0].Trend = "0";
     if (pressure_trend > 0)  WxConditions[0].Trend = "+";
