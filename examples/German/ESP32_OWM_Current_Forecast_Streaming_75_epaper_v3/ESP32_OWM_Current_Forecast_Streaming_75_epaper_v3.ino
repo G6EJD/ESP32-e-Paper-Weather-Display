@@ -48,8 +48,6 @@ static const uint8_t EPD_MOSI = 23; // blau
 EPD_WaveShare75 epd(EPD_SS, EPD_RST, EPD_DC, EPD_BUSY);
 MiniGrafx gfx = MiniGrafx(&epd, BITS_PER_PIXEL, palette);
 
-uint8_t BUILTIN_LED = 2; 
-
 //################  VERSION  ##########################
 String version = "1.DE";        // Version of this program
 //################ VARIABLES ###########################
