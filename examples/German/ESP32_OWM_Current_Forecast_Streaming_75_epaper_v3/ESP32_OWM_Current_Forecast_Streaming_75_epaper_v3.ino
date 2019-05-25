@@ -18,7 +18,7 @@
   See more at http://www.dsbird.org.uk
 */
 
-#include "netParameter.h"
+#include "owm_credentials.h"  // See 'owm_credentials' tab and enter your OWM API key and set the Wifi SSID and PASSWORD
 #include <ArduinoJson.h>       // https://github.com/bblanchon/ArduinoJson NOTE: *** MUST BE Version-6 or above ***
 #include <WiFi.h>              // Built-in
 #include "time.h"              // Built-in
@@ -47,8 +47,6 @@ static const uint8_t EPD_MOSI = 23; // blau
 
 EPD_WaveShare75 epd(EPD_SS, EPD_RST, EPD_DC, EPD_BUSY);
 MiniGrafx gfx = MiniGrafx(&epd, BITS_PER_PIXEL, palette);
-
-uint8_t BUILTIN_LED = 2; 
 
 //################  VERSION  ##########################
 String version = "1.DE";        // Version of this program
@@ -661,13 +659,13 @@ void Convert_Readings_to_Imperial() {
 //#########################################################################################
 int StartWiFi() {
   int connAttempts = 0;
-  Serial.print(F("\r\nConnecting to: ")); Serial.println(String(ssid));
+  Serial.print(F("\r\nConnecting to: ")); Serial.println(String(ssid1));
   WiFi.disconnect();
   WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, pwd);
+  WiFi.begin(ssid1, password1);
   while (WiFi.status() != WL_CONNECTED ) {
     delay(500); Serial.print(".");
-    if (connAttempts > 30) {
+    if (connAttempts > 20) {
       WiFi.disconnect();
       begin_sleep();
     }
