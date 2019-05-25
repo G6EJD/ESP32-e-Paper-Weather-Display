@@ -18,7 +18,7 @@
   See more at http://www.dsbird.org.uk
 */
 
-#include "netParameter.h"
+#include "owm_credentials.h"  // See 'owm_credentials' tab and enter your OWM API key and set the Wifi SSID and PASSWORD
 #include <ArduinoJson.h>       // https://github.com/bblanchon/ArduinoJson NOTE: *** MUST BE Version-6 or above ***
 #include <WiFi.h>              // Built-in
 #include "time.h"              // Built-in
