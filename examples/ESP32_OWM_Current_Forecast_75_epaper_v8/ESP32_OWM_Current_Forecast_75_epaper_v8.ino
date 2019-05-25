@@ -21,7 +21,7 @@
 #include <ArduinoJson.h>       // https://github.com/bblanchon/ArduinoJson this version requires v 6 or above
 #include <WiFi.h>              // Built-in
 #include "time.h"              // Built-in
-#include <SPI.h>               // Built-in 
+#include <SPI.h>               // Built-in
 #include "EPD_WaveShare.h"     // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
 #include "EPD_WaveShare_75.h"  // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
 #include "MiniGrafx.h"         // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx

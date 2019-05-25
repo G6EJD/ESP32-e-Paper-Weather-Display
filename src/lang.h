@@ -28,9 +28,12 @@ const String TXT_EQUAL_SNOW         = " = Snow";
 
 //Sun
 const String TXT_SUNRISE  = "Sunrise";
+const int TXT_X_SUNSET = 0;
 const String TXT_SUNSET   = "Sunset";
 
 //Moon
+const String TXT_MOON = "Moon";
+const String TXT_PHASE = "phase: ";
 const String TXT_MOON_NEW             = "New";
 const String TXT_MOON_WAXING_CRESCENT = "Waxing Crescent";
 const String TXT_MOON_FIRST_QUARTER   = "First Quarter";
@@ -42,6 +45,7 @@ const String TXT_MOON_WANING_CRESCENT = "Waning Crescent";
 
 //Power / WiFi
 const String TXT_POWER  = "Power";
+const int TXT_X_POWER = 42;
 const String TXT_WIFI   = "WiFi";
 const char* TXT_UPDATED = "Updated:";
 
