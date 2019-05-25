@@ -661,13 +661,13 @@ void Convert_Readings_to_Imperial() {
 //#########################################################################################
 int StartWiFi() {
   int connAttempts = 0;
-  Serial.print(F("\r\nConnecting to: ")); Serial.println(String(ssid));
+  Serial.print(F("\r\nConnecting to: ")); Serial.println(String(ssid1));
   WiFi.disconnect();
   WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, pwd);
+  WiFi.begin(ssid1, password1);
   while (WiFi.status() != WL_CONNECTED ) {
     delay(500); Serial.print(".");
-    if (connAttempts > 30) {
+    if (connAttempts > 20) {
       WiFi.disconnect();
       begin_sleep();
     }
