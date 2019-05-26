@@ -21,12 +21,13 @@
 #include <ArduinoJson.h>       // https://github.com/bblanchon/ArduinoJson needs version v6 or above
 #include <WiFi.h>              // Built-in
 #include "time.h"              // Built-in
-#include <SPI.h>               // Built-in 
+#include <SPI.h>               // Built-in
 #define ENABLE_GxEPD2_display 0
 #include <GxEPD2_BW.h>
 #include <GxEPD2_3C.h>
 #include <Fonts/FreeMonoBold12pt7b.h>
 #include "epaper_fonts.h"
+#include <forecast_record.h>
 #include "lang.h"                // Localisation (english)
 //#include "lang_fr.h"           // Localisation (French)
 //#include "lang_gr.h"           // Localisation (German)
@@ -62,35 +63,6 @@ int    wifi_signal, wifisection, displaysection, MoonDay, MoonMonth, MoonYear, s
 int    Sunrise, Sunset;
 
 //################ PROGRAM VARIABLES and OBJECTS ################
-
-typedef struct { // For current Day and Day 1, 2, 3, etc
-  String   Dt;
-  String   Period;
-  String   Icon;
-  String   Trend;
-  String   Main0;
-  String   Forecast0;
-  String   Forecast1;
-  String   Forecast2;
-  String   Description;
-  String   Time;
-  String   Country;
-  float    lat;
-  float    lon;
-  float    Temperature;
-  float    Humidity;
-  float    High;
-  float    Low;
-  float    Winddir;
-  float    Windspeed;
-  float    Rainfall;
-  float    Snowfall;
-  float    Pressure;
-  int      Cloudcover;
-  int      Visibility;
-  int      Sunrise;
-  int      Sunset;
-} Forecast_record_type;
 
 #define max_readings 24
 
@@ -198,7 +170,7 @@ void Display_Temperature_Section(int x, int y) {
   drawString(x, y + 20, String(WxConditions[0].Temperature, 1),CENTER); // Show current Temperature
   display.setFont(&DejaVu_Sans_Bold_11);
   drawString(x + String(WxConditions[0].Temperature, 1).length() * 19 / 2, y + 25, "*",LEFT); // Add in smaller Temperature unit in this font * is °
-  drawString(x + 36, y + 66, Units == "M" ? "C" : "F",LEFT); 
+  drawString(x + 36, y + 66, Units == "M" ? "C" : "F",LEFT);
   display.drawRect(x + 32, y + 60, 17, 19,GxEPD_BLACK);
 }
 //#########################################################################################
@@ -730,7 +702,7 @@ void UpdateLocalTime() {
     if (strcmp(month_lang, "Oct") == 0) strcpy(month_lang, TXT_OCTOBER);
     if (strcmp(month_lang, "Nov") == 0) strcpy(month_lang, TXT_NOVEMBER);
     if (strcmp(month_lang, "Dec") == 0) strcpy(month_lang, TXT_DECEMBER);
-    
+
     strftime(day_number, 30, "%d", &timeinfo);
     strftime(day_year, 30, "%y", &timeinfo);           // Displays: Sat 24/Jun/17
     sprintf(day_output, "%s %s-%s-%s", day_lang, day_number, month_lang, day_year);
@@ -1096,8 +1068,8 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
     }
     else {
       if (Y1Min < 1 && Y1Max < 10) drawString(x_pos - 2, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1),RIGHT);
-      else 
-      drawString(x_pos - 2, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 0),RIGHT); 
+      else
+      drawString(x_pos - 2, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 0),RIGHT);
     }
   }
   for (int i = 0; i <= 2; i++) {
