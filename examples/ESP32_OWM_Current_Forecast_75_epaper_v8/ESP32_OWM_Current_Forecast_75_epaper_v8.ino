@@ -27,6 +27,7 @@
 #include "MiniGrafx.h"         // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
 #include "DisplayDriver.h"     // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
 #include "ArialRounded.h"      // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
+#include <forecast_record.h>
 #include "lang.h"              // Localisation (english)
 //#include "lang_fr.h"           // Localisation (french)
 
@@ -64,35 +65,6 @@ int    wifi_signal, wifisection, displaysection, MoonDay, MoonMonth, MoonYear, s
 int    Sunrise, Sunset;
 
 //################ PROGRAM VARIABLES and OBJECTS ################
-
-typedef struct { // For current Day and Day 1, 2, 3, etc
-  String   Dt;
-  String   Period;
-  String   Icon;
-  String   Trend;
-  String   Main0;
-  String   Forecast0;
-  String   Forecast1;
-  String   Forecast2;
-  String   Description;
-  String   Time;
-  String   Country;
-  float    lat;
-  float    lon;
-  float    Temperature;
-  float    Humidity;
-  float    High;
-  float    Low;
-  float    Winddir;
-  float    Windspeed;
-  float    Rainfall;
-  float    Snowfall;
-  float    Pressure;
-  int      Cloudcover;
-  int      Visibility;
-  int      Sunrise;
-  int      Sunset;
-} Forecast_record_type;
 
 #define max_readings 24
 
