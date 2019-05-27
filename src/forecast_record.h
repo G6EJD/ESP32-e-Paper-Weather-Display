@@ -1,3 +1,8 @@
+#ifndef FORECAST_RECORD_H_
+#define FORECAST_RECORD_H_
+
+#include <Arduino.h>
+
 typedef struct { // For current Day and Day 1, 2, 3, etc
   String   Dt;
   String   Period;
@@ -26,3 +31,5 @@ typedef struct { // For current Day and Day 1, 2, 3, etc
   int      Sunrise;
   int      Sunset;
 } Forecast_record_type;
+
+#endif /* ifndef FORECAST_RECORD_H_ */
