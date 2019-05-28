@@ -237,20 +237,6 @@ void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
   gfx.drawCircle(x + diameter - 1, y + diameter, diameter / 2 + 1);
 }
 //#########################################################################################
-int JulianDate(int d, int m, int y) {
-  int mm, yy, k1, k2, k3, j;
-  yy = y - (int)((12 - m) / 10);
-  mm = m + 9;
-  if (mm >= 12) mm = mm - 12;
-  k1 = (int)(365.25 * (yy + 4712));
-  k2 = (int)(30.6001 * mm + 0.5);
-  k3 = (int)((int)((yy / 100) + 49) * 0.75) - 38;
-  // 'j' for dates in Julian calendar:
-  j = k1 + k2 + d + 59+1;
-  if (j > 2299160) j = j - k3; // 'j' is the Julian date at 12h UT (Universal Time) For Gregorian calendar:
-  return j;
-}
-//#########################################################################################
 String MoonPhase(int d, int m, int y, String hemisphere) {
   int c, e;
   double jd;
