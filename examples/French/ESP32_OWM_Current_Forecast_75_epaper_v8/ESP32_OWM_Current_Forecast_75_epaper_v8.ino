@@ -551,12 +551,6 @@ bool obtain_wx_data(String RequestType) {
   return true;
 }
 //#########################################################################################
-void Convert_Readings_to_Imperial() {
-  WxConditions[0].Pressure = WxConditions[0].Pressure * 0.02953;   // hPa to ins
-  WxForecast[1].Rainfall   = WxForecast[1].Rainfall   * 0.0393701; // mm to inches of rainfall
-  WxForecast[1].Snowfall   = WxForecast[1].Snowfall   * 0.0393701; // mm to inches of snowfall
-}
-//#########################################################################################
 int StartWiFi() {
   int connAttempts = 0;
   Serial.print(F("\r\nConnecting to: ")); Serial.println(String(ssid1));
