@@ -508,28 +508,6 @@ void UpdateLocalTime(){
   time_str     = output;
 }
 //#########################################################################################
-String ConvertUnixTime(int unix_time){  
-  struct tm *now_tm;  
-  int hour, min, second, day, month, year; 
-  // timeval tv = {unix_time,0}; 
-  time_t tm = unix_time; 
-  now_tm = localtime(&tm);  
-  hour   = now_tm->tm_hour;  
-  min    = now_tm->tm_min;   
-  second = now_tm->tm_sec; 
-  //wday   = now_tm->tm_wday;
-  day    = now_tm->tm_mday;  
-  month  = now_tm->tm_mon+1;  
-  year   = 1900 + now_tm->tm_year; // To get just YY information
-  MoonDay   = day;
-  MoonMonth = month;
-  MoonYear  = year;
-  time_str  =  (hour<10?"0"+String(hour):String(hour))+":"+(min<10?"0"+String(min):String(min))+":"+(second<10?"0"+String(second):String(second))+" ";  
-  time_str += (day<10?"0"+String(day):String(day))+"/"+ (month<10?"0"+String(month):String(month))+"/"+(year<10?"0"+String(year):String(year));      // HH:MM:SS  05/07/17  
-  //Serial.println(time_str);  
-  return time_str;  
-}  
-//#########################################################################################
 // Symbols are drawn on a relative 10x10grid and 1 scale unit = 1 drawing unit
 void addcloud(int x, int y, int scale, int linesize) {
   //Draw cloud outer
