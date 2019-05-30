@@ -22,3 +22,11 @@ int JulianDate(int d, int m, int y) {
   if (j > 2299160) j = j - k3; // 'j' is the Julian date at 12h UT (Universal Time) For Gregorian calendar:
   return j;
 }
+
+float SumOfPrecip(float DataArray[], int readings) {
+  float sum = 0;
+  for (int i = 0; i <= readings; i++) {
+    sum += DataArray[i];
+  }
+  return sum;
+}

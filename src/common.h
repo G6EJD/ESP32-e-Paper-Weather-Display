@@ -125,12 +125,4 @@ String ConvertUnixTime(int unix_time) {
   //Serial.println(time_str);
   return time_str;
 }
-//#########################################################################################
-float SumOfPrecip(float DataArray[], int readings) {
-  float sum = 0;
-  for (int i = 0; i <= readings; i++) {
-    sum += DataArray[i];
-  }
-  return sum;
-}
 #endif /* ifndef COMMON_H_ */
