@@ -58,7 +58,7 @@ bool LargeIcon =  true;
 bool SmallIcon =  false;
 #define Large  14   // For icon drawing
 #define Small  4    // For icon drawing
-String time_str, date_str, rxtext; // strings to hold time and received weather data;
+String time_str, date_str; // strings to hold time and received weather data;
 int    wifi_signal, wifisection, displaysection, MoonDay, MoonMonth, MoonYear, start_time, wakeup_hour;
 int    Sunrise, Sunset;
 
@@ -442,7 +442,6 @@ void Display_Conditions_Section(int x, int y, String IconName, bool IconSize) {
 }
 //#########################################################################################
 bool obtain_wx_data(String RequestType) {
-  rxtext = "";
   String units = (Units == "M" ? "metric" : "imperial");
   client.stop(); // close connection before sending a new request
   if (client.connect(server, 80)) { // if the connection succeeds
@@ -464,38 +463,15 @@ bool obtain_wx_data(String RequestType) {
         return false;
       }
     }
-    char c = 0;
-    bool startJson = false;
-    int jsonend = 0;
-    while (client.available()) {
-      c = client.read();
-      // JSON formats contain an equal number of open and close curly brackets, so check that JSON is received correctly by counting open and close brackets
-      if (c == '{') {
-        startJson = true; // set true to indicate JSON message has started
-        jsonend++;
-      }
-      if (c == '}') {
-        jsonend--;
-      }
-      if (startJson == true) {
-        rxtext += c;  // Add in the received character
-      }
-      // if jsonend = 0 then we have have received equal number of curly braces
-      if (jsonend == 0 && startJson == true) {
-        Serial.println(F("Received OK..."));
-        //Serial.println(rxtext);
-        if (!DecodeWeather(rxtext, RequestType)) return false;
-        client.stop();
-        return true;
-      }
-    }
+    if (!DecodeWeather(client, RequestType)) return false;
+    client.stop();
+    return true;
   }
   else {
     // if no connection was made:
     Serial.println(F("connection failed"));
     return false;
   }
-  rxtext = "";
   return true;
 }
 //#########################################################################################
