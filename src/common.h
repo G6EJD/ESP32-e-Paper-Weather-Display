@@ -5,12 +5,13 @@
 #include <ArduinoJson.h>
 
 #include "forecast_record.h"
+#include "common_functions.h"
 
 //#########################################################################################
 void Convert_Readings_to_Imperial() {
-  WxConditions[0].Pressure = WxConditions[0].Pressure * 0.02953;   // hPa to ins
-  WxForecast[1].Rainfall   = WxForecast[1].Rainfall   * 0.0393701; // mm to inches of rainfall
-  WxForecast[1].Snowfall   = WxForecast[1].Snowfall   * 0.0393701; // mm to inches of snowfall
+  WxConditions[0].Pressure = hPa_to_inHg(WxConditions[0].Pressure);
+  WxForecast[1].Rainfall   = mm_to_inches(WxForecast[1].Rainfall);
+  WxForecast[1].Snowfall   = mm_to_inches(WxForecast[1].Snowfall);
 }
 
 //#########################################################################################
