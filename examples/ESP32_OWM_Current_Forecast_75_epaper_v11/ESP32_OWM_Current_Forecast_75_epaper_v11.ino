@@ -217,14 +217,6 @@ void DisplayForecastSection(int x, int y) {
   else DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_SNOWFALL_MM : TXT_SNOWFALL_IN, snow_readings, max_readings, autoscale_on, barchart_on);
 }
 //#########################################################################################
-float SumOfPrecip(float DataArray[], int readings) {
-  float sum = 0;
-  for (int i = 0; i <= readings; i++) {
-    sum += DataArray[i];
-  }
-  return sum;
-}
-//#########################################################################################
 void DisplayForecastTextSection(int x, int y) {
   WxConditions[0].Main0.toLowerCase();
   WxConditions[0].Forecast0.toLowerCase();
