@@ -217,14 +217,6 @@ void Display_Forecast_Section(int x, int y) {
   else DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_SNOWFALL_MM : TXT_SNOWFALL_IN, snow_readings, max_readings, autoscale_on, barchart_on);
 }
 //#########################################################################################
-float SumOfPrecip(float DataArray[], int readings) {
-  float sum = 0;
-  for (int i = 0; i <= readings; i++) {
-    sum += DataArray[i];
-  }
-  return sum;
-}
-//#########################################################################################
 void Display_ForecastText_Section(int x, int y) {
   WxConditions[0].Main0.toLowerCase();
   WxConditions[0].Forecast0.toLowerCase();
@@ -386,20 +378,6 @@ void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
     display.drawLine(pW3x, pW3y, pW4x, pW4y,GxEPD_WHITE);
   }
   display.drawCircle(x + diameter - 1, y + diameter, diameter / 2 + 1,GxEPD_BLACK);
-}
-//#########################################################################################
-int JulianDate(int d, int m, int y) {
-  int mm, yy, k1, k2, k3, j;
-  yy = y - (int)((12 - m) / 10);
-  mm = m + 9;
-  if (mm >= 12) mm = mm - 12;
-  k1 = (int)(365.25 * (yy + 4712));
-  k2 = (int)(30.6001 * mm + 0.5);
-  k3 = (int)((int)((yy / 100) + 49) * 0.75) - 38;
-  // 'j' for dates in Julian calendar:
-  j = k1 + k2 + d + 59 + 1;
-  if (j > 2299160) j = j - k3; // 'j' is the Julian date at 12h UT (Universal Time) For Gregorian calendar:
-  return j;
 }
 //#########################################################################################
 String MoonPhase(int d, int m, int y, String hemisphere) {
@@ -632,38 +610,6 @@ void UpdateLocalTime() {
   }
   date_str = day_output;
   time_str = output;
-}
-//#########################################################################################
-String ConvertUnixTime(int unix_time) {
-  struct tm *now_tm;
-  int hour, min, second, day, month, year, wday;
-  // timeval tv = {unix_time,0};
-  time_t tm = unix_time;
-  now_tm = localtime(&tm);
-  hour   = now_tm->tm_hour;
-  min    = now_tm->tm_min;
-  second = now_tm->tm_sec;
-  wday   = now_tm->tm_wday;
-  day    = now_tm->tm_mday;
-  month  = now_tm->tm_mon + 1;
-  year   = 1900 + now_tm->tm_year; // To get just YY information
-  MoonDay   = day;
-  MoonMonth = month;
-  MoonYear  = year;
-  if (Units == "M") {
-    time_str =  (hour < 10 ? "0" + String(hour) : String(hour)) + ":" + (min < 10 ? "0" + String(min) : String(min)) + ":" + "  ";  // HH:MM   05/07/17
-    time_str += (day < 10 ? "0" + String(day) : String(day)) + "/" + (month < 10 ? "0" + String(month) : String(month)) + "/" + (year < 10 ? "0" + String(year) : String(year)); // HH:MM   05/07/17
-  }
-  else {
-    String ampm = "am";
-    if (hour > 11) ampm = "pm";
-    hour = hour % 12; if (hour == 0) hour = 12;
-    time_str =  (hour % 12 < 10 ? "0" + String(hour % 12) : String(hour % 12)) + ":" + (min < 10 ? "0" + String(min) : String(min)) + ampm + " ";      // HH:MMam 07/05/17
-    time_str += (month < 10 ? "0" + String(month) : String(month)) + "/" + (day < 10 ? "0" + String(day) : String(day)) + "/" + "/" + (year < 10 ? "0" + String(year) : String(year)); // HH:MMpm 07/05/17
-  }
-  // Returns either '21:12  ' or ' 09:12pm' depending on Units mode
-  //Serial.println(time_str);
-  return time_str;
 }
 //#########################################################################################
 void DrawBattery(int x, int y) {

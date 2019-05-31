@@ -237,20 +237,6 @@ void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
   gfx.drawCircle(x + diameter - 1, y + diameter, diameter / 2 + 1);
 }
 //#########################################################################################
-int JulianDate(int d, int m, int y) {
-  int mm, yy, k1, k2, k3, j;
-  yy = y - (int)((12 - m) / 10);
-  mm = m + 9;
-  if (mm >= 12) mm = mm - 12;
-  k1 = (int)(365.25 * (yy + 4712));
-  k2 = (int)(30.6001 * mm + 0.5);
-  k3 = (int)((int)((yy / 100) + 49) * 0.75) - 38;
-  // 'j' for dates in Julian calendar:
-  j = k1 + k2 + d + 59+1;
-  if (j > 2299160) j = j - k3; // 'j' is the Julian date at 12h UT (Universal Time) For Gregorian calendar:
-  return j;
-}
-//#########################################################################################
 String MoonPhase(int d, int m, int y, String hemisphere) {
   int c, e;
   double jd;
@@ -507,28 +493,6 @@ void UpdateLocalTime(){
   Day_time_str = day_output;
   time_str     = output;
 }
-//#########################################################################################
-String ConvertUnixTime(int unix_time){  
-  struct tm *now_tm;  
-  int hour, min, second, day, month, year; 
-  // timeval tv = {unix_time,0}; 
-  time_t tm = unix_time; 
-  now_tm = localtime(&tm);  
-  hour   = now_tm->tm_hour;  
-  min    = now_tm->tm_min;   
-  second = now_tm->tm_sec; 
-  //wday   = now_tm->tm_wday;
-  day    = now_tm->tm_mday;  
-  month  = now_tm->tm_mon+1;  
-  year   = 1900 + now_tm->tm_year; // To get just YY information
-  MoonDay   = day;
-  MoonMonth = month;
-  MoonYear  = year;
-  time_str  =  (hour<10?"0"+String(hour):String(hour))+":"+(min<10?"0"+String(min):String(min))+":"+(second<10?"0"+String(second):String(second))+" ";  
-  time_str += (day<10?"0"+String(day):String(day))+"/"+ (month<10?"0"+String(month):String(month))+"/"+(year<10?"0"+String(year):String(year));      // HH:MM:SS  05/07/17  
-  //Serial.println(time_str);  
-  return time_str;  
-}  
 //#########################################################################################
 // Symbols are drawn on a relative 10x10grid and 1 scale unit = 1 drawing unit
 void addcloud(int x, int y, int scale, int linesize) {
