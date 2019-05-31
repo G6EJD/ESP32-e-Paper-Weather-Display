@@ -124,4 +124,39 @@ String ConvertUnixTime(int unix_time) {
   //Serial.println(time_str);
   return time_str;
 }
+
+//#########################################################################################
+bool obtain_wx_data(WiFiClient& client, String RequestType) {
+  String units = (Units == "M" ? "metric" : "imperial");
+  client.stop(); // close connection before sending a new request
+  if (client.connect(server, 80)) { // if the connection succeeds
+    // Serial.println("connecting...");
+    // send the HTTP PUT request:
+    if (RequestType == "weather")
+      client.println("GET /data/2.5/" + RequestType + "?q=" + City + "," + Country + "&APPID=" + apikey + "&mode=json&units=" + units + "&lang=" + Language + " HTTP/1.0");
+    else
+      client.println("GET /data/2.5/" + RequestType + "?q=" + City + "," + Country + "&APPID=" + apikey + "&mode=json&units=" + units + "&lang=" + Language + "&cnt=24 HTTP/1.0");
+    client.println("Host: api.openweathermap.org");
+    client.println("User-Agent: ESP OWM Receiver/1.1");
+    client.println("Connection: close");
+    client.println();
+    unsigned long timeout = millis();
+    while (client.available() == 0) {
+      if (millis() - timeout > 5000) {
+        Serial.println(F(">>> Client Timeout !"));
+        client.stop();
+        return false;
+      }
+    }
+    if (!DecodeWeather(client, RequestType)) return false;
+    client.stop();
+    return true;
+  }
+  else {
+    // if no connection was made:
+    Serial.println(F("connection failed"));
+    return false;
+  }
+  return true;
+}
 #endif /* ifndef COMMON_H_ */
