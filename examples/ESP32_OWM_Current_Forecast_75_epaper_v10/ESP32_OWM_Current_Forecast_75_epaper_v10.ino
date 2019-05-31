@@ -57,7 +57,7 @@ bool LargeIcon =  true;
 bool SmallIcon =  false;
 #define Large  14   // For icon drawing
 #define Small  4    // For icon drawing
-String time_str, date_str, rxtext; // strings to hold time and received weather data;
+String time_str, date_str; // strings to hold time and received weather data;
 int    wifi_signal, wifisection, displaysection, MoonDay, MoonMonth, MoonYear, start_time, wakeup_hour;
 int    Sunrise, Sunset;
 
@@ -91,7 +91,7 @@ void setup() {
   InitialiseDisplay();
   bool Received_WxData_OK = false;
   if (wakeup_hour >= 8 && wakeup_hour <= 23) {
-    Received_WxData_OK = (obtain_wx_data("weather") && obtain_wx_data("forecast"));
+    Received_WxData_OK = (obtain_wx_data(client, "weather") && obtain_wx_data(client, "forecast"));
   }
   // Now only refresh the screen if all the data was received OK, otherwise wait until the next timed check otherwise wait until the next timed check
   if (Received_WxData_OK) {
@@ -437,64 +437,6 @@ void Display_Conditions_Section(int x, int y, String IconName, bool IconSize) {
   else if (IconName == "50d")                       Haze(x, y, IconSize, IconName);
   else if (IconName == "50n")                       Fog(x, y, IconSize, IconName);
   else                                              Nodata(x, y, IconSize);
-}
-//#########################################################################################
-bool obtain_wx_data(String RequestType) {
-  rxtext = "";
-  String units = (Units == "M" ? "metric" : "imperial");
-  client.stop(); // close connection before sending a new request
-  if (client.connect(server, 80)) { // if the connection succeeds
-    // Serial.println("connecting...");
-    // send the HTTP PUT request:
-    if (RequestType == "weather")
-      client.println("GET /data/2.5/" + RequestType + "?q=" + City + "," + Country + "&APPID=" + apikey + "&mode=json&units=" + units + "&lang=" + Language + " HTTP/1.0");
-    else
-      client.println("GET /data/2.5/" + RequestType + "?q=" + City + "," + Country + "&APPID=" + apikey + "&mode=json&units=" + units + "&lang=" + Language + "&cnt=24 HTTP/1.0");
-    client.println("Host: api.openweathermap.org");
-    client.println("User-Agent: ESP OWM Receiver/1.1");
-    client.println("Connection: close");
-    client.println();
-    unsigned long timeout = millis();
-    while (client.available() == 0) {
-      if (millis() - timeout > 5000) {
-        Serial.println(F(">>> Client Timeout !"));
-        client.stop();
-        return false;
-      }
-    }
-    char c = 0;
-    bool startJson = false;
-    int jsonend = 0;
-    while (client.available()) {
-      c = client.read();
-      // JSON formats contain an equal number of open and close curly brackets, so check that JSON is received correctly by counting open and close brackets
-      if (c == '{') {
-        startJson = true; // set true to indicate JSON message has started
-        jsonend++;
-      }
-      if (c == '}') {
-        jsonend--;
-      }
-      if (startJson == true) {
-        rxtext += c;  // Add in the received character
-      }
-      // if jsonend = 0 then we have have received equal number of curly braces
-      if (jsonend == 0 && startJson == true) {
-        Serial.println(F("Received OK..."));
-        //Serial.println(rxtext);
-        if (!DecodeWeather(rxtext, RequestType)) return false;
-        client.stop();
-        return true;
-      }
-    }
-  }
-  else {
-    // if no connection was made:
-    Serial.println(F("connection failed"));
-    return false;
-  }
-  rxtext = "";
-  return true;
 }
 //#########################################################################################
 int StartWiFi() {

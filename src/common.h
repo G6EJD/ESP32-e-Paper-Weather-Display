@@ -5,18 +5,18 @@
 #include <ArduinoJson.h>
 
 #include "forecast_record.h"
+#include "common_functions.h"
 
 //#########################################################################################
 void Convert_Readings_to_Imperial() {
-  WxConditions[0].Pressure = WxConditions[0].Pressure * 0.02953;   // hPa to ins
-  WxForecast[1].Rainfall   = WxForecast[1].Rainfall   * 0.0393701; // mm to inches of rainfall
-  WxForecast[1].Snowfall   = WxForecast[1].Snowfall   * 0.0393701; // mm to inches of snowfall
+  WxConditions[0].Pressure = hPa_to_inHg(WxConditions[0].Pressure);
+  WxForecast[1].Rainfall   = mm_to_inches(WxForecast[1].Rainfall);
+  WxForecast[1].Snowfall   = mm_to_inches(WxForecast[1].Snowfall);
 }
 
 //#########################################################################################
 // Problems with stucturing JSON decodes, see here: https://arduinojson.org/assistant/
-bool DecodeWeather(String json, String Type) {
-  Serial.println("Received a JSON string of size : " + String(json.length()));
+bool DecodeWeather(WiFiClient& json, String Type) {
   Serial.print(F("Creating object...and "));
   // allocate the JsonDocument
   DynamicJsonDocument doc(20 * 1024);
@@ -73,7 +73,7 @@ bool DecodeWeather(String json, String Type) {
       WxForecast[r].Forecast0         = list[r]["weather"][2]["main"].as<char*>();        Serial.println(WxForecast[r].Forecast2);
       WxForecast[r].Description       = list[r]["weather"][0]["description"].as<char*>(); Serial.println(WxForecast[r].Description);
       WxForecast[r].Icon              = list[r]["weather"][0]["icon"].as<char*>();        Serial.println(WxForecast[r].Icon);
-      WxForecast[r].Cloudcover        = list[r]["clouds"]["all"].as<int>();               Serial.println(WxForecast[0].Cloudcover); // in % of cloud cover
+      WxForecast[r].Cloudcover        = list[r]["clouds"]["all"].as<int>();               Serial.println(WxForecast[r].Cloudcover); // in % of cloud cover
       WxForecast[r].Windspeed         = list[r]["wind"]["speed"].as<float>();             Serial.println(WxForecast[r].Windspeed);
       WxForecast[r].Winddir           = list[r]["wind"]["deg"].as<float>();               Serial.println(WxForecast[r].Winddir);
       WxForecast[r].Rainfall          = list[r]["rain"]["3h"].as<float>();                Serial.println(WxForecast[r].Rainfall);
@@ -124,26 +124,39 @@ String ConvertUnixTime(int unix_time) {
   //Serial.println(time_str);
   return time_str;
 }
+
 //#########################################################################################
-int JulianDate(int d, int m, int y) {
-  int mm, yy, k1, k2, k3, j;
-  yy = y - (int)((12 - m) / 10);
-  mm = m + 9;
-  if (mm >= 12) mm = mm - 12;
-  k1 = (int)(365.25 * (yy + 4712));
-  k2 = (int)(30.6001 * mm + 0.5);
-  k3 = (int)((int)((yy / 100) + 49) * 0.75) - 38;
-  // 'j' for dates in Julian calendar:
-  j = k1 + k2 + d + 59 + 1;
-  if (j > 2299160) j = j - k3; // 'j' is the Julian date at 12h UT (Universal Time) For Gregorian calendar:
-  return j;
-}
-//#########################################################################################
-float SumOfPrecip(float DataArray[], int readings) {
-  float sum = 0;
-  for (int i = 0; i <= readings; i++) {
-    sum += DataArray[i];
+bool obtain_wx_data(WiFiClient& client, String RequestType) {
+  String units = (Units == "M" ? "metric" : "imperial");
+  client.stop(); // close connection before sending a new request
+  if (client.connect(server, 80)) { // if the connection succeeds
+    // Serial.println("connecting...");
+    // send the HTTP PUT request:
+    if (RequestType == "weather")
+      client.println("GET /data/2.5/" + RequestType + "?q=" + City + "," + Country + "&APPID=" + apikey + "&mode=json&units=" + units + "&lang=" + Language + " HTTP/1.0");
+    else
+      client.println("GET /data/2.5/" + RequestType + "?q=" + City + "," + Country + "&APPID=" + apikey + "&mode=json&units=" + units + "&lang=" + Language + "&cnt=24 HTTP/1.0");
+    client.println("Host: api.openweathermap.org");
+    client.println("User-Agent: ESP OWM Receiver/1.1");
+    client.println("Connection: close");
+    client.println();
+    unsigned long timeout = millis();
+    while (client.available() == 0) {
+      if (millis() - timeout > 5000) {
+        Serial.println(F(">>> Client Timeout !"));
+        client.stop();
+        return false;
+      }
+    }
+    if (!DecodeWeather(client, RequestType)) return false;
+    client.stop();
+    return true;
   }
-  return sum;
+  else {
+    // if no connection was made:
+    Serial.println(F("connection failed"));
+    return false;
+  }
+  return true;
 }
 #endif /* ifndef COMMON_H_ */
