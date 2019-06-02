@@ -155,15 +155,6 @@ void DisplayMainWeatherSection(int x, int y) {
   DisplayTemperatureSection(x + 125, y - 64);
 }
 //#########################################################################################
-String TitleCase(String text) { // Not currently used
-  if (text.length() > 0) {
-    String temp_text = text.substring(0, 1);
-    temp_text.toUpperCase();
-    return temp_text + text.substring(1); // Title-case the string
-  }
-  return "";
-}
-//#########################################################################################
 void DisplayTemperatureSection(int x, int y) {
   drawString(x, y+2, TXT_TEMPERATURES,CENTER);
   drawString(x, y + 63, String(WxConditions[0].High, 0) + " | " + String(WxConditions[0].Low, 0),CENTER); // Show forecast high and Low

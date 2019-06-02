@@ -148,15 +148,6 @@ void Draw_Main_Weather_Section(int x, int y) {
   gfx.drawLine(0, y + 68, SCREEN_WIDTH, y + 68);
 }
 //#########################################################################################
-String TitleCase(String text) {
-  if (text.length() > 0) {
-    String temp_text = text.substring(0, 1);
-    temp_text.toUpperCase();
-    return temp_text + text.substring(1); // Title-case the string
-  }
-  return "";
-}
-//#########################################################################################
 void Draw_Forecast_Section(int x, int y) {
   gfx.setFont(ArialMT_Plain_10);
   Draw_Forecast_Weather(x, y, 0);
