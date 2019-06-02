@@ -154,15 +154,6 @@ void Display_Main_Weather_Section(int x, int y) {
   Display_Temperature_Section(x + 125, y - 64);
 }
 //#########################################################################################
-String TitleCase(String text) { // Not currently used
-  if (text.length() > 0) {
-    String temp_text = text.substring(0, 1);
-    temp_text.toUpperCase();
-    return temp_text + text.substring(1); // Title-case the string
-  }
-  return "";
-}
-//#########################################################################################
 void Display_Temperature_Section(int x, int y) {
   //display.setFont(ArialMT_Plain_10);
   drawString(x, y+2, TXT_TEMPERATURES,CENTER);

@@ -30,3 +30,11 @@ float SumOfPrecip(float DataArray[], int readings) {
   }
   return sum;
 }
+
+String TitleCase(String text){
+  if (text.length() > 0) {
+    String temp_text = text.substring(0,1);
+    temp_text.toUpperCase();
+    return temp_text + text.substring(1); // Title-case the string
+  }
+}
