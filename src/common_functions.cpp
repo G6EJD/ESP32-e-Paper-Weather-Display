@@ -37,4 +37,5 @@ String TitleCase(String text){
     temp_text.toUpperCase();
     return temp_text + text.substring(1); // Title-case the string
   }
+  else return text;
 }
