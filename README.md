@@ -24,6 +24,8 @@ Download the software to your Arduino's library directory.
 
 NOTE: See schematic for the wiring diagram, all displays are wired the same, so wire a 7.5" the same as a 4.2", 2.9" or 1.54" display!
 
+The Battery monitor assumes the use of a Lolin D32 board which uses GPIO-35 as an ADC input, also it has an on-board 100K+100K voltage divider directly connected to the Battery terminals. On other boards, you will need to change the analogRead(35) statement to your board e.g. (39) and attach a voltage divider to the battery terminals.
+
 Compile and upload the code - Enjoy!
 
 ![alt text](/IMG_2096b.jpg)
