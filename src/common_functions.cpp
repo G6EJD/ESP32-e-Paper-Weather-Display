@@ -39,3 +39,10 @@ String TitleCase(String text){
   }
   else return text;
 }
+
+double NormalizedMoonPhase(int d, int m, int y) {
+  int j = JulianDate(d, m, y);
+  //Calculate the approximate phase of the moon
+  double Phase = (j + 4.867) / 29.53059;
+  return (Phase - (int) Phase);
+}

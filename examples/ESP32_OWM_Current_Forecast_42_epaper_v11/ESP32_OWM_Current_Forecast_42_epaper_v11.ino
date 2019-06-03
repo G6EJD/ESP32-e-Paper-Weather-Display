@@ -21,7 +21,7 @@
 #include <ArduinoJson.h>       // https://github.com/bblanchon/ArduinoJson
 #include <WiFi.h>              // Built-in
 #include "time.h"              // Built-in
-#include <SPI.h>               // Built-in 
+#include <SPI.h>               // Built-in
 #include "EPD_WaveShare.h"     // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
 #include "EPD_WaveShare_42.h"  // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
 #include "MiniGrafx.h"         // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
@@ -99,7 +99,7 @@ void setup() {
     DrawBattery(SCREEN_WIDTH-80, 0);
     gfx.commit();
     delay(2000);
-    
+
   }
   Serial.println(F("Starting deep-sleep period..."));
   begin_sleep();
@@ -155,7 +155,7 @@ void Draw_Forecast_Section(int x, int y) {
   Draw_Forecast_Weather(x + 112, y, 2);
   //       (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
   for (int r = 1; r <= max_readings; r++) {
-    if (Units == "I") pressure_readings[r] = WxForecast[r].Pressure * 0.02953;  
+    if (Units == "I") pressure_readings[r] = WxForecast[r].Pressure * 0.02953;
     else              pressure_readings[r] = WxForecast[r].Pressure;
     temperature_readings[r] = WxForecast[r].Temperature;
     if (Units == "I") rain_readings[r]     = WxForecast[r].Rainfall * 0.0393701;
@@ -192,7 +192,7 @@ void Draw_Main_Wx(int x, int y) {
   gfx.setFont(ArialMT_Plain_24);
   gfx.drawString(x - 5, y - 10, String(WxConditions[0].Temperature,1) + "°"); // Show current Temperature
   gfx.setFont(ArialRoundedMTBold_14);
-  gfx.setTextAlignment(TEXT_ALIGN_LEFT);  
+  gfx.setTextAlignment(TEXT_ALIGN_LEFT);
   gfx.drawString(x+String(WxConditions[0].Temperature,1).length()*11/2,y-9,Units=="M"?"C":"F"); // Add in smaller Temperature unit
   gfx.setFont(ArialRoundedMTBold_14);
   gfx.setTextAlignment(TEXT_ALIGN_LEFT);
@@ -266,13 +266,13 @@ void Draw_Astronomy_Section(int x, int y) {
   gfx.drawString(x + 20, y + 75, ConvertUnixTime(Sunrise).substring(0, 5));
   gfx.drawString(x + 20, y + 86, ConvertUnixTime(Sunset).substring(0, 5));
   gfx.drawString(x + 4, y + 100, "Moon:");
-  gfx.drawString(x + 35, y + 100, MoonPhase(MoonDay, MoonMonth, MoonYear, Hemisphere));
+  gfx.drawString(x + 35, y + 100, MoonPhase(MoonDay, MoonMonth, MoonYear));
   DrawMoon(x + 103, y + 51, MoonDay, MoonMonth, MoonYear, Hemisphere);
 }
 //#########################################################################################
 void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
   int diameter = 38;
-  float Xpos, Ypos, Rpos, Xpos1, Xpos2, ip, ag;
+  float Xpos, Ypos, Rpos, Xpos1, Xpos2, ip;
   gfx.setColor(EPD_BLACK);
   for (Ypos = 0; Ypos <= 45; Ypos++) {
     Xpos = sqrt(45 * 45 - Ypos * Ypos);
@@ -289,11 +289,7 @@ void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
     gfx.drawLine(pB1x, pB1y, pB2x, pB2y);
     gfx.drawLine(pB3x, pB3y, pB4x, pB4y);
     // Determine the edges of the lighted part of the moon
-    int j = JulianDate(dd, mm, yy);
-    //Calculate the approximate phase of the moon
-    double Phase = (j + 4.867) / 29.53059;
-    Phase = Phase - (int)Phase;
-    if (Phase < 0.5) ag = Phase * 29.53059 + 29.53059 / 2; else ag = Phase * 29.53059 - 29.53059 / 2; // Moon's age in days
+    double Phase = NormalizedMoonPhase(dd, mm, yy);
     if (hemisphere == "south") Phase = 1 - Phase;
     Rpos = 2 * Xpos;
     if (Phase < 0.5) {
@@ -321,24 +317,9 @@ void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
   gfx.drawCircle(x + diameter - 1, y + diameter, diameter / 2 + 1);
 }
 //#########################################################################################
-String MoonPhase(int d, int m, int y, String hemisphere) {
-  int c, e;
-  double jd;
-  int b;
-  if (m < 3) {
-    y--;
-    m += 12;
-  }
-  ++m;
-  c   = 365.25 * y;
-  e   = 30.6 * m;
-  jd  = c + e + d - 694039.09;           /* jd is total days elapsed */
-  jd /= 29.53059;                        /* divide by the moon cycle (29.53 days) */
-  b   = jd;                              /* int(jd) -> b, take integer part of jd */
-  jd -= b;                               /* subtract integer part to leave fractional part of original jd */
-  b   = jd * 8 + 0.5;                    /* scale fraction from 0-8 and round by adding 0.5 */
-  b   = b & 7;                           /* 0 and 8 are the same phase so modulo 8 for 0 */
-  if (hemisphere == "south") b = 7 - b;
+String MoonPhase(int d, int m, int y) {
+  const double Phase = NormalizedMoonPhase(d, m, y);
+  int b = (int)(Phase * 8 + 0.5) % 8;
   if (b == 0) return "New";              // New; 0% illuminated
   if (b == 1) return "Waxing crescent";  // Waxing crescent; 25% illuminated
   if (b == 2) return "First quarter";    // First quarter; 50% illuminated
@@ -385,7 +366,7 @@ void DisplayWXicon(int x, int y, String IconName, bool LargeSize) {
     else if (IconName == "04d" || IconName == "04n")  MostlySunny(x, y, LargeSize, IconName);
     else if (IconName == "09d" || IconName == "09n")  ChanceRain(x, y, LargeSize, IconName);
     else if (IconName == "10d" || IconName == "10n")  Rain(x, y, LargeSize, IconName);
-    else if (IconName == "11d" || IconName == "11n")  Tstorms(x, y, LargeSize, IconName); 
+    else if (IconName == "11d" || IconName == "11n")  Tstorms(x, y, LargeSize, IconName);
     else if (IconName == "13d" || IconName == "13n")  Snow(x, y, LargeSize, IconName);
     else if (IconName == "50d")                       Haze(x, y - 5, LargeSize, IconName);
     else if (IconName == "50n")                       Fog(x, y - 5, LargeSize, IconName);
