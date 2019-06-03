@@ -1,7 +1,11 @@
 # ESP32-e-Paper-Weather-Display
 An ESP32 and an ePaper Display reads [Open Weather Map](https://openweathermap.org/) and displays the weather
 
-Go to Sketch > Include Library... > Manage Libraries.... Then, for each library, put its name into the text field to have its metadata pulled from the internet and displayed below. Select the latest version and install it. Make sure to come back to this dialog from time to time to keep each library up to date. Also make sure that you only have one version of each of the libraries installed.
+For standalone use, download the ZIP file to your desktop.
+
+Go to Sketch > Include Library... > Add .ZIP Library... Then, choose the ZIP file. After inclusion, Go to File, Examples and scroll down to ESP32-e-paperWeather-display and choose your version/screen size. Make sure to come back to this dialog from time to time to keep each library up to date. Also make sure that you only have one version of each of the libraries installed.
+
+Also see: https://www.arduino.cc/en/Guide/Libraries#toc4
 
 - [Mini Grafx](https://github.com/ThingPulse/minigrafx) by Daniel Eichhorn
 - [Arduino JSON](https://github.com/bblanchon/ArduinoJson) (v6 or above) by Benoît Blanchon
