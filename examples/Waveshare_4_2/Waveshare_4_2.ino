@@ -271,27 +271,18 @@ void Draw_Astronomy_Section(int x, int y) {
 }
 //#########################################################################################
 void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
-  int diameter = 38;
-  float Xpos, Ypos, Rpos, Xpos1, Xpos2;
-  gfx.setColor(EPD_BLACK);
-  for (Ypos = 0; Ypos <= 45; Ypos++) {
-    Xpos = sqrt(45 * 45 - Ypos * Ypos);
+  const int diameter = 38;
+  double Phase = NormalizedMoonPhase(dd, mm, yy);
+  if (hemisphere == "south") Phase = 1 - Phase;
     // Draw dark part of moon
-    double pB1x = (90   - Xpos) / 90 * diameter + x;
-    double pB1y = (Ypos + 90) / 90   * diameter + y;
-    double pB2x = (Xpos + 90) / 90   * diameter + x;
-    double pB2y = (Ypos + 90) / 90   * diameter + y;
-    double pB3x = (90   - Xpos) / 90 * diameter + x;
-    double pB3y = (90   - Ypos) / 90 * diameter + y;
-    double pB4x = (Xpos + 90) / 90   * diameter + x;
-    double pB4y = (90   - Ypos) / 90 * diameter + y;
     gfx.setColor(EPD_BLACK);
-    gfx.drawLine(pB1x, pB1y, pB2x, pB2y);
-    gfx.drawLine(pB3x, pB3y, pB4x, pB4y);
+  gfx.fillCircle(x + diameter - 1, y + diameter, diameter / 2 + 1);
+  const int number_of_lines = 90;
+  for (double Ypos = 0; Ypos <= 45; Ypos++) {
+    double Xpos = sqrt(45 * 45 - Ypos * Ypos);
     // Determine the edges of the lighted part of the moon
-    double Phase = NormalizedMoonPhase(dd, mm, yy);
-    if (hemisphere == "south") Phase = 1 - Phase;
-    Rpos = 2 * Xpos;
+    double Rpos = 2 * Xpos;
+    double Xpos1, Xpos2;
     if (Phase < 0.5) {
       Xpos1 = - Xpos;
       Xpos2 = (Rpos - 2 * Phase * Rpos - Xpos);
@@ -301,14 +292,14 @@ void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
       Xpos2 = (Xpos - 2 * Phase * Rpos + Rpos);
     }
     // Draw light part of moon
-    double pW1x = (Xpos1 + 90) / 90 * diameter + x;
-    double pW1y = (90 - Ypos) / 90  * diameter + y;
-    double pW2x = (Xpos2 + 90) / 90 * diameter + x;
-    double pW2y = (90 - Ypos) / 90  * diameter + y;
-    double pW3x = (Xpos1 + 90) / 90 * diameter + x;
-    double pW3y = (Ypos + 90) / 90  * diameter + y;
-    double pW4x = (Xpos2 + 90) / 90 * diameter + x;
-    double pW4y = (Ypos + 90) / 90  * diameter + y;
+    double pW1x = (Xpos1 + number_of_lines) / number_of_lines * diameter + x;
+    double pW1y = (number_of_lines - Ypos)  / number_of_lines * diameter + y;
+    double pW2x = (Xpos2 + number_of_lines) / number_of_lines * diameter + x;
+    double pW2y = (number_of_lines - Ypos)  / number_of_lines * diameter + y;
+    double pW3x = (Xpos1 + number_of_lines) / number_of_lines * diameter + x;
+    double pW3y = (Ypos + number_of_lines)  / number_of_lines * diameter + y;
+    double pW4x = (Xpos2 + number_of_lines) / number_of_lines * diameter + x;
+    double pW4y = (Ypos + number_of_lines)  / number_of_lines * diameter + y;
     gfx.setColor(EPD_WHITE);
     gfx.drawLine(pW1x, pW1y, pW2x, pW2y);
     gfx.drawLine(pW3x, pW3y, pW4x, pW4y);
