@@ -92,35 +92,23 @@ bool DecodeWeather(WiFiClient& json, String Type) {
 }
 //#########################################################################################
 String ConvertUnixTime(int unix_time) {
-  struct tm *now_tm;
-  int hour, min, day, month, year; // second, wday; // include if required
-  // timeval tv = {unix_time,0};
+  // Returns either '21:12  ' or ' 09:12pm' depending on Units mode
   time_t tm = unix_time;
-  now_tm = localtime(&tm);
-  hour   = now_tm->tm_hour;
-  min    = now_tm->tm_min;
-  //second = now_tm->tm_sec;
-  //wday   = now_tm->tm_wday; // Include if required
-  day    = now_tm->tm_mday;
-  month  = now_tm->tm_mon + 1;
-  year   = 1900 + now_tm->tm_year; // To get just YY information
+  struct tm *now_tm = localtime(&tm);
+  int day    = now_tm->tm_mday;
+  int month  = now_tm->tm_mon + 1;
+  int year   = 1900 + now_tm->tm_year; // To get just YY information
   MoonDay   = day;
   MoonMonth = month;
   MoonYear  = year;
+  char output[40];
   if (Units == "M") {
-    time_str =  (hour < 10 ? "0" + String(hour) : String(hour)) + ":" + (min < 10 ? "0" + String(min) : String(min)) + ":" + "  ";  // HH:MM   05/07/17
-    time_str += (day < 10 ? "0" + String(day) : String(day)) + "/" + (month < 10 ? "0" + String(month) : String(month)) + "/" + (year < 10 ? "0" + String(year) : String(year)); // HH:MM   05/07/17
+    strftime(output, sizeof(output), "%H:%M %d/%m/%y", now_tm);
   }
   else {
-    String ampm = "am";
-    if (hour > 11) ampm = "pm";
-    hour = hour % 12; if (hour == 0) hour = 12;
-    time_str =  (hour % 12 < 10 ? "0" + String(hour % 12) : String(hour % 12)) + ":" + (min < 10 ? "0" + String(min) : String(min)) + ampm + " ";      // HH:MMam 07/05/17
-    time_str += (month < 10 ? "0" + String(month) : String(month)) + "/" + (day < 10 ? "0" + String(day) : String(day)) + "/" + "/" + (year < 10 ? "0" + String(year) : String(year)); // HH:MMpm 07/05/17
+    strftime(output, sizeof(output), "%I:%M%P %m/%d/%y", now_tm);
   }
-  // Returns either '21:12  ' or ' 09:12pm' depending on Units mode
-  //Serial.println(time_str);
-  return time_str;
+  return output;
 }
 //#########################################################################################
 //WiFiClient client; // wifi client object
