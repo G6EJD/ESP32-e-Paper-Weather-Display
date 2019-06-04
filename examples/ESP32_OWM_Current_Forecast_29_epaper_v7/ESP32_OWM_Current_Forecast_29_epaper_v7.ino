@@ -180,7 +180,7 @@ void Draw_Astronomy_Section(){
 //#########################################################################################
 void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
   int diameter = 38;
-  float Xpos, Ypos, Rpos, Xpos1, Xpos2, ip;
+  float Xpos, Ypos, Rpos, Xpos1, Xpos2;
   gfx.setColor(EPD_BLACK);
   for (Ypos = 0; Ypos <= 45; Ypos++) {
     Xpos = sqrt(45 * 45 - Ypos * Ypos);

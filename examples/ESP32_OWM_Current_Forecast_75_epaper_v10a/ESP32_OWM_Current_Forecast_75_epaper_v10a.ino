@@ -326,7 +326,7 @@ void Display_Astronomy_Section(int x, int y) {
 //#########################################################################################
 void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
   int diameter = 38;
-  double Xpos, Ypos, Rpos, Xpos1, Xpos2, ip;
+  double Xpos, Ypos, Rpos, Xpos1, Xpos2;
   for (Ypos = 0; Ypos <= 45; Ypos++) {
     Xpos = sqrt(45 * 45 - Ypos * Ypos);
     // Draw dark part of moon
