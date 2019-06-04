@@ -370,7 +370,6 @@ void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
 String MoonPhase(int d, int m, int y) {
   const double Phase = NormalizedMoonPhase(d, m, y);
   int b = (int)(Phase * 8 + 0.5) % 8;
-  if (hemisphere == "south") b = 7 - b;
   if (b == 0) return TXT_MOON_NEW;              // New;              0%  illuminated
   if (b == 1) return TXT_MOON_WAXING_CRESCENT;  // Waxing crescent; 25%  illuminated
   if (b == 2) return TXT_MOON_FIRST_QUARTER;    // First quarter;   50%  illuminated
