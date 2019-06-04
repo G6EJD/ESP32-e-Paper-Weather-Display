@@ -175,13 +175,12 @@ void Draw_Astronomy_Section(){
   gfx.drawString(178,88,"Set: "      + ConvertUnixTime(WxConditions[0].Sunset).substring(0,5));
   DrawMoon(230,65,MoonDay,MoonMonth,MoonYear,Hemisphere);
   gfx.drawString(152,100,"Moon phase:");
-  gfx.drawString(152,112,MoonPhase(MoonDay,MoonMonth,MoonYear,Hemisphere));
+  gfx.drawString(152,112,MoonPhase(MoonDay,MoonMonth,MoonYear));
 }
 //#########################################################################################
 void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
-#define pi 3.141592654
   int diameter = 38;
-  float Xpos, Ypos, Rpos, Xpos1, Xpos2, ip, ag;
+  float Xpos, Ypos, Rpos, Xpos1, Xpos2;
   gfx.setColor(EPD_BLACK);
   for (Ypos = 0; Ypos <= 45; Ypos++) {
     Xpos = sqrt(45 * 45 - Ypos * Ypos);
@@ -198,11 +197,7 @@ void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
     gfx.drawLine(pB1x, pB1y, pB2x, pB2y);
     gfx.drawLine(pB3x, pB3y, pB4x, pB4y);
     // Determine the edges of the lighted part of the moon
-    int j = JulianDate(dd, mm, yy);
-    //Calculate the approximate phase of the moon
-    double Phase = (j + 4.867) / 29.53059;
-    Phase = Phase - (int)Phase;
-    if (Phase < 0.5) ag = Phase * 29.53059 + 29.53059 / 2; else ag = Phase * 29.53059 - 29.53059 / 2; // Moon's age in days
+    double Phase = NormalizedMoonPhase(dd, mm, yy);
     if (hemisphere == "south") Phase = 1 - Phase;
     Rpos = 2 * Xpos;
     if (Phase < 0.5) {
@@ -230,24 +225,9 @@ void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
   gfx.drawCircle(x + diameter - 1, y + diameter, diameter / 2 + 1);
 }
 //#########################################################################################
-String MoonPhase(int d, int m, int y, String hemisphere) {
-  int c, e;
-  double jd;
-  int b;
-  if (m < 3) {
-    y--;
-    m += 12;
-  }
-  ++m;
-  c   = 365.25 * y;
-  e   = 30.6 * m;
-  jd  = c + e + d - 694039.09;           /* jd is total days elapsed */
-  jd /= 29.53059;                        /* divide by the moon cycle (29.53 days) */
-  b   = jd;                              /* int(jd) -> b, take integer part of jd */
-  jd -= b;                               /* subtract integer part to leave fractional part of original jd */
-  b   = jd * 8 + 0.5;                    /* scale fraction from 0-8 and round by adding 0.5 */
-  b   = b & 7;                           /* 0 and 8 are the same phase so modulo 8 for 0 */
-  if (hemisphere == "south") b = 7 - b;
+String MoonPhase(int d, int m, int y) {
+  const double Phase = NormalizedMoonPhase(d, m, y);
+  int b = (int)(Phase * 8 + 0.5) % 8;
   if (b == 0) return "New";              // New; 0% illuminated
   if (b == 1) return "Waxing crescent";  // Waxing crescent; 25% illuminated
   if (b == 2) return "First quarter";    // First quarter; 50% illuminated
