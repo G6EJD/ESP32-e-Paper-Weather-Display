@@ -3,7 +3,11 @@ An ESP32 and an ePaper Display reads [Open Weather Map](https://openweathermap.o
 
 For standalone use, download the ZIP file to your desktop.
 
-Go to Sketch > Include Library... > Add .ZIP Library... Then, choose the ZIP file. After inclusion, Go to File, Examples and scroll down to ESP32-e-paperWeather-display and choose your version/screen size. Make sure to come back to this dialog from time to time to keep each library up to date. Also make sure that you only have one version of each of the libraries installed.
+Go to Sketch > Include Library... > Add .ZIP Library... Then, choose the ZIP file.
+
+After inclusion, Go to File, Examples and scroll down to 'ESP32-e-paperWeather-display' and choose your version/screen size. Make sure to come back to this dialog from time to time to keep each library up to date. Also make sure that you only have one version of each of the libraries installed.
+
+Save a copy as your own version say v11a.
 
 Also see: https://www.arduino.cc/en/Guide/Libraries#toc4
 
@@ -21,6 +25,8 @@ Download the software to your Arduino's library directory.
 2. Obtain your [OWM API key](https://openweathermap.org/appid) - it's free
 
 3. Edit the owm_credentials.h file in the IDE (TAB at top of IDE) and change your Language, Country, choose your units Metric or Imperial and be sure to find a valid weather station location on OpenWeatherMap, if your display has all blank values your location does not exist!
+
+4. Save your files.
 
 NOTE: See schematic for the wiring diagram, all displays are wired the same, so wire a 7.5" the same as a 4.2", 2.9" or 1.54" display!
 
