@@ -95,12 +95,6 @@ String ConvertUnixTime(int unix_time) {
   // Returns either '21:12  ' or ' 09:12pm' depending on Units mode
   time_t tm = unix_time;
   struct tm *now_tm = localtime(&tm);
-  int day    = now_tm->tm_mday;
-  int month  = now_tm->tm_mon + 1;
-  int year   = 1900 + now_tm->tm_year; // To get just YY information
-  MoonDay   = day;
-  MoonMonth = month;
-  MoonYear  = year;
   char output[40];
   if (Units == "M") {
     strftime(output, sizeof(output), "%H:%M %d/%m/%y", now_tm);

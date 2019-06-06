@@ -66,7 +66,7 @@ boolean LargeIcon     = true, SmallIcon = false, RxWeather = false, RxForecast =
 #define Large  14          // For icon drawing
 #define Small  4           // For icon drawing
 String  time_str, date_str; // strings to hold time and received weather data;wi
-int     wifi_signal, MoonDay, MoonMonth, MoonYear, StartTime, CurrentHour = 0, CurrentMin = 0, CurrentSec = 0;
+int     wifi_signal, StartTime, CurrentHour = 0, CurrentMin = 0, CurrentSec = 0;
 int     Sunrise, Sunset;
 
 //################ PROGRAM VARIABLES and OBJECTS ################
@@ -335,8 +335,13 @@ void DisplayAstronomySection(int x, int y) {
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
   drawString(x + 3, y + 19, ConvertUnixTime(WxConditions[0].Sunrise).substring(0, 5) + " " + TXT_SUNRISE, LEFT);
   drawString(x + 3, y + 33, ConvertUnixTime(WxConditions[0].Sunset).substring(0, 5)  + " " + TXT_SUNSET, LEFT);
-  drawString(x + 3, y + 52, MoonPhase(MoonDay, MoonMonth, MoonYear, Hemisphere), LEFT);
-  DrawMoon(x + 110, y, MoonDay, MoonMonth, MoonYear, Hemisphere);
+  time_t now = time(NULL);
+  struct tm * now_utc  = gmtime(&now);
+  const int day_utc = now_utc->tm_mday;
+  const int month_utc = now_utc->tm_mon + 1;
+  const int year_utc = now_utc->tm_year + 1900;
+  drawString(x + 3, y + 52, MoonPhase(day_utc, month_utc, year_utc, Hemisphere), LEFT);
+  DrawMoon(x + 110, y, day_utc, month_utc, year_utc, Hemisphere);
 }
 //#########################################################################################
 void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {

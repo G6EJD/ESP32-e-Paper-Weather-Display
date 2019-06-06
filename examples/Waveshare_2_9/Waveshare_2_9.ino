@@ -64,7 +64,7 @@ bool    Smallsize  = false;
 #define Large 7
 #define Small 3
 String  time_str, Day_time_str; // strings to hold time and received weather data;
-int     wifisection, displaysection, MoonDay, MoonMonth, MoonYear;
+int     wifisection, displaysection;
 
 //################ PROGRAM VARIABLES and OBJECTS ##########################################
 #define max_readings 6
@@ -173,9 +173,14 @@ void Draw_3hr_Forecast(int x, int y, int index){
 void Draw_Astronomy_Section(){
   gfx.drawString(152,76,"Sun Rise: " + ConvertUnixTime(WxConditions[0].Sunrise).substring(0,5));
   gfx.drawString(178,88,"Set: "      + ConvertUnixTime(WxConditions[0].Sunset).substring(0,5));
-  DrawMoon(230,65,MoonDay,MoonMonth,MoonYear,Hemisphere);
+  time_t now = time(NULL);
+  struct tm * now_utc  = gmtime(&now);
+  const int day_utc = now_utc->tm_mday;
+  const int month_utc = now_utc->tm_mon + 1;
+  const int year_utc = now_utc->tm_year + 1900;
+  DrawMoon(230,65,day_utc, month_utc, year_utc,Hemisphere);
   gfx.drawString(152,100,"Moon phase:");
-  gfx.drawString(152,112,MoonPhase(MoonDay,MoonMonth,MoonYear));
+  gfx.drawString(152,112,MoonPhase(day_utc, month_utc, year_utc));
 }
 //#########################################################################################
 void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
