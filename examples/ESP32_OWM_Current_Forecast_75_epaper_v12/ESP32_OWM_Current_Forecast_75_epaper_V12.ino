@@ -85,6 +85,8 @@ float snow_readings[max_readings]        = {0};
 int wakeup_time = 7;  // Don't wakeup until after 07:00
 int sleep_time  = 23; // Don't Sleep until after 23:00 to save battery
 
+WiFiClient client; // wifi client object
+
 //#########################################################################################
 void setup() {
   start_time = millis();
