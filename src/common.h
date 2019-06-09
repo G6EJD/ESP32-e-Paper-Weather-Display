@@ -150,6 +150,7 @@ bool obtain_wx_data(WiFiClient& client, const String& RequestType) {
     client.stop();
     return false;
   }
+  http.end();
   return true;
 }
 #endif /* ifndef COMMON_H_ */
