@@ -102,7 +102,6 @@ void setup() {
       display.fillScreen(GxEPD_WHITE);
       DisplayWeather();
       display.display(false); // Full screen update mode
-      delay(1200);
       Serial.println("Total time to update = " + String(millis() - start_time) + "mS");
     }
   }
@@ -510,7 +509,7 @@ void UpdateLocalTime() {
   char   day_number[30], day_year[30];
   char   day_lang[4], month_lang[4];
   char   update_time[30];
-  while (!getLocalTime(&timeinfo)) {
+  while (!getLocalTime(&timeinfo,5000)) { // Wait 5-secs for a connection
     Serial.println(F("Failed to obtain time"));
   }
   strftime(output, 30, "%H", &timeinfo);
