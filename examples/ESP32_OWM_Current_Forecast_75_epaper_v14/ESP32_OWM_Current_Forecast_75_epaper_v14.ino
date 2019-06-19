@@ -110,13 +110,14 @@ void loop() { // this will never run!
 //#########################################################################################
 void BeginSleep() {
   display.powerOff();
-  long SleepTimer = SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec - (millis()-StartTime)/1000+1);
-  Serial.println("Entering "+String(SleepTimer)+"-secs of sleep time");
+  float SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)) - (millis()-StartTime)/1000;
+  if (Sleeptimer < 0) Sleeptimer = SleepDuration*60;
   esp_sleep_enable_timer_wakeup(SleepTimer * 1000000LL);
 #ifdef BUILTIN_LED
   pinMode(BUILTIN_LED, INPUT);     // In case it's on, turn output off, sometimes PIN-5 on some boards is used for SPI-SS
   digitalWrite(BUILTIN_LED, HIGH); // In case it's on, turn LED off, as sometimes PIN-5 on some boards is used for SPI-SS
 #endif
+  Serial.println("Entering "+String(SleepTimer)+"-secs of sleep time");
   Serial.println("Awake for : " + String((millis() - StartTime)/1000.0,3) + "-secs");
   Serial.println("Starting deep-sleep period...");
   esp_deep_sleep_start();          // Sleep for e.g. 30 minutes
