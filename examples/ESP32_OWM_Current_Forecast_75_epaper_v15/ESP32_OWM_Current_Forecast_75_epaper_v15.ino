@@ -99,7 +99,7 @@ void setup() {
   StartTime = millis();
   Serial.begin(115200);
   if (StartWiFi() == WL_CONNECTED && SetupTime() == true) {
-    if ((CurrentHour >= WakeupTime && CurrentHour <= SleepTime) || true) {//*****************************************************************************
+    if ((CurrentHour >= WakeupTime && CurrentHour <= SleepTime)) {
       InitialiseDisplay(); // Give it time to do this initialisation!
       byte Attempts = 1;
       while ((RxWeather == false || RxForecast == false) && Attempts <= 2) { // Try up-to twice for Weather and Forecast data
