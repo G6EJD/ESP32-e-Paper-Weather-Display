@@ -7,8 +7,6 @@ Go to Sketch > Include Library... > Add .ZIP Library... Then, choose the ZIP fil
 
 After inclusion, Go to File, Examples and scroll down to 'ESP32-e-paperWeather-display' and choose your version/screen size. Make sure to come back to this dialog from time to time to keep each library up to date. Also make sure that you only have one version of each of the libraries installed.
 
-Save a copy as your own version say v11a.
-
 Also see: https://www.arduino.cc/en/Guide/Libraries#toc4
 
 - [Mini Grafx](https://github.com/ThingPulse/minigrafx) by Daniel Eichhorn
@@ -17,10 +15,9 @@ Also see: https://www.arduino.cc/en/Guide/Libraries#toc4
 Download the software to your Arduino's library directory.
 
 1. From the examples, choose depending on your module either
-   - ESP32_OWM_Current_Forecast_29_epaper_vX always choose the latest version
-   - ESP32_OWM_Current_Forecast_42_epaper_vX always choose the latest version
-   - ESP32_OWM_Current_Forecast_75_epaper_vX always choose the latest version
-   - ESP32_OWM_Current_Forecast_75_epaper_v10 (instead of Mini Grafx requires [GxEPD2 library](https://github.com/ZinggJM/GxEPD2), which needs [Adafruit_GFX](https://github.com/adafruit/Adafruit-GFX-Library))
+   - Waveshare_2_9
+   - Waveshare_4_2
+   - Waveshare_7_5 (instead of Mini Grafx requires [GxEPD2 library](https://github.com/ZinggJM/GxEPD2), which needs [Adafruit_GFX](https://github.com/adafruit/Adafruit-GFX-Library))
 
 2. Obtain your [OWM API key](https://openweathermap.org/appid) - it's free
 
