@@ -28,6 +28,7 @@
 #include "DisplayDriver.h"   // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
 #include "ArialRounded.h"    // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
 #include <forecast_record.h>
+#include "common_functions.h"
 
 #define SCREEN_HEIGHT  128
 #define SCREEN_WIDTH   296
@@ -73,8 +74,6 @@ Forecast_record_type  WxConditions[1];
 Forecast_record_type  WxForecast[max_readings];
 #include <common.h>
 
-WiFiClient client; // wifi client object
-
 // Wifi on section takes : 7.37 secs to complete at 119mA using a Lolin 32 (wifi on)
 // Display section takes : 10.16 secs to complete at 40mA using a Lolin 32 (wifi off)
 // Sleep current is 175uA using a Lolin 32
@@ -88,6 +87,7 @@ void setup() {
   StartWiFi();
   SetupTime();
   lastConnectionTime = millis();
+  WiFiClient client; // wifi client object
   bool Received_WxData_OK = false;
   Received_WxData_OK = (obtain_wx_data(client, "weather") && obtain_wx_data(client, "forecast"));
   // Now only refresh the screen if all the data was received OK, otherwise wait until the next timed check otherwise wait until the next timed check

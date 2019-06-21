@@ -27,6 +27,7 @@
 #include "MiniGrafx.h"         // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
 #include "DisplayDriver.h"     // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
 #include <forecast_record.h>
+#include "common_functions.h"
 #include "ArialRounded.h"      // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
 
 #define SCREEN_WIDTH  400.0    // Set for landscape mode, don't remove the decimal place!
@@ -59,7 +60,6 @@ bool SmallIcon   =  false;
 #define Small  4
 String time_str, Day_time_str, rxtext; // strings to hold time and received weather data;
 int    wifisection, displaysection;
-int    Sunrise, Sunset;
 
 //################ PROGRAM VARIABLES and OBJECTS ################
 
@@ -78,13 +78,13 @@ float pressure_readings[max_readings]    = {0};
 float temperature_readings[max_readings] = {0};
 float rain_readings[max_readings]        = {0};
 
-WiFiClient client; // wifi client object
 
 //#########################################################################################
 void setup() {
   Serial.begin(115200);
   StartWiFi();
   SetupTime();
+  WiFiClient client; // wifi client object
   bool Received_WxData_OK = false;
   Received_WxData_OK = (obtain_wx_data(client, "weather") && obtain_wx_data(client, "forecast"));
   // Now only refresh the screen if all the data was received OK, otherwise wait until the next timed check otherwise wait until the next timed check
