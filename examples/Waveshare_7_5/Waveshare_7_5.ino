@@ -92,8 +92,6 @@ float snow_readings[max_readings]        = {0};
 int WakeupTime = 7;  // Don't wakeup until after 07:00 to save battery
 int SleepTime  = 23; // Don't sleep  until after 00:00 to save battery
 
-WiFiClient client;    // wifi client object
-
 //#########################################################################################
 void setup() {
   StartTime = millis();
@@ -102,6 +100,7 @@ void setup() {
     if ((CurrentHour >= WakeupTime && CurrentHour <= SleepTime)) {
       InitialiseDisplay(); // Give it time to do this initialisation!
       byte Attempts = 1;
+      WiFiClient client;    // wifi client object
       while ((RxWeather == false || RxForecast == false) && Attempts <= 2) { // Try up-to twice for Weather and Forecast data
         RxWeather  = obtain_wx_data(client, "weather");
         RxForecast = obtain_wx_data(client, "forecast");  

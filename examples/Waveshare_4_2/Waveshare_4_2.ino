@@ -78,13 +78,13 @@ float pressure_readings[max_readings]    = {0};
 float temperature_readings[max_readings] = {0};
 float rain_readings[max_readings]        = {0};
 
-WiFiClient client; // wifi client object
 
 //#########################################################################################
 void setup() {
   Serial.begin(115200);
   StartWiFi();
   SetupTime();
+  WiFiClient client; // wifi client object
   bool Received_WxData_OK = false;
   Received_WxData_OK = (obtain_wx_data(client, "weather") && obtain_wx_data(client, "forecast"));
   // Now only refresh the screen if all the data was received OK, otherwise wait until the next timed check otherwise wait until the next timed check
