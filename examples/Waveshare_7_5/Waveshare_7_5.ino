@@ -28,6 +28,7 @@
 #include <U8g2_for_Adafruit_GFX.h>
 #include "epaper_fonts.h"
 #include "forecast_record.h"
+#include "common_functions.h"
 #include "lang.h"                     // Localisation (English)
 //#include "lang_fr.h"                  // Localisation (French)
 //#include "lang_gr.h"                  // Localisation (German)

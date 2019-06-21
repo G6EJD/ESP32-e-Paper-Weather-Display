@@ -28,6 +28,7 @@
 #include "DisplayDriver.h"   // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
 #include "ArialRounded.h"    // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
 #include <forecast_record.h>
+#include "common_functions.h"
 
 #define SCREEN_HEIGHT  128
 #define SCREEN_WIDTH   296

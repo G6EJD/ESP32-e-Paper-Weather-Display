@@ -27,6 +27,7 @@
 #include "MiniGrafx.h"         // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
 #include "DisplayDriver.h"     // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
 #include <forecast_record.h>
+#include "common_functions.h"
 #include "ArialRounded.h"      // Copyright (c) 2017 by Daniel Eichhorn https://github.com/ThingPulse/minigrafx
 
 #define SCREEN_WIDTH  400.0    // Set for landscape mode, don't remove the decimal place!
