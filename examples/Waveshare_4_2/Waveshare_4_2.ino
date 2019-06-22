@@ -59,7 +59,7 @@ bool SmallIcon   =  false;
 #define Large  10
 #define Small  4
 String time_str, Day_time_str, rxtext; // strings to hold time and received weather data;
-int    wifisection, displaysection;
+int    wifisection, displaysection, Sunrise, Sunset;
 
 //################ PROGRAM VARIABLES and OBJECTS ################
 
