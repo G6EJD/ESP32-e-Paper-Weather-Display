@@ -68,7 +68,6 @@ boolean LargeIcon     = true, SmallIcon = false, RxWeather = false, RxForecast =
 #define Small  5            // For icon drawing, needs to be odd number for best effect
 String  time_str, date_str; // strings to hold time and received weather data;wi
 int     wifi_signal, CurrentHour = 0, CurrentMin = 0, CurrentSec = 0;
-int     Sunrise, Sunset;
 long    StartTime = 0;
 
 //################ PROGRAM VARIABLES and OBJECTS ################

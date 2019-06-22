@@ -263,8 +263,8 @@ void Draw_Astronomy_Section(int x, int y) {
   gfx.setFont(ArialMT_Plain_10);
   gfx.drawRect(x, y + 64, 167, 53);
   gfx.drawString(x + 4, y + 65, "Sun Rise/Set");
-  gfx.drawString(x + 20, y + 75, ConvertUnixTime(Sunrise).substring(0, 5));
-  gfx.drawString(x + 20, y + 86, ConvertUnixTime(Sunset).substring(0, 5));
+  gfx.drawString(x + 20, y + 75, ConvertUnixTime(WxConditions[0].Sunrise).substring(0, 5));
+  gfx.drawString(x + 20, y + 86, ConvertUnixTime(WxConditions[0].Sunset).substring(0, 5));
   gfx.drawString(x + 4, y + 100, "Moon:");
   time_t now = time(NULL);
   struct tm * now_utc  = gmtime(&now);
@@ -279,10 +279,10 @@ void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
   const int diameter = 38;
   double Phase = NormalizedMoonPhase(dd, mm, yy);
   if (hemisphere == "south") Phase = 1 - Phase;
-    // Draw dark part of moon
-    gfx.setColor(EPD_BLACK);
+  // Draw dark part of moon
+  gfx.setColor(EPD_BLACK);
   gfx.fillCircle(x + diameter - 1, y + diameter, diameter / 2 + 1);
-  const int number_of_lines = 90;
+  const int number_of_lines = 90;
   for (double Ypos = 0; Ypos <= 45; Ypos++) {
     double Xpos = sqrt(45 * 45 - Ypos * Ypos);
     // Determine the edges of the lighted part of the moon
