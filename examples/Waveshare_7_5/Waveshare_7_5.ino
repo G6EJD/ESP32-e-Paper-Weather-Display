@@ -67,7 +67,7 @@ boolean LargeIcon     = true, SmallIcon = false, RxWeather = false, RxForecast =
 #define Large  15           // For icon drawing, needs to be odd number for best effect
 #define Small  5            // For icon drawing, needs to be odd number for best effect
 String  time_str, date_str; // strings to hold time and received weather data;wi
-int     wifi_signal, MoonDay, MoonMonth, MoonYear, CurrentHour = 0, CurrentMin = 0, CurrentSec = 0;
+int     wifi_signal, CurrentHour = 0, CurrentMin = 0, CurrentSec = 0;
 int     Sunrise, Sunset;
 long    StartTime = 0;
 
@@ -293,34 +293,28 @@ void DisplayAstronomySection(int x, int y) {
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   drawString(x + 3, y + 18, ConvertUnixTime(WxConditions[0].Sunrise).substring(0, 5) + " " + TXT_SUNRISE, LEFT);
   drawString(x + 3, y + 32, ConvertUnixTime(WxConditions[0].Sunset).substring(0, 5) + " " + TXT_SUNSET, LEFT);
-  drawString(x + 3, y + 50, MoonPhase(MoonDay, MoonMonth, MoonYear, Hemisphere), LEFT);
-  DrawMoon(x + 110, y, MoonDay, MoonMonth, MoonYear, Hemisphere);
+  time_t now = time(NULL);
+  struct tm * now_utc  = gmtime(&now);
+  const int day_utc = now_utc->tm_mday;
+  const int month_utc = now_utc->tm_mon + 1;
+  const int year_utc = now_utc->tm_year + 1900;
+  drawString(x + 3, y + 50, MoonPhase(day_utc, month_utc, year_utc, Hemisphere), LEFT);
+  DrawMoon(x + 110, y, day_utc, month_utc, year_utc, Hemisphere);
 }
 //#########################################################################################
 void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
-  int diameter = 38;
-  double Xpos, Ypos, Rpos, Xpos1, Xpos2;//, ip, ag;
-  for (Ypos = 0; Ypos <= 45; Ypos++) {
-    Xpos = sqrt(45 * 45 - Ypos * Ypos);
-    // Draw dark part of moon
-    double pB1x = (90  - Xpos) / 90 * diameter + x;
-    double pB1y = (Ypos + 90) / 90  * diameter + y;
-    double pB2x = (Xpos + 90) / 90  * diameter + x;
-    double pB2y = (Ypos + 90) / 90  * diameter + y;
-    double pB3x = (90  - Xpos) / 90 * diameter + x;
-    double pB3y = (90  - Ypos) / 90 * diameter + y;
-    double pB4x = (Xpos + 90) / 90  * diameter + x;
-    double pB4y = (90  - Ypos) / 90 * diameter + y;
-    display.drawLine(pB1x, pB1y, pB2x, pB2y, GxEPD_BLACK);
-    display.drawLine(pB3x, pB3y, pB4x, pB4y, GxEPD_BLACK);
+  const int diameter = 38;
+  double Phase = NormalizedMoonPhase(dd, mm, yy);
+  if (hemisphere == "south") Phase = 1 - Phase;
+
+  // Draw dark part of moon
+  display.fillCircle(x + diameter - 1, y + diameter, diameter/2 + 1, GxEPD_BLACK);
+  const int number_of_lines = 90;
+  for (double Ypos = 0; Ypos <= number_of_lines/2; Ypos++) {
+    double Xpos = sqrt(number_of_lines/2 * number_of_lines/2 - Ypos * Ypos);
     // Determine the edges of the lighted part of the moon
-    int j = JulianDate(dd, mm, yy);
-    //Calculate the approximate phase of the moon
-    double Phase = (j + 4.867) / 29.53059;
-    Phase = Phase - (int)Phase;
-    //if (Phase < 0.5) ag = Phase*29.53059+29.53059/2; else ag = Phase*29.53059-29.53059/2; // Moon's age in days if required
-    if (hemisphere == "south") Phase = 1 - Phase;
-    Rpos = 2 * Xpos;
+    double Rpos = 2 * Xpos;
+    double Xpos1, Xpos2;
     if (Phase < 0.5) {
       Xpos1 = -Xpos;
       Xpos2 = Rpos - 2 * Phase * Rpos - Xpos;
@@ -330,16 +324,16 @@ void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
       Xpos2 = Xpos - 2 * Phase * Rpos + Rpos;
     }
     // Draw light part of moon
-    double pW1x = (Xpos1 + 90) / 90 * diameter + x;
-    double pW1y = (90 - Ypos) / 90 * diameter + y;
-    double pW2x = (Xpos2 + 90) / 90 * diameter + x;
-    double pW2y = (90 - Ypos) / 90 * diameter + y;
-    double pW3x = (Xpos1 + 90) / 90 * diameter + x;
-    double pW3y = (Ypos + 90) / 90 * diameter + y;
-    double pW4x = (Xpos2 + 90) / 90 * diameter + x;
-    double pW4y = (Ypos + 90) / 90 * diameter + y;
-    display.drawLine(pW1x, pW1y, pW2x, pW2y, GxEPD_WHITE);
-    display.drawLine(pW3x, pW3y, pW4x, pW4y, GxEPD_WHITE);
+    double pW1x = (Xpos1 + number_of_lines) / number_of_lines * diameter + x;
+    double pW1y = (number_of_lines - Ypos)  / number_of_lines * diameter + y;
+    double pW2x = (Xpos2 + number_of_lines) / number_of_lines * diameter + x;
+    double pW2y = (number_of_lines - Ypos)  / number_of_lines * diameter + y;
+    double pW3x = (Xpos1 + number_of_lines) / number_of_lines * diameter + x;
+    double pW3y = (Ypos + number_of_lines)  / number_of_lines * diameter + y;
+    double pW4x = (Xpos2 + number_of_lines) / number_of_lines * diameter + x;
+    double pW4y = (Ypos + number_of_lines)  / number_of_lines * diameter + y;
+    display.drawLine(pW1x, pW1y, pW2x, pW2y,GxEPD_WHITE);
+    display.drawLine(pW3x, pW3y, pW4x, pW4y,GxEPD_WHITE);
   }
   display.drawCircle(x + diameter - 1, y + diameter, diameter / 2, GxEPD_BLACK);
 }
