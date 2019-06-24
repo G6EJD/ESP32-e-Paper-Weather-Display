@@ -21,10 +21,6 @@ const String TXT_RAINFALL_IN = "Niederschlag [in]";
 const String TXT_SNOWFALL_MM = "Niederschlag [mm]";
 const String TXT_SNOWFALL_IN = "Niederschlag [in]";
 const String TXT_PRECIPITATION_SOON = "Regen/Schnee";
-const String TXT_RAIN               = " Regen";
-const String TXT_SNOW               = " Schnee";
-const String TXT_EQUAL_RAIN         = " = Regen";
-const String TXT_EQUAL_SNOW         = " = Schnee";
 
 //Sonne
 const String TXT_SUNRISE  = "Sonnenaufgang";
