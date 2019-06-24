@@ -41,7 +41,6 @@ const String TXT_POWER  = "Akku";
 const String TXT_WIFI   = "WLAN";
 const char* TXT_UPDATED = "aktualisiert:";
 
-
 //Wind
 const String TXT_WIND_SPEED_DIRECTION = "Wind Geschw./Richtung";
 const String TXT_N   = "N";
@@ -71,24 +70,7 @@ const char* weekday_D[] = { "Sonntag",
                              "Freitag", 
                              "Samstag"};
 */
-const char* weekday_D[] =  { "So.",
-                             "Mo.",   
-                             "Di.", 
-                             "Mi.", 
-                             "Do.", 
-                             "Fr.", 
-"Sa."};
+const char* weekday_D[] =  { "So.", "Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa." ;
 
 //Monat
-const char* month_M[] = { "Jan.",
-                           "Feb.",
-                           "März",
-                           "Apr.",
-                           "Mai",
-                           "Juni",
-                           "Juli",
-                           "Aug.",
-                           "Sep.",
-                           "Okt.",
-                           "Nov.",
-                           "Dez."};
+const char* month_M[] = { "Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sep.", "Okt.", "Nov.", "Dez." };
