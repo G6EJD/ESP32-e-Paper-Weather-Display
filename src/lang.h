@@ -20,11 +20,7 @@ const String TXT_RAINFALL_MM = "Rainfall (mm)";
 const String TXT_RAINFALL_IN = "Rainfall (in)";
 const String TXT_SNOWFALL_MM = "Snowfall (mm)";
 const String TXT_SNOWFALL_IN = "Snowfall (in)";
-const String TXT_PRECIPITATION_SOON = "Rain/Snow";
-const String TXT_RAIN               = " Rain";
-const String TXT_SNOW               = " Snow";
-const String TXT_EQUAL_RAIN         = " = Rain";
-const String TXT_EQUAL_SNOW         = " = Snow";
+const String TXT_PRECIPITATION_SOON = "Precipitation";
 
 //Sun
 const String TXT_SUNRISE  = "Sunrise";
@@ -66,24 +62,8 @@ const String TXT_NW  = "NW";
 const String TXT_NNW = "NNW";
 
 //Day of the week
-const char* TXT_MONDAY    = "Mon";
-const char* TXT_TUESDAY   = "Tue";
-const char* TXT_WEDNESDAY = "Wed";
-const char* TXT_THURSDAY  = "Thu";
-const char* TXT_FRIDAY    = "Fri";
-const char* TXT_SATURDAY  = "Sat";
-const char* TXT_SUNDAY    = "Sun";
+const char* weekday_D[] = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
 
 //Month
-const char* TXT_JANUARY   = "Jan";
-const char* TXT_FEBRUARY  = "Feb";
-const char* TXT_MARCH     = "Mar";
-const char* TXT_APRIL     = "Apr";
-const char* TXT_MAY       = "May";
-const char* TXT_JUNE      = "Jun";
-const char* TXT_JULY      = "Jul";
-const char* TXT_AUGUST    = "Aug";
-const char* TXT_SEPTEMBER = "Sep";
-const char* TXT_OCTOBER   = "Oct";
-const char* TXT_NOVEMBER  = "Nov";
-const char* TXT_DECEMBER  = "Dec";
+const char* month_M[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+
