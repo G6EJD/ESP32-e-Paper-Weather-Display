@@ -41,9 +41,9 @@ const String TXT_MOON_THIRD_QUARTER   = "abnehmender Halbmond";   // abnehmender
 const String TXT_MOON_WANING_CRESCENT = "abnehmende Sichel";    // letztes Viertel bzw. abnehmende Sichel 
 
 //Energie / WLAN
-const String TXT_POWER  = "AKKU";
+const String TXT_POWER  = "Akku";
 const String TXT_WIFI   = "WLAN";
-const char* TXT_UPDATED = "Aktualisiert:";
+const char* TXT_UPDATED = "aktualisiert:";
 
 
 //Wind
@@ -66,24 +66,33 @@ const String TXT_NW  = "NW";
 const String TXT_NNW = "NNW";
 
 //Wochentag
-const char* TXT_MONDAY    = "Mo";
-const char* TXT_TUESDAY   = "Di";
-const char* TXT_WEDNESDAY = "Mi";
-const char* TXT_THURSDAY  = "Do";
-const char* TXT_FRIDAY    = "Fr";
-const char* TXT_SATURDAY  = "Sa";
-const char* TXT_SUNDAY    = "So";
+/*
+const char* weekday_D[] = { "Sonntag",
+                             "Montag",   
+                             "Dienstag", 
+                             "Mittwoch", 
+                             "Donnerstag", 
+                             "Freitag", 
+                             "Samstag"};
+*/
+const char* weekday_D[] =  { "So.",
+                             "Mo.",   
+                             "Di.", 
+                             "Mi.", 
+                             "Do.", 
+                             "Fr.", 
+"Sa."};
 
 //Monat
-const char* TXT_JANUARY   = "Jan";
-const char* TXT_FEBRUARY  = "Feb";
-const char* TXT_MARCH     = "Mar";
-const char* TXT_APRIL     = "Apr";
-const char* TXT_MAY       = "Mai";
-const char* TXT_JUNE      = "Jun";
-const char* TXT_JULY      = "Jul";
-const char* TXT_AUGUST    = "Aug";
-const char* TXT_SEPTEMBER = "Sep";
-const char* TXT_OCTOBER   = "Okt";
-const char* TXT_NOVEMBER  = "Nov";
-const char* TXT_DECEMBER  = "Dez";
+const char* month_M[] = { "Jan.",
+                           "Feb.",
+                           "März",
+                           "Apr.",
+                           "Mai",
+                           "Juni",
+                           "Juli",
+                           "Aug.",
+                           "Sep.",
+                           "Okt.",
+                           "Nov.",
+                           "Dez."};
