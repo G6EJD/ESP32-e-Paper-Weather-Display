@@ -449,7 +449,7 @@ uint8_t StartWiFi() {
   }
   if (connectionStatus == WL_CONNECTED) {
     wifi_signal = WiFiSignal();
-    Serial.println("WiFi connected at: " + String(WiFi.localIP()));
+    Serial.println("WiFi connected at: " + WiFi.localIP().toString());
   }
   else Serial.println("WiFi connection *** FAILED ***");
   return connectionStatus;
