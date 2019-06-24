@@ -9,7 +9,7 @@ const char server[] = "api.openweathermap.org";
 //http://api.openweathermap.org/data/2.5/weather?q=Melksham,UK&APPID=your_OWM_API_key&mode=json&units=metric&cnt=1
 //Set your location according to OWM locations
 String City          = "MELKSHAM";                      // Your home city See: http://bulk.openweathermap.org/sample/
-String Country       = "UK";                            // Your country  
+String Country       = "UK";                            // Your country, find your (nearest) city and the country code is displayed
 String Language      = "EN";                            // NOTE: Only the weather description (not used) is translated by OWM
                                                         // Arabic (AR) Czech (CZ) English (EN) Greek (EL) Persian(Farsi) (FA) Galician (GL) Hungarian (HU) Japanese (JA)
                                                         // Korean (KR) Latvian (LA) Lithuanian (LT) Macedonian (MK) Slovak (SK) Slovenian (SL) Vietnamese (VI)
