@@ -67,7 +67,8 @@ boolean LargeIcon     = true, SmallIcon = false, RxWeather = false, RxForecast =
 #define Large  15           // For icon drawing, needs to be odd number for best effect
 #define Small  5            // For icon drawing, needs to be odd number for best effect
 String  time_str, date_str; // strings to hold time and received weather data;wi
-int     wifi_signal, CurrentHour = 0, CurrentMin = 0, CurrentSec = 0;
+int     wifi_signal, 
+uint8_t CurrentHour = 0, CurrentMin = 0, CurrentSec = 0;
 long    StartTime = 0;
 
 //################ PROGRAM VARIABLES and OBJECTS ################
@@ -498,58 +499,38 @@ boolean SetupTime() {
   return TimeStatus;
 }
 //#########################################################################################
+// required an update of all lang_xx.h files 
 boolean UpdateLocalTime() {
   struct tm timeinfo;
-  char   output[30], day_output[30];
-  char   day_number[30], day_year[30];
-  char   day_lang[4], month_lang[4];
-  char   update_time[30];
-  while (!getLocalTime(&timeinfo, 5000)) { // Wait for 5-sec for time to synchronise
+  char   output[23], day_output[30];
+  char   update_time[9];            // change from 30 to 9      
+  while (!getLocalTime(&timeinfo, 5000)) {    // Wait for 5-sec for time to synchronise
     Serial.println("Failed to obtain time");
     return false;
   }
-  strftime(output, 30, "%H", &timeinfo);
-  CurrentHour = String(output).toInt();
-  strftime(output, 30, "%M", &timeinfo);
-  CurrentMin  = String(output).toInt();
-  strftime(output, 30, "%S", &timeinfo);
-  CurrentSec  = String(output).toInt();
+  CurrentHour = timeinfo.tm_hour;
+  CurrentMin  = timeinfo.tm_min; 
+  CurrentSec  = timeinfo.tm_sec;  
+  
   //See http://www.cplusplus.com/reference/ctime/strftime/
   //Serial.println(&timeinfo, "%a %b %d %Y   %H:%M:%S");      // Displays: Saturday, June 24 2017 14:05:49
   Serial.println(&timeinfo, "%H:%M:%S");                      // Displays: 14:05:49
   if (Units == "M") {
-    strftime(day_lang, 4, "%a", &timeinfo);
-    if (strcmp(day_lang, "Mon") == 0) strcpy(day_lang, TXT_MONDAY);
-    if (strcmp(day_lang, "Tue") == 0) strcpy(day_lang, TXT_TUESDAY);
-    if (strcmp(day_lang, "Wed") == 0) strcpy(day_lang, TXT_WEDNESDAY);
-    if (strcmp(day_lang, "Thu") == 0) strcpy(day_lang, TXT_THURSDAY);
-    if (strcmp(day_lang, "Fri") == 0) strcpy(day_lang, TXT_FRIDAY);
-    if (strcmp(day_lang, "Sat") == 0) strcpy(day_lang, TXT_SATURDAY);
-    if (strcmp(day_lang, "Sun") == 0) strcpy(day_lang, TXT_SUNDAY);
-    strftime(month_lang, 4, "%b", &timeinfo);
-    if (strcmp(month_lang, "Jan") == 0) strcpy(month_lang, TXT_JANUARY);
-    if (strcmp(month_lang, "Feb") == 0) strcpy(month_lang, TXT_FEBRUARY);
-    if (strcmp(month_lang, "Mar") == 0) strcpy(month_lang, TXT_MARCH);
-    if (strcmp(month_lang, "Apr") == 0) strcpy(month_lang, TXT_APRIL);
-    if (strcmp(month_lang, "May") == 0) strcpy(month_lang, TXT_MAY);
-    if (strcmp(month_lang, "Jun") == 0) strcpy(month_lang, TXT_JUNE);
-    if (strcmp(month_lang, "Jul") == 0) strcpy(month_lang, TXT_JULY);
-    if (strcmp(month_lang, "Aug") == 0) strcpy(month_lang, TXT_AUGUST);
-    if (strcmp(month_lang, "Sep") == 0) strcpy(month_lang, TXT_SEPTEMBER);
-    if (strcmp(month_lang, "Oct") == 0) strcpy(month_lang, TXT_OCTOBER);
-    if (strcmp(month_lang, "Nov") == 0) strcpy(month_lang, TXT_NOVEMBER);
-    if (strcmp(month_lang, "Dec") == 0) strcpy(month_lang, TXT_DECEMBER);
-    strftime(day_number, 30, "%d", &timeinfo);
-    strftime(day_year, 30, "%y", &timeinfo);           // Displays: Sat 24/Jun/17
-    sprintf(day_output, "%s %s-%s-%s", day_lang, day_number, month_lang, day_year);
-    strftime(update_time, 30, "%H:%M:%S", &timeinfo);  // Creates: '@ 14:05:49'
-    sprintf(output, "( %s %s )", TXT_UPDATED, update_time);
+    if (Language == "DE"){      
+      sprintf(day_output,"%s, %02u. %s %04u",weekday_D[timeinfo.tm_wday],timeinfo.tm_mday,month_M[timeinfo.tm_mon],(timeinfo.tm_year)+1900); 
+      // day_output >> So., 23. Juni 2019 <<   
+      } 
+      else 
+      { sprintf(day_output,"%s %02u-%s-%04u",weekday_D[timeinfo.tm_wday],timeinfo.tm_mday,month_M[timeinfo.tm_mon],(timeinfo.tm_year)+1900);
+        }
+    strftime(update_time, 9, "%H:%M:%S", &timeinfo);  // Creates: '@ 14:05:49'   and change from 30 to 8 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    sprintf(output, "%s %s", TXT_UPDATED, update_time);
   }
   else
   {
     strftime(day_output, 30, "%a %b-%d-%y", &timeinfo); // Creates  'Sat May-31-19'
-    strftime(output, 30, "( Updated: %r )", &timeinfo); // Creates: '@ 2:05:49pm'
-  }
+    strftime(output, 23, "Updated: %r", &timeinfo); // Creates: '@ 2:05:49pm'
+  }  
   date_str = day_output;
   time_str = output;
   return true;
