@@ -69,25 +69,10 @@ const String TXT_WNW = "ONO";
 const String TXT_NW = "NO";
 const String TXT_NNW = "NNO";
 
+
 //Day of the week
-const char* TXT_MONDAY = "Lun";
-const char* TXT_TUESDAY = "Mar";
-const char* TXT_WEDNESDAY = "Mer";
-const char* TXT_THURSDAY = "Gio";
-const char* TXT_FRIDAY = "Ven";
-const char* TXT_SATURDAY = "Sab";
-const char* TXT_SUNDAY = "Dom";
+const char* weekday_D[] = { "Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab" };
 
 //Month
-const char* TXT_JANUARY = "Gen";
-const char* TXT_FEBRUARY = "Feb";
-const char* TXT_MARCH = "Mar";
-const char* TXT_APRIL = "Apr";
-const char* TXT_MAY = "Mag";
-const char* TXT_JUNE = "Giu";
-const char* TXT_JULY = "Lug";
-const char* TXT_AUGUST = "Ago";
-const char* TXT_SEPTEMBER = "Set";
-const char* TXT_OCTOBER = "Ott";
-const char* TXT_NOVEMBER = "Nov";
-const char* TXT_DECEMBER = "Dic";
+const char* month_M[] = { "Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic" };
+
