@@ -122,12 +122,14 @@ bool obtain_wx_data(WiFiClient& client, const String& RequestType) {
   if(httpCode == HTTP_CODE_OK) {
     if (!DecodeWeather(http.getStream(), RequestType)) return false;
     client.stop();
+    http.end();
     return true;
   }
   else
   {
     Serial.printf("connection failed, error: %s", http.errorToString(httpCode).c_str());
     client.stop();
+    http.end();
     return false;
   }
   http.end();
