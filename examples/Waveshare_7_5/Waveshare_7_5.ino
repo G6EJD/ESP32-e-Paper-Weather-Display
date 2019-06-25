@@ -58,15 +58,14 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 // u8g2_font_helvB24_tf
 
 //################  VERSION  ###########################################
-String version = "16.2";     // Programme version, see change log at end
+String version = "16.3";     // Programme version, see change log at end
 //################ VARIABLES ###########################################
 
-long    SleepDuration = 30; // Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
-boolean LargeIcon     = true, SmallIcon = false, RxWeather = false, RxForecast = false;
+boolean LargeIcon = true, SmallIcon = false;
 #define Large  15           // For icon drawing, needs to be odd number for best effect
 #define Small  5            // For icon drawing, needs to be odd number for best effect
-String  time_str, date_str; // strings to hold time and received weather data;wi
-int     wifi_signal, MoonDay, MoonMonth, MoonYear, CurrentHour = 0, CurrentMin = 0, CurrentSec = 0;
+String  Time_str, Date_str; // strings to hold time and received weather data
+int     wifi_signal, CurrentHour = 0, CurrentMin = 0, CurrentSec = 0;
 long    StartTime = 0;
 
 //################ PROGRAM VARIABLES and OBJECTS ################
@@ -89,10 +88,9 @@ float humidity_readings[max_readings]    = {0};
 float rain_readings[max_readings]        = {0};
 float snow_readings[max_readings]        = {0};
 
-int WakeupTime = 7;  // Don't wakeup until after 07:00 to save battery
-int SleepTime  = 23; // Don't sleep  until after 00:00 to save battery
-
-WiFiClient client;   // wifi client object
+long SleepDuration = 30; // Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
+int  WakeupTime    = 7;  // Don't wakeup until after 07:00 to save battery power
+int  SleepTime     = 23; // Sleep after (23+1) 00:00 to save battery power
 
 //#########################################################################################
 void setup() {
@@ -100,14 +98,16 @@ void setup() {
   Serial.begin(115200);
   if (StartWiFi() == WL_CONNECTED && SetupTime() == true) {
     if ((CurrentHour >= WakeupTime && CurrentHour <= SleepTime)) {
-      InitialiseDisplay(); // Give it time to do this initialisation by getting weather data!
+      InitialiseDisplay(); // Give screen time to initialise by getting weather data!
       byte Attempts = 1;
-      while ((RxWeather == false || RxForecast == false) && Attempts <= 2) { // Try up-to twice for Weather and Forecast data
+      bool RxWeather = false, RxForecast = false
+      WiFiClient client;   // wifi client object
+      while ((RxWeather == false || RxForecast == false) && Attempts <= 2) { // Try up-to 2 time for Weather and Forecast data
         if (RxWeather  == false) RxWeather  = obtain_wx_data(client, "weather");
         if (RxForecast == false) RxForecast = obtain_wx_data(client, "forecast");
         Attempts++;
       }
-      if (RxWeather || RxForecast) { // If received either Weather or Forecast data then proceed, report later if either failed
+      if (RxWeather && RxForecast) { // Only if received both Weather or Forecast proceed
         StopWiFi(); // Reduces power consumption
         DisplayWeather();
         display.display(false); // Full screen update mode
@@ -122,10 +122,10 @@ void loop() { // this will never run!
 //#########################################################################################
 void BeginSleep() {
   display.powerOff();
-  long SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec));
+  long SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)); //Some ESP32 are too fast to maintain accurate time
   esp_sleep_enable_timer_wakeup(SleepTimer * 1000000LL);
 #ifdef BUILTIN_LED
-  pinMode(BUILTIN_LED, INPUT); // If it's On, turn it off as some boards use GPIO-5 for SPI-SS, which remains low after-use
+  pinMode(BUILTIN_LED, INPUT); // If it's On, turn it off and some boards use GPIO-5 for SPI-SS, which remains low after screen use
   digitalWrite(BUILTIN_LED, HIGH);
 #endif
   Serial.println("Entering " + String(SleepTimer) + "-secs of sleep time");
@@ -148,9 +148,9 @@ void DisplayGeneralInfoSection() {
   drawString(5, 2, "[Version: " + version + "]", LEFT); // Programme version
   drawString(SCREEN_WIDTH / 2, 3, City, CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB14_tf);
-  drawString(390, 155, date_str, CENTER);
+  drawString(390, 155, Date_str, CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-  drawString(400, 180, time_str, CENTER);
+  drawString(400, 180, Time_str, CENTER);
   display.drawLine(0, 15, SCREEN_WIDTH - 3, 15, GxEPD_BLACK);
 }
 //#########################################################################################
@@ -239,10 +239,8 @@ void DisplayForecastTextSection(int x, int y , int fwidth, int fdepth) {
   String Wx_Description = WxConditions[0].Forecast0;
   if (WxConditions[0].Forecast1 != "") Wx_Description += ", " + WxConditions[0].Forecast1;
   if (WxConditions[0].Forecast2 != "") Wx_Description += ", " + WxConditions[0].Forecast2;
-  if (!RxWeather)  Wx_Description += " ### Failed to receive weather data ###";
-  if (!RxForecast) Wx_Description += " ### Failed to receive forecast data ###";
   int MsgWidth = 35; // Using proportional fonts, so be aware of making it too wide!
-  if (Language == "DE") drawStringMaxWidth(x - 3, y + 18, MsgWidth, Wx_Description, LEFT); // 28 character screen width at this font size
+  if (Language == "DE") drawStringMaxWidth(x - 3, y + 18, MsgWidth, Wx_Description, LEFT); // Leave German text in original format, 28 character screen width at this font size
   else                  drawStringMaxWidth(x - 3, y + 18, MsgWidth, TitleCase(Wx_Description), LEFT); // 28 character screen width at this font size
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
 }
@@ -291,8 +289,13 @@ void DisplayAstronomySection(int x, int y) {
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   drawString(x + 3, y + 18, ConvertUnixTime(WxConditions[0].Sunrise).substring(0, 5) + " " + TXT_SUNRISE, LEFT);
   drawString(x + 3, y + 32, ConvertUnixTime(WxConditions[0].Sunset).substring(0, 5) + " " + TXT_SUNSET, LEFT);
-  drawString(x + 3, y + 50, MoonPhase(MoonDay, MoonMonth, MoonYear, Hemisphere), LEFT);
-  DrawMoon(x + 110, y, MoonDay, MoonMonth, MoonYear, Hemisphere);
+  time_t now = time(NULL);
+  struct tm * now_utc  = gmtime(&now);
+  const int day_utc = now_utc->tm_mday;
+  const int month_utc = now_utc->tm_mon + 1;
+  const int year_utc = now_utc->tm_year + 1900;
+  drawString(x + 3, y + 50, MoonPhase(day_utc, month_utc, year_utc, Hemisphere), LEFT);
+  DrawMoon(x + 110, y, day_utc, month_utc, year_utc, Hemisphere);
 }
 //#########################################################################################
 void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
@@ -456,7 +459,7 @@ uint8_t StartWiFi() {
     delay(50);
   }
   if (connectionStatus == WL_CONNECTED) {
-    wifi_signal = WiFiSignal();
+    wifi_signal = WiFi.RSSI(); // Get Wifi Signal strength now, because the WiFi will be turned off to save power!
     Serial.println("WiFi connected at: " + WiFi.localIP().toString());
   }
   else Serial.println("WiFi connection *** FAILED ***");
@@ -466,10 +469,6 @@ uint8_t StartWiFi() {
 void StopWiFi() {
   WiFi.disconnect();
   WiFi.mode(WIFI_OFF);
-}
-//#########################################################################################
-int WiFiSignal() {
-  return WiFi.RSSI();
 }
 //#########################################################################################
 void DisplayStatusSection(int x, int y, int rssi) {
@@ -502,6 +501,7 @@ void DrawRSSI(int x, int y, int rssi) {
 boolean SetupTime() {
   configTime(0, 0, "0.uk.pool.ntp.org", "time.nist.gov");
   setenv("TZ", Timezone, 1);
+  delay(100);
   bool TimeStatus = UpdateLocalTime();
   return TimeStatus;
 }
@@ -519,24 +519,18 @@ boolean UpdateLocalTime() {
   //See http://www.cplusplus.com/reference/ctime/strftime/
   //Serial.println(&timeinfo, "%a %b %d %Y   %H:%M:%S");      // Displays: Saturday, June 24 2017 14:05:49
   if (Units == "M") {
-    if (Language == "DE") {
-      sprintf(day_output, "%s, %02u. %s %04u", weekday_D[timeinfo.tm_wday], timeinfo.tm_mday, month_M[timeinfo.tm_mon], (timeinfo.tm_year) + 1900); // day_output >> So., 23. Juni 2019 <<
-    }
-    else
-    {
-      sprintf(day_output, "%s %02u-%s-%04u", weekday_D[timeinfo.tm_wday], timeinfo.tm_mday, month_M[timeinfo.tm_mon], (timeinfo.tm_year) + 1900);
-    }
-    strftime(update_time, sizeof(update_time), "%H:%M:%S", &timeinfo);  // Creates: '@ 14:05:49'   and change from 30 to 8 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    sprintf(day_output, "%s %02u-%s-%04u", weekday_D[timeinfo.tm_wday], timeinfo.tm_mday, month_M[timeinfo.tm_mon], (timeinfo.tm_year) + 1900);
+    strftime(update_time, sizeof(update_time), "%H:%M:%S", &timeinfo);  // Creates: '14:05:49'
     sprintf(time_output, "%s %s", TXT_UPDATED, update_time);
   }
   else
   {
     strftime(day_output, sizeof(day_output), "%a %b-%d-%Y", &timeinfo); // Creates  'Sat May-31-2019'
-    strftime(update_time, sizeof(update_time), "%r", &timeinfo);        // Creates: '@ 02:05:49pm'
+    strftime(update_time, sizeof(update_time), "%r", &timeinfo);        // Creates: '02:05:49pm'
     sprintf(time_output, "%s %s", TXT_UPDATED, update_time);
   }
-  date_str = day_output;
-  time_str = time_output;
+  Date_str = day_output;
+  Time_str = time_output;
   return true;
 }
 //#########################################################################################
@@ -988,5 +982,9 @@ void InitialiseDisplay() {
    3.  Improved large sun icon sun rays and improved all icon drawing logic, rain drops now use common shape.
    5.  Moved MostlyCloudy Icon down to align with the rest, same for MostlySunny.
    6.  Improved graph axis alignment.
-   7. Changed date-time generation
+
+  Version 16.3 Correct comestic icon issues
+   1.  Reverted some aspects of UpdateLocalTime() as locialisation changes were unecessary and can be achieved through lang_aa.h files
+   2.  Correct configuration mistakes with moon calculations.
+
 */
