@@ -100,7 +100,7 @@ void setup() {
     if ((CurrentHour >= WakeupTime && CurrentHour <= SleepTime)) {
       InitialiseDisplay(); // Give screen time to initialise by getting weather data!
       byte Attempts = 1;
-      bool RxWeather = false, RxForecast = false
+      bool RxWeather = false, RxForecast = false;
       WiFiClient client;   // wifi client object
       while ((RxWeather == false || RxForecast == false) && Attempts <= 2) { // Try up-to 2 time for Weather and Forecast data
         if (RxWeather  == false) RxWeather  = obtain_wx_data(client, "weather");
