@@ -394,9 +394,9 @@ void StopWiFi() {
 }
 //#########################################################################################
 void SetupTime() {
-  configTime(0, 0, "0.uk.pool.ntp.org", "time.nist.gov");
-  setenv("TZ", Timezone, 1);
-  delay(500);
+  configTime(0, 0, "0.uk.pool.ntp.org", "time.nist.gov"); //(gmtOffset_sec, daylightOffset_sec, ntpServer)
+  setenv("TZ", Timezone, 1);                              //setenv()adds the "TZ" variable to the environment with a value TimeZone, only add if set to 1, 0 means no change
+  delay(100);
   UpdateLocalTime();
 }
 //#########################################################################################
