@@ -857,3 +857,4 @@ const GFXglyph DSEG7_Classic_Bold_18Glyphs[] PROGMEM = {
 const GFXfont DSEG7_Classic_Bold_18 PROGMEM = {
   (uint8_t  *)DSEG7_Classic_Bold_18Bitmaps, (GFXglyph *)DSEG7_Classic_Bold_18Glyphs, 0x20, 0x7E, 20
 };
+

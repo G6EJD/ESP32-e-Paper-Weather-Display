@@ -18,7 +18,7 @@ void Convert_Readings_to_Imperial() {
 //#########################################################################################
 // Problems with stucturing JSON decodes, see here: https://arduinojson.org/assistant/
 bool DecodeWeather(WiFiClient& json, String Type) {
-  Serial.print(F("Creating object...and "));
+  Serial.print(F("\nCreating object...and "));
   // allocate the JsonDocument
   DynamicJsonDocument doc(20 * 1024);
   // Deserialize the JSON document
