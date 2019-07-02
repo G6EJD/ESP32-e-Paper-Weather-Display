@@ -58,7 +58,7 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 // u8g2_font_helvB24_tf
 
 //################  VERSION  ###########################################
-String version = "16.3";     // Programme version, see change log at end
+String version = "16.4";     // Programme version, see change log at end
 //################ VARIABLES ###########################################
 
 boolean LargeIcon = true, SmallIcon = false;
@@ -301,6 +301,7 @@ void DisplayAstronomySection(int x, int y) {
 void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
   const int diameter = 38;
   double Phase = NormalizedMoonPhase(dd, mm, yy);
+  hemisphere.toLowerCase();
   if (hemisphere == "south") Phase = 1 - Phase;
   // Draw dark part of moon
   display.fillCircle(x + diameter - 1, y + diameter, diameter / 2 + 1, GxEPD_BLACK);
@@ -499,8 +500,8 @@ void DrawRSSI(int x, int y, int rssi) {
 }
 //#########################################################################################
 boolean SetupTime() {
-  configTime(0, 0, "0.uk.pool.ntp.org", "time.nist.gov"); //(gmtOffset_sec, daylightOffset_sec, ntpServer)
-  setenv("TZ", Timezone, 1);                              //setenv()adds the "TZ" variable to the environment with a value TimeZone, only add if set to 1, 0 means no change
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer, "time.nist.gov"); //(gmtOffset_sec, daylightOffset_sec, ntpServer)
+  setenv("TZ", Timezone, 1);  //setenv()adds the "TZ" variable to the environment with a value TimeZone, only used if set to 1, 0 means no change
   delay(100);
   bool TimeStatus = UpdateLocalTime();
   return TimeStatus;
@@ -509,7 +510,7 @@ boolean SetupTime() {
 boolean UpdateLocalTime() {
   struct tm timeinfo;
   char   time_output[30], day_output[30], update_time[30];
-  while (!getLocalTime(&timeinfo, 5000)) { // Wait for 5-sec for time to synchronise
+  while (!getLocalTime(&timeinfo, 10000)) { // Wait for 10-sec for time to synchronise
     Serial.println("Failed to obtain time");
     return false;
   }
@@ -874,14 +875,14 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
       if (spacing < y_minor_axis) display.drawFastHLine((x_pos + 3 + j * gwidth / number_of_dashes), y_pos + (gheight * spacing / y_minor_axis), gwidth / (2 * number_of_dashes), GxEPD_BLACK);
     }
     if ((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing) < 5 || title == TXT_PRESSURE_IN) {
-      drawString(x_pos + 2, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1), RIGHT);
+      drawString(x_pos, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1), RIGHT);
     }
     else
     {
       if (Y1Min < 1 && Y1Max < 10)
-        drawString(x_pos + 2, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1), RIGHT);
+        drawString(x_pos - 3, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1), RIGHT);
       else
-        drawString(x_pos + 2, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 0), RIGHT);
+        drawString(x_pos - 3, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 0), RIGHT);
     }
   }
   for (int i = 0; i <= 2; i++) {
@@ -987,4 +988,10 @@ void InitialiseDisplay() {
    1.  Reverted some aspects of UpdateLocalTime() as locialisation changes were unecessary and can be achieved through lang_aa.h files
    2.  Correct configuration mistakes with moon calculations.
 
+  Version 16.4 Corrected time server addresses and adjusted maximum time-out delay
+   1.  Moved time-server address to the credentials file
+   2.  Increased wait time for a valid time setup to 10-secs
+   3.  Added a lowercase conversion of hemisphere to allow for 'North' or 'NORTH' or 'nOrth' entries for hemisphere
+   4.  Adjusted graph y-axis alignment, redcued number of x dashes
+   
 */
