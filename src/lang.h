@@ -20,7 +20,8 @@ const String TXT_RAINFALL_MM = "Rainfall (mm)";
 const String TXT_RAINFALL_IN = "Rainfall (in)";
 const String TXT_SNOWFALL_MM = "Snowfall (mm)";
 const String TXT_SNOWFALL_IN = "Snowfall (in)";
-const String TXT_PRECIPITATION_SOON = "Precipitation";
+const String TXT_PRECIPITATION_SOON = "Prec.";
+
 
 //Sun
 const String TXT_SUNRISE  = "Sunrise";
