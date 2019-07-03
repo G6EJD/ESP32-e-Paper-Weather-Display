@@ -33,3 +33,5 @@ Compile and upload the code - Enjoy!
 
 ![alt text](/IMG_2096b.jpg)
 
+![alt_text](/Waveshare_4_2.jpg)
+
