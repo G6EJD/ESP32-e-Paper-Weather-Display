@@ -31,7 +31,7 @@ The Battery monitor assumes the use of a Lolin D32 board which uses GPIO-35 as a
 
 Compile and upload the code - Enjoy!
 
-![alt text](/IMG_2096b.jpg =600x480)
+![alt text](/IMG_2096b.jpg width="600")
 
-![alt_text](/Waveshare_4_2.jpg =400x300)
+![alt_text](/Waveshare_4_2.jpg width="400")
 
