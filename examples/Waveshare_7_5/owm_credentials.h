@@ -19,7 +19,7 @@ String Hemisphere       = "north";                         // or "south"
 String Units            = "M";                             // Use 'M' for Metric or I for Imperial 
 const char* Timezone    = "GMT0BST,M3.5.0/01,M10.5.0/02";  // Choose your time zone from: https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv 
                                                            // See below for examples
-const char* ntpServer   = "pool.ntp.org";                  // Or, choose a time server close to you, but in most cases it's best to use pool.ntp.org to find an NTP server
+const char* ntpServer   = "0.uk.pool.ntp.org";             // Or, choose a time server close to you, but in most cases it's best to use pool.ntp.org to find an NTP server
                                                            // then the NTP system decides e.g. 0.pool.ntp.org, 1.pool.ntp.org as the NTP syem tries to find  the closest available servers
                                                            // EU "0.europe.pool.ntp.org"
                                                            // US "0.north-america.pool.ntp.org"
