@@ -40,7 +40,7 @@ enum alignmentType {LEFT, RIGHT, CENTER};
 
 // Display connectiopins_arduino.h, e.g. LOLIN32 LITE
 static const uint8_t EPD_BUSY  = 4;
-static const uint8_t EPD_CS    = 0;
+static const uint8_t EPD_CS    = 5;
 static const uint8_t EPD_RST   = 16;
 static const uint8_t EPD_DC    = 17;
 static const uint8_t EPD_SCK   = 18;
