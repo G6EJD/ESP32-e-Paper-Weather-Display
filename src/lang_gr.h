@@ -70,7 +70,7 @@ const char* weekday_D[] = { "Sonntag",
                              "Freitag", 
                              "Samstag"};
 */
-const char* weekday_D[] =  { "So.", "Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa." ;
+const char* weekday_D[] =  { "So.", "Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa." };
 
 //Monat
 const char* month_M[] = { "Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sep.", "Okt.", "Nov.", "Dez." };
