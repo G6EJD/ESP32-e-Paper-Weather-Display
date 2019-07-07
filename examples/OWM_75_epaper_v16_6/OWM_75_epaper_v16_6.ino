@@ -57,15 +57,15 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 // u8g2_font_helvB24_tf
 
 //################  VERSION  ###########################################
-String version = "16.5";     // Programme version, see change log at end
+String version = "16.6";     // Programme version, see change log at end
 //################ VARIABLES ###########################################
 
 boolean LargeIcon = true, SmallIcon = false;
 const byte Large     = 15;  // For icon drawing, needs to be odd number for best effect
 const byte Small     = 5;   // For icon drawing, needs to be odd number for best effect
-const byte MaxErrors = 5;   // For error reporting, the maximum that can be recorded
-String     Time_str, Date_str, ErrorMessage[MaxErrors]; // strings for Time, Date and Error reporting
-int        wifi_signal, CurrentHour = 0, CurrentMin = 0, CurrentSec = 0, ErrCnt = -1;
+const byte MaxEvents = 10;  // For event reporting, the maximum that can be recorded
+String     Time_str, Date_str, EventMessage[MaxEvents]; // strings for Time, Date and Error reporting
+int        wifi_signal, CurrentHour = 0, CurrentMin = 0, CurrentSec = 0, EventCnt = 0;
 long       StartTime = 0;
 
 //################ PROGRAM VARIABLES and OBJECTS ################
@@ -76,6 +76,7 @@ Forecast_record_type  WxConditions[1];
 Forecast_record_type  WxForecast[max_readings];
 
 #include "common.h"
+#include <rom/rtc.h>
 
 #define autoscale_on  true
 #define autoscale_off false
@@ -89,11 +90,12 @@ float rain_readings[max_readings]        = {0};
 float snow_readings[max_readings]        = {0};
 
 long SleepDuration = 30; // Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
-int  WakeupTime    = 7;  // Don't wakeup until after 07:00 to save battery power
+int  WakeupTime    = 7;  // Don't wake-up until after 07:00 to save battery power
 int  SleepTime     = 23; // Sleep after (23+1) 00:00 to save battery power
 
 //#########################################################################################
 void setup() {
+  VerboseRecordOfResetReason(rtc_get_reset_reason(0)); // 0 means CPU0 (Main core)
   StartTime = millis();
   Serial.begin(115200);
   delay(500); // Allow the PSU to stabilise
@@ -111,12 +113,11 @@ void setup() {
       if (RxWeather && RxForecast) { // Only if received both Weather or Forecast proceed
         StopWiFi(); // Reduces power consumption
         DisplayWeather();
-        display.display(false); // Full screen update mode
       }
       else
       {
-        if (!RxWeather)  AddToErrorLog("*** Failed to Rx Weather data ***");
-        if (!RxForecast) AddToErrorLog("*** Failed to Rx Forecast data ***");
+        if (!RxWeather)  AddToEventLog("*** Failed to Rx Weather data ***");
+        if (!RxForecast) AddToEventLog("*** Failed to Rx Forecast data ***");
       }
     }
   }
@@ -127,10 +128,12 @@ void loop() { // this will never run!
 }
 //#########################################################################################
 void BeginSleep() {
-  if (ErrCnt >= 0) {
-    int yPos = SCREEN_HEIGHT - 20 * (ErrCnt + 1) - 50;
-    ReportError(yPos, ErrorMessage);
+  AddToEventLog("*** Entering Sleep ***");
+  Serial.println(EventCnt);
+  if (EventCnt >= 0) {
+    ReportEvent(EventMessage);
   }
+  display.display(false); // Full screen update mode
   display.powerOff();
   long SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)); //Some ESP32 are too fast to maintain accurate time
   esp_sleep_enable_timer_wakeup(SleepTimer * 1000000LL);
@@ -150,7 +153,7 @@ void DisplayWeather() {                        // 7.5" e-paper display is 640x38
   DisplayMainWeatherSection(241, 80);          // Centre section of display for Location, temperature, Weather report, current Wx Symbol and wind direction
   DisplayForecastSection(174, 196);            // 3hr forecast boxes
   DisplayAstronomySection(0, 196);             // Astronomy section Sun rise/set, Moon phase and Moon icon
-  DisplayStatusSection(548, 170, wifi_signal); // Wi-Fi signal strength and Battery voltage
+  DisplayStatusSection(550, 170, wifi_signal); // Wi-Fi signal strength and Battery voltage
 }
 //#########################################################################################
 void DisplayGeneralInfoSection() {
@@ -297,14 +300,14 @@ void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
 void DisplayAstronomySection(int x, int y) {
   display.drawRect(x, y + 13, 173, 52, GxEPD_BLACK);
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x + 3, y + 18, ConvertUnixTime(WxConditions[0].Sunrise).substring(0, 5) + " " + TXT_SUNRISE, LEFT);
-  drawString(x + 3, y + 32, ConvertUnixTime(WxConditions[0].Sunset).substring(0, 5) + " " + TXT_SUNSET, LEFT);
+  drawString(x + 4, y + 18, ConvertUnixTime(WxConditions[0].Sunrise).substring(0, 5) + " " + TXT_SUNRISE, LEFT);
+  drawString(x + 4, y + 32, ConvertUnixTime(WxConditions[0].Sunset).substring(0, 5) + " " + TXT_SUNSET, LEFT);
   time_t now = time(NULL);
   struct tm * now_utc = gmtime(&now);
   const int day_utc   = now_utc->tm_mday;
   const int month_utc = now_utc->tm_mon + 1;
   const int year_utc  = now_utc->tm_year + 1900;
-  drawString(x + 3, y + 50, MoonPhase(day_utc, month_utc, year_utc, Hemisphere), LEFT);
+  drawString(x + 4, y + 50, MoonPhase(day_utc, month_utc, year_utc, Hemisphere), LEFT);
   DrawMoon(x + 110, y, day_utc, month_utc, year_utc, Hemisphere);
 }
 //#########################################################################################
@@ -475,17 +478,17 @@ uint8_t StartWiFi() {
   }
   else
   {
-    AddToErrorLog("*** WiFi connection FAILED ***");
-    Serial.println(ErrorMessage[ErrCnt]);
-    ErrCnt++;
+    AddToEventLog("*** WiFi connection FAILED ***");
+    Serial.println(EventMessage[EventCnt]);
+    EventCnt++;
     switch (connectionStatus) {
-      case  0: AddToErrorLog("*** WL_IDLE_STATUS ***"); break;      // temporary status assigned when WiFi.begin() is called and remains active until the number of attempts expires
-      case  1: AddToErrorLog("*** WL_NO_SSID_AVAIL ***"); break;    // assigned when no SSID or requested SSID are available
-      case  2: AddToErrorLog("*** WL_SCAN_COMPLETED ***"); break;   // assigned when the scan networks is completed
-      case  3: AddToErrorLog("*** WL_CONNECTED ***"); break;        // assigned when connected to a WiFi network
-      case  4: AddToErrorLog("*** WL_CONNECT_FAILED ***"); break;   // assigned when the connection fails for all the attempts
-      case  5: AddToErrorLog("*** WL_CONNECTION_LOST ***"); break;  // assigned when the connection is lost
-      case  6: AddToErrorLog("*** WL_DISCONNECTED ***"); break;     // assigned when disconnected from a network;
+      case  0: AddToEventLog("*** WL_IDLE_STATUS ***"); break;      // temporary status assigned when WiFi.begin() is called and remains active until the number of attempts expires
+      case  1: AddToEventLog("*** WL_NO_SSID_AVAIL ***"); break;    // assigned when no SSID or requested SSID are available
+      case  2: AddToEventLog("*** WL_SCAN_COMPLETED ***"); break;   // assigned when the scan networks is completed
+      case  3: AddToEventLog("*** WL_CONNECTED ***"); break;        // assigned when connected to a WiFi network
+      case  4: AddToEventLog("*** WL_CONNECT_FAILED ***"); break;   // assigned when the connection fails for all the attempts
+      case  5: AddToEventLog("*** WL_CONNECTION_LOST ***"); break;  // assigned when the connection is lost
+      case  6: AddToEventLog("*** WL_DISCONNECTED ***"); break;     // assigned when disconnected from a network;
       default: break;
     }
   }
@@ -498,9 +501,9 @@ void StopWiFi() {
 }
 //#########################################################################################
 void DisplayStatusSection(int x, int y, int rssi) {
-  display.drawRect(x - 28, y - 26, 117, 51, GxEPD_BLACK);
-  display.drawLine(x - 28, y - 14, x - 28 + 117, y - 14, GxEPD_BLACK);
-  display.drawLine(x - 28 + 117 / 2, y - 15, x - 28 + 117 / 2, y - 26, GxEPD_BLACK);
+  display.drawRect(x - 28, y - 26, 115, 51, GxEPD_BLACK);
+  display.drawLine(x - 28, y - 14, x - 28 + 114, y - 14, GxEPD_BLACK);
+  display.drawLine(x - 28 + 115 / 2, y - 15, x - 28 + 115 / 2, y - 26, GxEPD_BLACK);
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   drawString(x, y - 24, TXT_WIFI, CENTER);
   drawString(x + 55, y - 24, TXT_POWER, CENTER);
@@ -536,8 +539,8 @@ boolean UpdateLocalTime() {
   struct tm timeinfo;
   char   time_output[30], day_output[30], update_time[30];
   while (!getLocalTime(&timeinfo, 15000)) { // Wait for 10-sec for time to synchronise
-    AddToErrorLog("*** Failed to obtain time ***");
-    Serial.println(ErrorMessage[ErrCnt]);
+    AddToEventLog("*** Failed to obtain time ***");
+    Serial.println(EventMessage[EventCnt]);
     return false;
   }
   CurrentHour = timeinfo.tm_hour;
@@ -962,18 +965,40 @@ void InitialiseDisplay() {
   display.setFullWindow();
 }
 
-void ReportError(int y, String ErrorMessage[]) {
-  display.fillRect(SCREEN_HEIGHT * 0.1, y + int(SCREEN_HEIGHT * 0.1), SCREEN_WIDTH * 0.9, (ErrCnt + 1) * 17, GxEPD_WHITE);
-  display.drawRect(SCREEN_HEIGHT * 0.1, y + int(SCREEN_HEIGHT * 0.1), SCREEN_WIDTH * 0.9, (ErrCnt + 1) * 17, GxEPD_BLACK);
-  for (byte Err = 0; Err <= ErrCnt; Err++) {
-    drawString(SCREEN_HEIGHT * 0.1 + 3, y + int(SCREEN_HEIGHT * 0.1) + 5 + Err * 15, "Err # " + String(Err < 9 ? "0" : "") + String(Err + 1) + " : " + ErrorMessage[Err], LEFT);
+//#########################################################################################
+void ReportEvent(String EventMessage[]) {
+  int y = SCREEN_HEIGHT - 20 * (EventCnt + 1) - 50;
+  display.fillRect(SCREEN_WIDTH * 0.1, y + int(SCREEN_WIDTH * 0.1), SCREEN_WIDTH * 0.8, (EventCnt) * 15.5, GxEPD_WHITE);
+  display.drawRect(SCREEN_WIDTH * 0.1, y + int(SCREEN_WIDTH * 0.1), SCREEN_WIDTH * 0.8, (EventCnt) * 15.5, GxEPD_BLACK);
+  for (byte Event = 0; Event <= EventCnt; Event++) {
+    drawString(SCREEN_WIDTH * 0.1 + 3, y + int(SCREEN_WIDTH * 0.1) + 5 + (Event - 1) * 15, "Evt#" + String(Event < 10 ? "0" : "") + String(Event) + " : " + EventMessage[Event], LEFT);
   }
-  display.display(false);
 }
-
-void AddToErrorLog(String message) {
-  ErrCnt++;
-  ErrorMessage[ErrCnt] = message;
+//#########################################################################################
+void AddToEventLog(String message) {
+  EventCnt++;
+  EventMessage[EventCnt] = message;
+}
+//#########################################################################################
+void VerboseRecordOfResetReason(RESET_REASON reason) {
+  switch ( reason)  {
+    case 1  : AddToEventLog("Vbat power on reset"); break;
+    case 3  : AddToEventLog("Software reset digital core"); break;
+    case 4  : AddToEventLog("Legacy watch dog reset digital core"); break;
+    case 5  : AddToEventLog("Deep Sleep reset digital core"); break;
+    case 6  : AddToEventLog("Reset by SLC module, reset digital core"); break;
+    case 7  : AddToEventLog("Timer Group0 Watch dog reset digital core"); break;
+    case 8  : AddToEventLog("Timer Group1 Watch dog reset digital core"); break;
+    case 9  : AddToEventLog("RTC Watch dog Reset digital core"); break;
+    case 10 : AddToEventLog("Instrusion tested to reset CPU"); break;
+    case 11 : AddToEventLog("Time Group reset CPU"); break;
+    case 12 : AddToEventLog("Software reset CPU"); break;
+    case 13 : AddToEventLog("RTC Watch dog Reset CPU"); break;
+    case 14 : AddToEventLog("APP CPU reset by PRO CPU"); break;
+    case 15 : AddToEventLog("Reset when Vdd voltage is not stable"); break;
+    case 16 : AddToEventLog("RTC Watch dog reset digital core and rtc module"); break;
+    default : AddToEventLog("Unknown reason");
+  }
 }
 //#########################################################################################
 /*
@@ -1014,5 +1039,7 @@ void AddToErrorLog(String message) {
    1.  Added a 500mS delay after Serial.begin to allow the on-board power supply to stabilise after start-up.
    2.  Added an error reporting function to display on screen any connection or data retrevial errors.
    3.  Increased NTP time syncronisation delay to 15-secs (15000)
+
+  Version 16.6 Added verbose reporting of CPU restart reasons, included Vdd under voltage resets
 
 */
