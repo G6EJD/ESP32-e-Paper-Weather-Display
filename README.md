@@ -15,9 +15,11 @@ Also see: https://www.arduino.cc/en/Guide/Libraries#toc4
 Download the software to your Arduino's library directory.
 
 1. From the examples, choose depending on your module either
+   - Waveshare_1_54
    - Waveshare_2_9
    - Waveshare_4_2
-   - Waveshare_7_5 (instead of Mini Grafx requires [GxEPD2 library](https://github.com/ZinggJM/GxEPD2), which needs [Adafruit_GFX](https://github.com/adafruit/Adafruit-GFX-Library), additionally requires U8g2_for_Adafruit_GFX)
+   - Waveshare_7_5 
+(instead of Mini Grafx requires [GxEPD2 library](https://github.com/ZinggJM/GxEPD2), which needs [Adafruit_GFX](https://github.com/adafruit/Adafruit-GFX-Library), additionally requires U8g2_for_Adafruit_GFX)
 
 2. Obtain your [OWM API key](https://openweathermap.org/appid) - it's free
 
@@ -36,4 +38,7 @@ Compile and upload the code - Enjoy!
 
 4.2" E-Paper Layout
 ![alt_text, width="400"](/Waveshare_4_2.jpg)
+
+1.54" E-Paper Layout
+![alt_text, width="400"](/Waveshare_1_54.jpg)
 
