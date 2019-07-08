@@ -24,7 +24,7 @@
 #include "time.h"              // Built-in
 #include <SPI.h>               // Built-in 
 #define  ENABLE_GxEPD2_display 0
-#include <GxEPD2_BW.h>
+#include <GxEPD2_BW.h>         // GxEPD2 from Sketch, Include Library, Manage Libraries, search for GxEDP2
 #include <GxEPD2_3C.h>
 #include <Fonts/FreeMonoBold12pt7b.h>
 #include "epaper_fonts.h"
@@ -36,27 +36,36 @@
 enum alignment {LEFT, RIGHT, CENTER};
 
 // pins_arduino.h, e.g. LOLIN D32
-//static const uint8_t EPD_BUSY = 4;
+static const uint8_t EPD_BUSY = 4;  // to EPD BUSY
+static const uint8_t EPD_SS   = 5;  // to EPD CS
+static const uint8_t EPD_RST  = 16; // to EPD RST
+static const uint8_t EPD_DC   = 17; // to EPD DC
+static const uint8_t EPD_SCK  = 18; // to EPD CLK
+static const uint8_t EPD_MISO = 19; // Master-In Slave-Out not used, as no data from display
+static const uint8_t EPD_MOSI = 23; // to EPD DIN
+
+// Lolin D32 GxEPD2_3C<GxEPD2_154c, GxEPD2_154c::HEIGHT> display(GxEPD2_154c(/*CS=5*/ SS, /*DC=17*/ 17, /*RST=16*/ 16, /*BUSY=4*/ 4)); // 2-Colour display
+GxEPD2_BW<GxEPD2_154, GxEPD2_154::HEIGHT> display(GxEPD2_154(/*CS=5*/ EPD_SS, /*DC=17*/ EPD_DC, /*RST=16*/ EPD_RST, /*BUSY=4*/ EPD_BUSY));
+
+// pins_arduino.h, e.g. LOLIN D32 Pro
+//static const uint8_t EPD_BUSY = 13;
 //static const uint8_t EPD_SS   = 5;
-//static const uint8_t EPD_RST  = 16;
-//static const uint8_t EPD_DC   = 17;
+//static const uint8_t EPD_RST  = 2;
+//static const uint8_t EPD_DC   = 15;
 //static const uint8_t EPD_SCK  = 18;
 //static const uint8_t EPD_MISO = 19; // Master-In Slave-Out not used, as no data from display
 //static const uint8_t EPD_MOSI = 23;
 
-// pins_arduino.h, e.g. LOLIN D32 Pro
-static const uint8_t EPD_BUSY = 13;
-static const uint8_t EPD_SS   = 5;
-static const uint8_t EPD_RST  = 2;
-static const uint8_t EPD_DC   = 15;
-static const uint8_t EPD_SCK  = 18;
-static const uint8_t EPD_MISO = 19; // Master-In Slave-Out not used, as no data from display
-static const uint8_t EPD_MOSI = 23;
+// Lolin D32 ProGxEPD2_3C<GxEPD2_154c, GxEPD2_154c::HEIGHT> display(GxEPD2_154c(/*CS=5*/ SS, /*DC=17*/ 15, /*RST=2*/ 2, /*BUSY=13*/ 13)); // 3-Colour display
+// GxEPD2_3C<GxEPD2_154c, GxEPD2_154c::HEIGHT> display(GxEPD2_154c(/*CS=D8*/ SS, /*DC=D3*/ 15, /*RST=D4*/ 2, /*BUSY=D2*/ 13)); // 3-Colour display
 
-// Lolin D32 GxEPD2_3C<GxEPD2_154c, GxEPD2_154c::HEIGHT> display(GxEPD2_154c(/*CS=D8*/ SS, /*DC=D3*/ 17, /*RST=D4*/ 16, /*BUSY=D2*/ 4)); // 3-Colour display
-GxEPD2_3C<GxEPD2_154c, GxEPD2_154c::HEIGHT> display(GxEPD2_154c(/*CS=D8*/ SS, /*DC=D3*/ 15, /*RST=D4*/ 2, /*BUSY=D2*/ 13)); // 3-Colour display
+// For 3-Colour displays use: // If you want to colour text use GxEPD_RED or GxEPD_YELLOW in place of GxEPD_BLACK
+//GxEPD2_BW<GxEPD2_154, GxEPD2_154::HEIGHT> display(GxEPD2_154(/*CS=5*/ EPD_SS, /*DC=15*/ EPD_DC, /*RST=16*/ EPD_RST, /*BUSY=4*/ EPD_BUSY));
+// For 2-Colour displays (B/W) use:
+//GxEPD2_3C<GxEPD2_154, GxEPD2_154c::HEIGHT> display(GxEPD2_154c(/*CS=5*/ EPD_SS, /*DC=15*/ EPD_DC, /*RST=16*/ EPD_RST, /*BUSY=4*/ EPD_BUSY));
+
 //################  VERSION  ##########################
-String version = "1";       // Version of this program
+String version = "1";        // Version of this program
 //################ VARIABLES ###########################
 
 bool LargeIcon = true, SmallIcon = false, RxWeather = false, RxForecast = false;
