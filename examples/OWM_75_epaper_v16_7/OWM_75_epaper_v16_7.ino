@@ -57,7 +57,7 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 // u8g2_font_helvB24_tf
 
 //################  VERSION  ###########################################
-String version = "16.6";     // Programme version, see change log at end
+String version = "16.7";     // Programme version, see change log at end
 //################ VARIABLES ###########################################
 
 boolean LargeIcon = true, SmallIcon = false;
@@ -77,6 +77,8 @@ Forecast_record_type  WxForecast[max_readings];
 
 #include "common.h"
 #include <rom/rtc.h>
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
 
 #define autoscale_on  true
 #define autoscale_off false
@@ -89,12 +91,13 @@ float humidity_readings[max_readings]    = {0};
 float rain_readings[max_readings]        = {0};
 float snow_readings[max_readings]        = {0};
 
-long SleepDuration = 30; // Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
-int  WakeupTime    = 7;  // Don't wake-up until after 07:00 to save battery power
-int  SleepTime     = 23; // Sleep after (23+1) 00:00 to save battery power
+long  SleepDuration = 30; // Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
+int   WakeupTime    = 7;  // Don't wake-up until after 07:00 to save battery power
+int   SleepTime     = 23; // Sleep after (23+1) 00:00 to save battery power
 
 //#########################################################################################
 void setup() {
+  DisableBrownOutDetector();
   VerboseRecordOfResetReason(rtc_get_reset_reason(0)); // 0 means CPU0 (Main core)
   StartTime = millis();
   Serial.begin(115200);
@@ -129,10 +132,7 @@ void loop() { // this will never run!
 //#########################################################################################
 void BeginSleep() {
   AddToEventLog("*** Entering Sleep ***");
-  Serial.println(EventCnt);
-  if (EventCnt >= 0) {
-    ReportEvent(EventMessage);
-  }
+  ReportEvent(EventMessage);
   display.display(false); // Full screen update mode
   display.powerOff();
   long SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)); //Some ESP32 are too fast to maintain accurate time
@@ -145,6 +145,10 @@ void BeginSleep() {
   Serial.println("Awake for : " + String((millis() - StartTime) / 1000.0, 3) + "-secs");
   Serial.println("Starting deep-sleep period...");
   esp_deep_sleep_start();      // Sleep for e.g. 30 minutes
+}
+//#########################################################################################
+void DisableBrownOutDetector() {
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
 }
 //#########################################################################################
 void DisplayWeather() {                        // 7.5" e-paper display is 640x384 resolution
@@ -967,11 +971,15 @@ void InitialiseDisplay() {
 
 //#########################################################################################
 void ReportEvent(String EventMessage[]) {
+  const byte EventThreshold = 2; // Change to 1 to view all messages on e-paper screen
   int y = SCREEN_HEIGHT - 20 * (EventCnt + 1) - 50;
-  display.fillRect(SCREEN_WIDTH * 0.1, y + int(SCREEN_WIDTH * 0.1), SCREEN_WIDTH * 0.8, (EventCnt) * 15.5, GxEPD_WHITE);
-  display.drawRect(SCREEN_WIDTH * 0.1, y + int(SCREEN_WIDTH * 0.1), SCREEN_WIDTH * 0.8, (EventCnt) * 15.5, GxEPD_BLACK);
-  for (byte Event = 0; Event <= EventCnt; Event++) {
-    drawString(SCREEN_WIDTH * 0.1 + 3, y + int(SCREEN_WIDTH * 0.1) + 5 + (Event - 1) * 15, "Evt#" + String(Event < 10 ? "0" : "") + String(Event) + " : " + EventMessage[Event], LEFT);
+  if (EventCnt > EventThreshold) { 
+    display.fillRect(SCREEN_WIDTH * 0.1, y + int(SCREEN_WIDTH * 0.1), SCREEN_WIDTH * 0.8, (EventCnt) * 15.5, GxEPD_WHITE);
+    display.drawRect(SCREEN_WIDTH * 0.1, y + int(SCREEN_WIDTH * 0.1), SCREEN_WIDTH * 0.8, (EventCnt) * 15.5, GxEPD_BLACK);
+  }
+  for (byte Event = 1; Event <= EventCnt; Event++) {
+    if (EventCnt > EventThreshold) drawString(SCREEN_WIDTH * 0.1 + 3, y + int(SCREEN_WIDTH * 0.1) + 5 + (Event - 1) * 15, "Evt#" + String(Event < 10 ? "0" : "") + String(Event) + " : " + EventMessage[Event], LEFT);
+    Serial.println("Evnt#"+String(Event < 10 ? "0" : "")+String(Event) + " : " + EventMessage[Event]);
   }
 }
 //#########################################################################################
@@ -1002,44 +1010,55 @@ void VerboseRecordOfResetReason(RESET_REASON reason) {
 }
 //#########################################################################################
 /*
-  Version 16.0 reformatted to use u8g2 fonts
-   1.  Added ß to translations, eventually that conversion can move to the lang_xx.h file
-   2.  Spaced temperature, pressure and precipitation equally, suggest in DE use 'niederschlag' for 'Rain/Snow'
-   3.  No-longer displays Rain or Snow unless there has been any.
-   4.  The nn-mm 'Rain suffix' has been replaced with two rain drops
-   5.  Similarly for 'Snow' two snow flakes, no words and '=Rain' and '"=Snow' for none have gone.
-   6.  Improved the Cloud Cover icon and only shows if reported, 0% cloud (clear sky) is no-report and no icon.
-   7.  Added a Visibility icon and reported distance in Metres. Only shows if reported.
-   8.  Fixed the occasional sleep time error resulting in constant restarts, occurred when updates took longer than expected.
-   9.  Improved the smaller sun icon.
-   10. Added more space for the Sunrise/Sunset and moon phases when translated.
+  Version 16.0
+   1.  Reformatted to use u8g2 fonts
+   2.  Added ß to translations, eventually that conversion can move to the lang_xx.h file
+   3.  Spaced temperature, pressure and precipitation equally, suggest in DE use 'niederschlag' for 'Rain/Snow'
+   4.  No-longer displays Rain or Snow unless there has been any.
+   5.  The nn-mm 'Rain suffix' has been replaced with two rain drops
+   6.  Similarly for 'Snow' two snow flakes, no words and '=Rain' and '"=Snow' for none have gone.
+   7.  Improved the Cloud Cover icon and only shows if reported, 0% cloud (clear sky) is no-report and no icon.
+   8.  Added a Visibility icon and reported distance in Metres. Only shows if reported.
+   9.  Fixed the occasional sleep time error resulting in constant restarts, occurred when updates took longer than expected.
+   10. Improved the smaller sun icon.
+   11. Added more space for the Sunrise/Sunset and moon phases when translated.
 
-  Version 16.1 Correct timing errors after sleep - persistent problem that is not deterministic
-   1.  Removed Weather (Main) category e.g. previously 'Clear (Clear sky)', now only shows area category of 'Clear sky' and then ', caterory1' and ', category2'
-   2.  Improved accented character displays
+  Version 16.1
+   1.  Correct timing errors after sleep - persistent problem that is not deterministic
+   2.  Removed Weather (Main) category e.g. previously 'Clear (Clear sky)', now only shows area category of 'Clear sky' and then ', caterory1' and ', category2'
+   3.  Improved accented character displays
 
-  Version 16.2 Correct comestic icon issues
-   1.  At night the addition of a moon icon overwrote the Visibility report, so order of drawing was changed to prevent this.
-   2.  RainDrop icon was too close to the reported value of rain, moved right. Same for Snow Icon.
-   3.  Improved large sun icon sun rays and improved all icon drawing logic, rain drops now use common shape.
+  Version 16.2 
+   1.  Corrected comestic icon issues
+   2.  At night the addition of a moon icon overwrote the Visibility report, so order of drawing was changed to prevent this.
+   3.  RainDrop icon was too close to the reported value of rain, moved right. Same for Snow Icon.
+   4.  Improved large sun icon sun rays and improved all icon drawing logic, rain drops now use common shape.
    5.  Moved MostlyCloudy Icon down to align with the rest, same for MostlySunny.
    6.  Improved graph axis alignment.
 
-  Version 16.3 Correct comestic icon issues
-   1.  Reverted some aspects of UpdateLocalTime() as locialisation changes were unecessary and can be achieved through lang_aa.h files
-   2.  Correct configuration mistakes with moon calculations.
+  Version 16.3
+   1.  Corrected more comestic icon issues
+   2.  Reverted some aspects of UpdateLocalTime() as locialisation changes were unecessary and can be achieved through lang_aa.h files
+   3.  Correct configuration mistakes with moon calculations.
 
-  Version 16.4 Corrected time server addresses and adjusted maximum time-out delay
-   1.  Moved time-server address to the credentials file
-   2.  Increased wait time for a valid time setup to 10-secs
-   3.  Added a lowercase conversion of hemisphere to allow for 'North' or 'NORTH' or 'nOrth' entries for hemisphere
-   4.  Adjusted graph y-axis alignment, redcued number of x dashes
+  Version 16.4
+   1.  Corrected time server addresses and adjusted maximum time-out delay
+   2.  Moved time-server address to the credentials file
+   3.  Increased wait time for a valid time setup to 10-secs
+   4.  Added a lowercase conversion of hemisphere to allow for 'North' or 'NORTH' or 'nOrth' entries for hemisphere
+   5.  Adjusted graph y-axis alignment, redcued number of x dashes
 
-  Version 16.5 Improved reliability and error reporting
-   1.  Added a 500mS delay after Serial.begin to allow the on-board power supply to stabilise after start-up.
-   2.  Added an error reporting function to display on screen any connection or data retrevial errors.
-   3.  Increased NTP time syncronisation delay to 15-secs (15000)
+  Version 16.5
+   1.  Improved reliability and error reporting
+   2.  Added a 500mS delay after Serial.begin to allow the on-board power supply to stabilise after start-up.
+   3.  Added an error reporting function to display on screen any connection or data retrevial errors.
+   4.  Increased NTP time syncronisation delay to 15-secs (15000)
 
-  Version 16.6 Added verbose reporting of CPU restart reasons, included Vdd under voltage resets
+  Version 16.6 
+  1.  Added verbose event reporting of CPU restart reasons, included Vdd under voltage resets/ Brownouts
+
+  Version 16.7
+  1.  Disabled 'Brown-out' detector
+  2.  Always report all Event messages to the serial port
 
 */
