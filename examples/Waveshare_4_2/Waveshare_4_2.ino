@@ -573,24 +573,23 @@ void addfog(int x, int y, int scale, int linesize, bool IconSize) {
 }
 //#########################################################################################
 void Sunny(int x, int y, bool IconSize, String IconName) {
-  int scale = Small;
+  int scale = Small, offset = 3;
   if (IconSize == LargeIcon) {
     scale = Large;
     y = y - 8;
-  }
-  else y = y - 3; // Shift up small sun icon
-  if (IconName.endsWith("n")) addmoon(x, y + 20, scale, IconSize);
+    offset = 18;
+  } else y = y - 3; // Shift up small sun icon
+  if (IconName.endsWith("n")) addmoon(x, y + offset, scale, IconSize);
   scale = scale * 1.6;
   addsun(x, y, scale, IconSize);
 }
 //#########################################################################################
 void MostlySunny(int x, int y, bool IconSize, String IconName) {
-  int scale = Small, linesize = 3, offset = 5;
+  int scale = Small, linesize = 3, offset = 3;
   if (IconSize == LargeIcon) {
     scale = Large;
     offset = 10;
-  }
-  if (scale == Small) linesize = 1;
+  } else linesize = 1;
   if (IconName.endsWith("n")) addmoon(x, y + offset, scale, IconSize);
   addcloud(x, y + offset, scale, linesize);
   addsun(x - scale * 1.8, y - scale * 1.8 + offset, scale, IconSize);
