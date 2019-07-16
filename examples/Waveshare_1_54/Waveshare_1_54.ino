@@ -35,7 +35,7 @@
 
 enum alignment {LEFT, RIGHT, CENTER};
 
-// pins_arduino.h, e.g. LOLIN D32
+// Connections for e.g. LOLIN D32
 static const uint8_t EPD_BUSY = 4;  // to EPD BUSY
 static const uint8_t EPD_SS   = 5;  // to EPD CS
 static const uint8_t EPD_RST  = 16; // to EPD RST
@@ -44,8 +44,18 @@ static const uint8_t EPD_SCK  = 18; // to EPD CLK
 static const uint8_t EPD_MISO = 19; // Master-In Slave-Out not used, as no data from display
 static const uint8_t EPD_MOSI = 23; // to EPD DIN
 
-// Lolin D32 GxEPD2_3C<GxEPD2_154c, GxEPD2_154c::HEIGHT> display(GxEPD2_154c(/*CS=5*/ SS, /*DC=17*/ 17, /*RST=16*/ 16, /*BUSY=4*/ 4)); // 2-Colour display
-GxEPD2_BW<GxEPD2_154, GxEPD2_154::HEIGHT> display(GxEPD2_154(/*CS=5*/ EPD_SS, /*DC=17*/ EPD_DC, /*RST=16*/ EPD_RST, /*BUSY=4*/ EPD_BUSY));
+// Connections for e.g. Waveshare ESP32 e-Paper Driver Board
+//static const uint8_t EPD_BUSY = 25;
+//static const uint8_t EPD_CS   = 15;
+//static const uint8_t EPD_RST  = 26; 
+//static const uint8_t EPD_DC   = 27; 
+//static const uint8_t EPD_SCK  = 13;
+//static const uint8_t EPD_MISO = 19; // Master-In Slave-Out not used, as no data from display
+//static const uint8_t EPD_MOSI = 14;
+
+
+//GxEPD2_3C<GxEPD2_154c, GxEPD2_154c::HEIGHT> display(GxEPD2_154c(/*CS=5*/ SS, /*DC=17*/ 17, /*RST=16*/ 16, /*BUSY=4*/ 4));     // 3-Colour display
+GxEPD2_BW<GxEPD2_154, GxEPD2_154::HEIGHT> display(GxEPD2_154(/*CS=5*/ EPD_SS, /*DC=17*/ EPD_DC, /*RST=16*/ EPD_RST, /*BUSY=4*/ EPD_BUSY)); // 2-Colour display (B/W)
 
 // pins_arduino.h, e.g. LOLIN D32 Pro
 //static const uint8_t EPD_BUSY = 13;

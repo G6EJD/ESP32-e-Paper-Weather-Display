@@ -35,17 +35,28 @@
 
 enum alignment {LEFT, RIGHT, CENTER};
 
-// pins_arduino.h, e.g. LOLIN32 LITE
-static const uint8_t EPD_BUSY = 4;
-static const uint8_t EPD_CS   = 5; // aka SS
-static const uint8_t EPD_RST  = 16;
-static const uint8_t EPD_DC   = 17;
-static const uint8_t EPD_SCK  = 18;
+// Connections for e.g. LOLIN D32
+static const uint8_t EPD_BUSY = 4;  // to EPD BUSY
+static const uint8_t EPD_SS   = 5;  // to EPD CS
+static const uint8_t EPD_RST  = 16; // to EPD RST
+static const uint8_t EPD_DC   = 17; // to EPD DC
+static const uint8_t EPD_SCK  = 18; // to EPD CLK
 static const uint8_t EPD_MISO = 19; // Master-In Slave-Out not used, as no data from display
-static const uint8_t EPD_MOSI = 23;
+static const uint8_t EPD_MOSI = 23; // to EPD DIN
+
+// Connections for e.g. Waveshare ESP32 e-Paper Driver Board
+//static const uint8_t EPD_BUSY = 25;
+//static const uint8_t EPD_CS   = 15;
+//static const uint8_t EPD_RST  = 26; 
+//static const uint8_t EPD_DC   = 27; 
+//static const uint8_t EPD_SCK  = 13;
+//static const uint8_t EPD_MISO = 19; // Master-In Slave-Out not used, as no data from display
+//static const uint8_t EPD_MOSI = 14;
 
 GxEPD2_BW<GxEPD2_420, GxEPD2_420::HEIGHT> display(GxEPD2_420(/*CS=D8*/ EPD_CS, /*DC=D3*/ EPD_DC, /*RST=D4*/ EPD_RST, /*BUSY=D2*/ EPD_BUSY));
+
 U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
+
 // Using fonts:
 // u8g2_font_helvB08_tf
 // u8g2_font_helvB10_tf

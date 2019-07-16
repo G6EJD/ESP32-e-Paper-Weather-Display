@@ -38,16 +38,28 @@
 
 enum alignment {LEFT, RIGHT, CENTER};
 
-// E-Paper pins to ESP32 GPIO pins e.g. LOLIN32 D32 or most ESP32 development boards
-static const uint8_t EPD_BUSY = 4;
-static const uint8_t EPD_CS   = 5;
-static const uint8_t EPD_RST  = 16; // Lolin D32 Pro pin N/A, so suggest using 12
-static const uint8_t EPD_DC   = 17; // Lolin D32 Pro pin N/A, so suggest using 13
-static const uint8_t EPD_SCK  = 18;
+// Connections for e.g. LOLIN D32
+static const uint8_t EPD_BUSY = 4;  // to EPD BUSY
+static const uint8_t EPD_SS   = 5;  // to EPD CS
+static const uint8_t EPD_RST  = 16; // to EPD RST
+static const uint8_t EPD_DC   = 17; // to EPD DC
+static const uint8_t EPD_SCK  = 18; // to EPD CLK
 static const uint8_t EPD_MISO = 19; // Master-In Slave-Out not used, as no data from display
-static const uint8_t EPD_MOSI = 23;
+static const uint8_t EPD_MOSI = 23; // to EPD DIN
 
-GxEPD2_BW<GxEPD2_750, GxEPD2_750::HEIGHT> display(GxEPD2_750(/*CS=5*/ EPD_CS, /*DC=*/ EPD_DC, /*RST=*/ EPD_RST, /*BUSY=*/ EPD_BUSY));
+// Connections for e.g. Waveshare ESP32 e-Paper Driver Board
+//static const uint8_t EPD_BUSY = 25;
+//static const uint8_t EPD_CS   = 15;
+//static const uint8_t EPD_RST  = 26; 
+//static const uint8_t EPD_DC   = 27; 
+//static const uint8_t EPD_SCK  = 13;
+//static const uint8_t EPD_MISO = 19; // Master-In Slave-Out not used, as no data from display
+//static const uint8_t EPD_MOSI = 14;
+
+GxEPD2_BW<GxEPD2_750, GxEPD2_750::HEIGHT> display(GxEPD2_750(/*CS=*/ EPD_CS, /*DC=*/ EPD_DC, /*RST=*/ EPD_RST, /*BUSY=*/ EPD_BUSY));   // B/W display
+//GxEPD2_3C<GxEPD2_750, GxEPD2_750::HEIGHT> display(GxEPD2_750(/*CS=*/ EPD_CS, /*DC=*/ EPD_DC, /*RST=*/ EPD_RST, /*BUSY=*/ EPD_BUSY)); // 3-colour displays
+// use GxEPD_BLACK or GxEPD_WHITE or GxEPD_RED or GxEPD_YELLOW depending on display type
+
 U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
 // Using fonts:
 // u8g2_font_helvB08_tf
