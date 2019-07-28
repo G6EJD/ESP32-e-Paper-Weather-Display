@@ -40,7 +40,7 @@ enum alignment {LEFT, RIGHT, CENTER};
 
 // Connections for e.g. LOLIN D32
 static const uint8_t EPD_BUSY = 4;  // to EPD BUSY
-static const uint8_t EPD_SS   = 5;  // to EPD CS
+static const uint8_t EPD_CS   = 5;  // to EPD CS
 static const uint8_t EPD_RST  = 16; // to EPD RST
 static const uint8_t EPD_DC   = 17; // to EPD DC
 static const uint8_t EPD_SCK  = 18; // to EPD CLK
@@ -53,7 +53,7 @@ static const uint8_t EPD_MOSI = 23; // to EPD DIN
 //static const uint8_t EPD_RST  = 26; 
 //static const uint8_t EPD_DC   = 27; 
 //static const uint8_t EPD_SCK  = 13;
-//static const uint8_t EPD_MISO = 19; // Master-In Slave-Out not used, as no data from display
+//static const uint8_t EPD_MISO = 12; // Master-In Slave-Out not used, as no data from display
 //static const uint8_t EPD_MOSI = 14;
 
 GxEPD2_BW<GxEPD2_750, GxEPD2_750::HEIGHT> display(GxEPD2_750(/*CS=*/ EPD_CS, /*DC=*/ EPD_DC, /*RST=*/ EPD_RST, /*BUSY=*/ EPD_BUSY));   // B/W display
@@ -70,7 +70,7 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 // u8g2_font_helvB24_tf
 
 //################  VERSION  ###########################################
-String version = "16.4";     // Programme version, see change log at end
+String version = "16.5";     // Programme version, see change log at end
 //################ VARIABLES ###########################################
 
 boolean LargeIcon = true, SmallIcon = false;
@@ -248,9 +248,11 @@ void DisplayTemperatureSection(int x, int y, int twidth, int tdepth) {
 void DisplayForecastTextSection(int x, int y , int fwidth, int fdepth) {
   display.drawRect(x - 6, y - 3, fwidth, fdepth, GxEPD_BLACK); // forecast text outline
   u8g2Fonts.setFont(u8g2_font_helvB14_tf);
-  String Wx_Description = WxConditions[0].Forecast0;
+  String Wx_Description = WxConditions[0].Main;
+  if (WxConditions[0].Forecast0 != "") Wx_Description += " (" + WxConditions[0].Forecast0;
   if (WxConditions[0].Forecast1 != "") Wx_Description += ", " + WxConditions[0].Forecast1;
   if (WxConditions[0].Forecast2 != "") Wx_Description += ", " + WxConditions[0].Forecast2;
+  if (Wx_Description.indexOf("(") > 0) Wx_Description += ")";
   int MsgWidth = 35; // Using proportional fonts, so be aware of making it too wide!
   if (Language == "DE") drawStringMaxWidth(x - 3, y + 18, MsgWidth, Wx_Description, LEFT); // Leave German text in original format, 28 character screen width at this font size
   else                  drawStringMaxWidth(x - 3, y + 18, MsgWidth, TitleCase(Wx_Description), LEFT); // 28 character screen width at this font size
@@ -938,6 +940,8 @@ void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alig
 //#########################################################################################
 void InitialiseDisplay() {
   display.init(115200);
+  SPI.end();
+  SPI.begin(EPD_SCK, EPD_MISO, EPD_MOSI, EPD_CS);
   u8g2Fonts.begin(display); // connect u8g2 procedures to Adafruit GFX
   u8g2Fonts.setFontMode(1);                  // use u8g2 transparent mode (this is default)
   u8g2Fonts.setFontDirection(0);             // left to right (this is default)
@@ -1005,5 +1009,9 @@ void InitialiseDisplay() {
    2.  Increased wait time for a valid time setup to 10-secs
    3.  Added a lowercase conversion of hemisphere to allow for 'North' or 'NORTH' or 'nOrth' entries for hemisphere
    4.  Adjusted graph y-axis alignment, redcued number of x dashes
+
+  Version 16.5 Clarified connections for Waveshare ESp32 driver board
+   1.  Added SPI.end(); and SPI.begin(CLK, MISO, MOSI, CS); to enable explicit definition of pins to be used.
+
    
 */

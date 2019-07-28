@@ -40,7 +40,7 @@ enum alignmentType {LEFT, RIGHT, CENTER};
 
 // Connections for e.g. LOLIN D32
 static const uint8_t EPD_BUSY = 4;  // to EPD BUSY
-static const uint8_t EPD_SS   = 5;  // to EPD CS
+static const uint8_t EPD_CS   = 5;  // to EPD CS
 static const uint8_t EPD_RST  = 16; // to EPD RST
 static const uint8_t EPD_DC   = 17; // to EPD DC
 static const uint8_t EPD_SCK  = 18; // to EPD CLK
@@ -53,7 +53,7 @@ static const uint8_t EPD_MOSI = 23; // to EPD DIN
 //static const uint8_t EPD_RST  = 26; 
 //static const uint8_t EPD_DC   = 27; 
 //static const uint8_t EPD_SCK  = 13;
-//static const uint8_t EPD_MISO = 19; // Master-In Slave-Out not used, as no data from display
+//static const uint8_t EPD_MISO = 12; // Master-In Slave-Out not used, as no data from display
 //static const uint8_t EPD_MOSI = 14;
 
 GxEPD2_BW<GxEPD2_290, GxEPD2_290::HEIGHT> display(GxEPD2_290(/*CS=D8*/ EPD_CS, /*DC=D3*/ EPD_DC, /*RST=D4*/ EPD_RST, /*BUSY=D2*/ EPD_BUSY));
@@ -754,6 +754,8 @@ void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alig
 //#########################################################################################
 void InitialiseDisplay() {
   display.init(115200);
+  SPI.end();
+  SPI.begin(EPD_SCK, EPD_MISO, EPD_MOSI, EPD_CS);
   display.setRotation(3);                    // Use 1 or 3 for landscape modes
   u8g2Fonts.begin(display);                  // connect u8g2 procedures to Adafruit GFX
   u8g2Fonts.setFontMode(1);                  // use u8g2 transparent mode (this is default)
@@ -771,4 +773,7 @@ void InitialiseDisplay() {
   2.  Made consitent with other versions specifically 7x5 variant
   3.  Introduced Visibility in Metres, Cloud cover in % and RH in %
   4.  Correct sunrise/sunset time when in imperial mode.
+
+  Version 6.1 Provided connection support for Waveshare ESP32 driver board
+
 */

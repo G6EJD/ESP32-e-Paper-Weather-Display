@@ -37,7 +37,7 @@ enum alignment {LEFT, RIGHT, CENTER};
 
 // Connections for e.g. LOLIN D32
 static const uint8_t EPD_BUSY = 4;  // to EPD BUSY
-static const uint8_t EPD_SS   = 5;  // to EPD CS
+static const uint8_t EPD_CS   = 5;  // to EPD CS
 static const uint8_t EPD_RST  = 16; // to EPD RST
 static const uint8_t EPD_DC   = 17; // to EPD DC
 static const uint8_t EPD_SCK  = 18; // to EPD CLK
@@ -50,12 +50,12 @@ static const uint8_t EPD_MOSI = 23; // to EPD DIN
 //static const uint8_t EPD_RST  = 26; 
 //static const uint8_t EPD_DC   = 27; 
 //static const uint8_t EPD_SCK  = 13;
-//static const uint8_t EPD_MISO = 19; // Master-In Slave-Out not used, as no data from display
+//static const uint8_t EPD_MISO = 12; // Master-In Slave-Out not used, as no data from display
 //static const uint8_t EPD_MOSI = 14;
 
 
 //GxEPD2_3C<GxEPD2_154c, GxEPD2_154c::HEIGHT> display(GxEPD2_154c(/*CS=5*/ SS, /*DC=17*/ 17, /*RST=16*/ 16, /*BUSY=4*/ 4));     // 3-Colour display
-GxEPD2_BW<GxEPD2_154, GxEPD2_154::HEIGHT> display(GxEPD2_154(/*CS=5*/ EPD_SS, /*DC=17*/ EPD_DC, /*RST=16*/ EPD_RST, /*BUSY=4*/ EPD_BUSY)); // 2-Colour display (B/W)
+GxEPD2_BW<GxEPD2_154, GxEPD2_154::HEIGHT> display(GxEPD2_154(/*CS=5*/ EPD_CS, /*DC=17*/ EPD_DC, /*RST=16*/ EPD_RST, /*BUSY=4*/ EPD_BUSY)); // 2-Colour display (B/W)
 
 // pins_arduino.h, e.g. LOLIN D32 Pro
 //static const uint8_t EPD_BUSY = 13;
@@ -75,7 +75,7 @@ GxEPD2_BW<GxEPD2_154, GxEPD2_154::HEIGHT> display(GxEPD2_154(/*CS=5*/ EPD_SS, /*
 //GxEPD2_3C<GxEPD2_154, GxEPD2_154c::HEIGHT> display(GxEPD2_154c(/*CS=5*/ EPD_SS, /*DC=15*/ EPD_DC, /*RST=16*/ EPD_RST, /*BUSY=4*/ EPD_BUSY));
 
 //################  VERSION  ##########################
-String version = "1";        // Version of this program
+String version = "1.1";        // Version of this program
 //################ VARIABLES ###########################
 
 bool LargeIcon = true, SmallIcon = false, RxWeather = false, RxForecast = false;
@@ -575,6 +575,8 @@ void DisplayWxPerson(int x, int y, String IconName) {
 void InitialiseDisplay() {
   Serial.begin(115200);
   display.init(115200);
+  SPI.end();
+  SPI.begin(EPD_SCK, EPD_MISO, EPD_MOSI, EPD_CS);
   display.setRotation(3);
   display.setTextSize(0);
   display.setFont(&DejaVu_Sans_Bold_11);
@@ -582,3 +584,10 @@ void InitialiseDisplay() {
   display.fillScreen(GxEPD_WHITE);
   display.setFullWindow();
 }
+
+/*
+  Version 1.0 Initial release
+
+  Version 1.1 Added support for Waveshare ESP32 Driver board
+
+*/
