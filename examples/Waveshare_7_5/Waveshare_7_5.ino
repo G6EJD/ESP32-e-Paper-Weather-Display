@@ -248,7 +248,7 @@ void DisplayTemperatureSection(int x, int y, int twidth, int tdepth) {
 void DisplayForecastTextSection(int x, int y , int fwidth, int fdepth) {
   display.drawRect(x - 6, y - 3, fwidth, fdepth, GxEPD_BLACK); // forecast text outline
   u8g2Fonts.setFont(u8g2_font_helvB14_tf);
-  String Wx_Description = WxConditions[0].Main;
+  String Wx_Description = WxConditions[0].Main0;
   if (WxConditions[0].Forecast0 != "") Wx_Description += " (" + WxConditions[0].Forecast0;
   if (WxConditions[0].Forecast1 != "") Wx_Description += ", " + WxConditions[0].Forecast1;
   if (WxConditions[0].Forecast2 != "") Wx_Description += ", " + WxConditions[0].Forecast2;
