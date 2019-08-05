@@ -534,6 +534,7 @@ void DrawRSSI(int x, int y, int rssi) {
 boolean SetupTime() {
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer, "time.nist.gov"); //(gmtOffset_sec, daylightOffset_sec, ntpServer)
   setenv("TZ", Timezone, 1);  //setenv()adds the "TZ" variable to the environment with a value TimeZone, only used if set to 1, 0 means no change
+  tzset(); // Set the TZ environment variable
   delay(100);
   bool TimeStatus = UpdateLocalTime();
   return TimeStatus;
