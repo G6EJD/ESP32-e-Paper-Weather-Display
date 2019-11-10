@@ -1,3 +1,5 @@
+#define FONT(x) x##_tf
+
 //Temperatur - Luftfeuchtigkeit - Vorschau
 const String TXT_FORECAST_VALUES  = "3 Tages Vorhersage";
 const String TXT_CONDITIONS       = "Aktuelles Wetter";

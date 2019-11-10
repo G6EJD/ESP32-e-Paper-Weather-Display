@@ -1,3 +1,5 @@
+#define FONT(x) x##_tf
+
 //Temperature - Humidity - Forecast
 const String TXT_FORECAST_VALUES = "Previsioni a 3 giorni";
 const String TXT_CONDITIONS = "Condizioni";
