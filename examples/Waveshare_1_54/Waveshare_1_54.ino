@@ -1,4 +1,4 @@
-t/* ESP32 Weather Display and an e-paper 1.54" Display, obtains data from Open Weather Map, decodes and then displays it.
+/* ESP32 Weather Display and an e-paper 1.54" Display, obtains data from Open Weather Map, decodes and then displays it.
   ####################################################################################################################################
   This software, the ideas and concepts is Copyright (c) David Bird 2019. All rights to this software are reserved.
 
