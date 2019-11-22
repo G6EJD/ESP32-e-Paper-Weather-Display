@@ -37,7 +37,7 @@ enum alignment {LEFT, RIGHT, CENTER};
 
 // Connections for e.g. LOLIN D32
 static const uint8_t EPD_BUSY = 4;  // to EPD BUSY
-static const uint8_t EPD_SS   = 5;  // to EPD CS
+static const uint8_t EPD_CS   = 5;  // to EPD CS
 static const uint8_t EPD_RST  = 16; // to EPD RST
 static const uint8_t EPD_DC   = 17; // to EPD DC
 static const uint8_t EPD_SCK  = 18; // to EPD CLK
@@ -66,7 +66,7 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 // u8g2_font_helvB24_tf
 
 //################  VERSION  ##########################
-String version = "12.1";       // Version of this program
+String version = "12.2";     // Version of this program
 //################ VARIABLES ###########################
 
 boolean LargeIcon = true, SmallIcon = false;
@@ -884,7 +884,7 @@ void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alig
 }
 //#########################################################################################
 void InitialiseDisplay() {
-  display.init(115200);
+  display.init(0);
   SPI.end();
   SPI.begin(EPD_SCK, EPD_MISO, EPD_MOSI, EPD_CS);
   u8g2Fonts.begin(display); // connect u8g2 procedures to Adafruit GFX
@@ -904,5 +904,8 @@ void InitialiseDisplay() {
   4.  Correct sunrise/sunset time when in imperial mode.
 
   Version 12.1 Clarified Waveshare ESP32 driver board connections
+
+  Version 12.2 Changed GxEPD2 initialisation from 115200 to 0
+  1.  display.init(115200); becomes display.init(0); to stop blank screen following update to GxEPD2
 
 */

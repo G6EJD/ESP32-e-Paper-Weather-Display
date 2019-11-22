@@ -59,7 +59,7 @@ GxEPD2_BW<GxEPD2_154, GxEPD2_154::HEIGHT> display(GxEPD2_154(/*CS=5*/ EPD_CS, /*
 
 // pins_arduino.h, e.g. LOLIN D32 Pro
 //static const uint8_t EPD_BUSY = 13;
-//static const uint8_t EPD_SS   = 5;
+//static const uint8_t EPD_CS   = 5;
 //static const uint8_t EPD_RST  = 2;
 //static const uint8_t EPD_DC   = 15;
 //static const uint8_t EPD_SCK  = 18;
@@ -75,7 +75,7 @@ GxEPD2_BW<GxEPD2_154, GxEPD2_154::HEIGHT> display(GxEPD2_154(/*CS=5*/ EPD_CS, /*
 //GxEPD2_3C<GxEPD2_154, GxEPD2_154c::HEIGHT> display(GxEPD2_154c(/*CS=5*/ EPD_SS, /*DC=15*/ EPD_DC, /*RST=16*/ EPD_RST, /*BUSY=4*/ EPD_BUSY));
 
 //################  VERSION  ##########################
-String version = "1.1";        // Version of this program
+String version = "1.2";      // Version of this program
 //################ VARIABLES ###########################
 
 bool LargeIcon = true, SmallIcon = false, RxWeather = false, RxForecast = false;
@@ -574,8 +574,7 @@ void DisplayWxPerson(int x, int y, String IconName) {
 }
 
 void InitialiseDisplay() {
-  Serial.begin(115200);
-  display.init(115200);
+  display.init(0);
   SPI.end();
   SPI.begin(EPD_SCK, EPD_MISO, EPD_MOSI, EPD_CS);
   display.setRotation(3);
@@ -590,5 +589,8 @@ void InitialiseDisplay() {
   Version 1.0 Initial release
 
   Version 1.1 Added support for Waveshare ESP32 Driver board
+
+  Version 1.2 Changed GxEPD2 initialisation from 115200 to 0
+  1.  display.init(115200); becomes display.init(0); to stop blank screen following update to GxEPD2
 
 */

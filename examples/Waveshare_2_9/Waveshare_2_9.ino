@@ -68,7 +68,7 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 // u8g2_font_helvB24_tf
 
 //################# LIBRARIES ##########################
-String version = "6";       // Version of this program
+String version = "6.2";       // Version of this program
 //################ VARIABLES ###########################
 
 bool    LargeIcon = true, SmallIcon = false;
@@ -754,7 +754,7 @@ void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alig
 }
 //#########################################################################################
 void InitialiseDisplay() {
-  display.init(115200);
+  display.init(0);
   SPI.end();
   SPI.begin(EPD_SCK, EPD_MISO, EPD_MOSI, EPD_CS);
   display.setRotation(3);                    // Use 1 or 3 for landscape modes
@@ -776,5 +776,10 @@ void InitialiseDisplay() {
   4.  Correct sunrise/sunset time when in imperial mode.
 
   Version 6.1 Provided connection support for Waveshare ESP32 driver board
+
+  Version 6.2 Changed GxEPD2 initialisation from 115200 to 0
+  1.  display.init(115200); becomes display.init(0); to stop blank screen following update to GxEPD2
+
+  
 
 */

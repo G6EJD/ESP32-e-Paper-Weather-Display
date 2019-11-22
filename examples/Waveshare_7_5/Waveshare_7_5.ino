@@ -940,7 +940,7 @@ void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alig
 }
 //#########################################################################################
 void InitialiseDisplay() {
-  display.init(115200);
+  display.init(0);
   SPI.end();
   SPI.begin(EPD_SCK, EPD_MISO, EPD_MOSI, EPD_CS);
   u8g2Fonts.begin(display); // connect u8g2 procedures to Adafruit GFX
@@ -1011,8 +1011,10 @@ void InitialiseDisplay() {
    3.  Added a lowercase conversion of hemisphere to allow for 'North' or 'NORTH' or 'nOrth' entries for hemisphere
    4.  Adjusted graph y-axis alignment, redcued number of x dashes
 
-  Version 16.5 Clarified connections for Waveshare ESp32 driver board
+  Version 16.5 Clarified connections for Waveshare ESP32 driver board
    1.  Added SPI.end(); and SPI.begin(CLK, MISO, MOSI, CS); to enable explicit definition of pins to be used.
 
+  Version 16.6 changed GxEPD2 initialisation from 115200 to 0
+   1.  display.init(115200); becomes display.init(0); to stop blank screen following update to GxEPD2
    
 */
