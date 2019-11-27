@@ -75,7 +75,7 @@ GxEPD2_BW<GxEPD2_154, GxEPD2_154::HEIGHT> display(GxEPD2_154(/*CS=5*/ EPD_CS, /*
 //GxEPD2_3C<GxEPD2_154, GxEPD2_154c::HEIGHT> display(GxEPD2_154c(/*CS=5*/ EPD_SS, /*DC=15*/ EPD_DC, /*RST=16*/ EPD_RST, /*BUSY=4*/ EPD_BUSY));
 
 //################  VERSION  ##########################
-String version = "1.2";      // Version of this program
+String version = "1.3";      // Version of this program
 //################ VARIABLES ###########################
 
 bool LargeIcon = true, SmallIcon = false, RxWeather = false, RxForecast = false;
@@ -591,6 +591,5 @@ void InitialiseDisplay() {
   Version 1.1 Added support for Waveshare ESP32 Driver board
 
   Version 1.2 Changed GxEPD2 initialisation from 115200 to 0
-  1.  display.init(115200); becomes display.init(0); to stop blank screen following update to GxEPD2
-
+  1.  Display.init(115200); becomes display.init(0); to stop blank screen following update to GxEPD2
 */
