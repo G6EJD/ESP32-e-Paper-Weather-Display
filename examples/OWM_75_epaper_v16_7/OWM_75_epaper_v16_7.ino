@@ -32,6 +32,7 @@
 //#include "lang_gr.h"                  // Localisation (German)
 //#include "lang_it.h"                  // Localisation (Italian)
 //#include "lang_cz.h"                  // Localisation (Czech)
+//#include "lang_pl.h"                  // Localisation (Polish)
 
 const int SCREEN_WIDTH  = 640;        // Set for landscape mode
 const int SCREEN_HEIGHT = 384;
