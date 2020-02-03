@@ -28,11 +28,12 @@
 #include <U8g2_for_Adafruit_GFX.h>
 #include "forecast_record.h"
 #include "lang.h"                     // Localisation (English)
-//#include "lang_fr.h"                  // Localisation (French)
-//#include "lang_gr.h"                  // Localisation (German)
-//#include "lang_it.h"                  // Localisation (Italian)
-//#include "lang_cz.h"                  // Localisation (Czech)
-//#include "lang_pl.h"                  // Localisation (Polish)
+//#include "lang_cz.h"                // Localisation (Czech)
+//#include "lang_fr.h"                // Localisation (French)
+//#include "lang_gr.h"                // Localisation (German)
+//#include "lang_it.h"                // Localisation (Italian)
+//#include "lang_nl.h"                // Localisation (Dutch)
+//#include "lang_pl.h"                // Localisation (Polish)
 
 const int SCREEN_WIDTH  = 640;        // Set for landscape mode
 const int SCREEN_HEIGHT = 384;
@@ -556,7 +557,7 @@ boolean UpdateLocalTime() {
   //See http://www.cplusplus.com/reference/ctime/strftime/
   //Serial.println(&timeinfo, "%a %b %d %Y   %H:%M:%S");      // Displays: Saturday, June 24 2017 14:05:49
   if (Units == "M") {
-    if ((Language == "CZ") || (Language == "DE")) {
+    if ((Language == "CZ") || (Language == "DE") || (Language == "NL")) {
       sprintf(day_output, "%s, %02u. %s %04u", weekday_D[timeinfo.tm_wday], timeinfo.tm_mday, month_M[timeinfo.tm_mon], (timeinfo.tm_year) + 1900); // day_output >> So., 23. Juni 2019 <<
     }
     else
