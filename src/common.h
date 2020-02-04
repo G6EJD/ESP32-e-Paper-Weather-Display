@@ -113,7 +113,7 @@ bool obtain_wx_data(WiFiClient& client, const String& RequestType) {
   const String units = (Units == "M" ? "metric" : "imperial");
   client.stop(); // close connection before sending a new request
   HTTPClient http;
-  String uri = "/data/2.5/" + RequestType + "?q=" + City + "," + Country + "&APPID=" + apikey + "&mode=json&units=" + units + "&lang=" + Language;
+  String uri = "/data/2.5/" + RequestType + "?is=" + CityID + "," + Country + "&APPID=" + apikey + "&mode=json&units=" + units + "&lang=" + Language;
   if(RequestType != "weather")
   {
     uri += "&cnt=" + String(max_readings);
