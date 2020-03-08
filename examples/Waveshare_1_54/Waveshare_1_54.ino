@@ -55,6 +55,7 @@ static const uint8_t EPD_MOSI = 23; // to EPD DIN
 
 
 //GxEPD2_3C<GxEPD2_154c, GxEPD2_154c::HEIGHT> display(GxEPD2_154c(/*CS=5*/ SS, /*DC=17*/ 17, /*RST=16*/ 16, /*BUSY=4*/ 4));     // 3-Colour display
+//GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display(GxEPD2_154_D67(/*CS=5*/ EPD_CS, /*DC=17*/ EPD_DC, /*RST=16*/ EPD_RST, /*BUSY=4*/ EPD_BUSY)); // New version of 2-Colour display (B/W) GDEH0154D67 or Waveshare 1.54 V2
 GxEPD2_BW<GxEPD2_154, GxEPD2_154::HEIGHT> display(GxEPD2_154(/*CS=5*/ EPD_CS, /*DC=17*/ EPD_DC, /*RST=16*/ EPD_RST, /*BUSY=4*/ EPD_BUSY)); // 2-Colour display (B/W)
 
 // pins_arduino.h, e.g. LOLIN D32 Pro
