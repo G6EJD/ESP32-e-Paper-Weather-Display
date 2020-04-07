@@ -76,7 +76,7 @@ GxEPD2_BW<GxEPD2_154, GxEPD2_154::HEIGHT> display(GxEPD2_154(/*CS=5*/ EPD_CS, /*
 //GxEPD2_3C<GxEPD2_154, GxEPD2_154c::HEIGHT> display(GxEPD2_154c(/*CS=5*/ EPD_SS, /*DC=15*/ EPD_DC, /*RST=16*/ EPD_RST, /*BUSY=4*/ EPD_BUSY));
 
 //################  VERSION  ##########################
-String version = "1.3";      // Version of this program
+String version = "1.4";      // Version of this program
 //################ VARIABLES ###########################
 
 bool LargeIcon = true, SmallIcon = false, RxWeather = false, RxForecast = false;
@@ -137,7 +137,7 @@ void loop() { // this will never run!
 void BeginSleep() {
   display.powerOff();
   long SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec))+5; //Some ESP32 are too fast to maintain accurate time
-  esp_sleep_enable_timer_wakeup(SleepTimer * 1000000LL);
+  esp_sleep_enable_timer_wakeup((SleepTimer+20) * 1000000LL); // Addedd 20-sec extra delay to cater for slow ESP32 RTC timers
 #ifdef BUILTIN_LED
   pinMode(BUILTIN_LED, INPUT); // If it's On, turn it off and some boards use GPIO-5 for SPI-SS, which remains low after screen use
   digitalWrite(BUILTIN_LED, HIGH);
@@ -593,4 +593,9 @@ void InitialiseDisplay() {
 
   Version 1.2 Changed GxEPD2 initialisation from 115200 to 0
   1.  Display.init(115200); becomes display.init(0); to stop blank screen following update to GxEPD2
+  
+  Version 1.3 
+  1.  Added extra 20-secs to sleep delay to allow for slower ESP32 RTC timers
+  
+  
 */
