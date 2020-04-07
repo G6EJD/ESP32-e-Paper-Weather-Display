@@ -71,7 +71,7 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 // u8g2_font_helvB24_tf
 
 //################# LIBRARIES ##########################
-String version = "6.3";       // Version of this program
+String version = "6.4";       // Version of this program
 //################ VARIABLES ###########################
 
 bool    LargeIcon = true, SmallIcon = false;
