@@ -18,15 +18,15 @@ const String TXT_PRESSURE_RISING  = "steigend";
 const String TXT_PRESSURE_FALLING = "fallend";
 
 //Niederschlag / Schneefall
-const String TXT_RAINFALL_MM = "Niederschlag [mm]";
-const String TXT_RAINFALL_IN = "Niederschlag [in]";
-const String TXT_SNOWFALL_MM = "Niederschlag [mm]";
-const String TXT_SNOWFALL_IN = "Niederschlag [in]";
-const String TXT_PRECIPITATION_SOON = "Regen/Schnee";
+const String TXT_RAINFALL_MM = "mm Regen";
+const String TXT_RAINFALL_IN = "in Regen";
+const String TXT_SNOWFALL_MM = "mm Schnee";
+const String TXT_SNOWFALL_IN = "in Schnee";
+const String TXT_PRECIPITATION_SOON = "in Kürze";
 
 //Sonne
-const String TXT_SUNRISE  = "Sonnenaufgang";
-const String TXT_SUNSET   = "Sonnenuntergang";
+const String TXT_SUNRISE  = "Sonnenaufg.";
+const String TXT_SUNSET   = "Sonnenunterg.";
 
 //Mond
 const String TXT_MOON_NEW             = "Neumond";          // Neumond
@@ -72,7 +72,7 @@ const char* weekday_D[] = { "Sonntag",
                              "Freitag", 
                              "Samstag"};
 */
-const char* weekday_D[] =  { "So.", "Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa." };
+const char* weekday_D[] =  { "So", "Mo", "Di", "Mi", "Do", "Fr", "Sa" };
 
 //Monat
-const char* month_M[] = { "Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sep.", "Okt.", "Nov.", "Dez." };
+const char* month_M[] = { "Jan", "Feb", "März", "Apr", "Mai", "Juni", "Juli", "Aug", "Sep", "Okt", "Nov", "Dez" };
