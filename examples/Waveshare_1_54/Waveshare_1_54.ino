@@ -55,6 +55,7 @@ static const uint8_t EPD_MOSI = 23; // to EPD DIN
 
 
 //GxEPD2_3C<GxEPD2_154c, GxEPD2_154c::HEIGHT> display(GxEPD2_154c(/*CS=5*/ SS, /*DC=17*/ 17, /*RST=16*/ 16, /*BUSY=4*/ 4));     // 3-Colour display
+//GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display(GxEPD2_154_D67(/*CS=5*/ EPD_CS, /*DC=17*/ EPD_DC, /*RST=16*/ EPD_RST, /*BUSY=4*/ EPD_BUSY)); // New version of 2-Colour display (B/W) GDEH0154D67 or Waveshare 1.54 V2
 GxEPD2_BW<GxEPD2_154, GxEPD2_154::HEIGHT> display(GxEPD2_154(/*CS=5*/ EPD_CS, /*DC=17*/ EPD_DC, /*RST=16*/ EPD_RST, /*BUSY=4*/ EPD_BUSY)); // 2-Colour display (B/W)
 
 // pins_arduino.h, e.g. LOLIN D32 Pro
@@ -135,8 +136,13 @@ void loop() { // this will never run!
 //#########################################################################################
 void BeginSleep() {
   display.powerOff();
+<<<<<<< HEAD
   long SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)); //Some ESP32 are too fast to maintain accurate time
   esp_sleep_enable_timer_wakeup((SleepTimer+20) * 1000000LL); // Added +20 seconnds to cover ESP32 RTC timer source inaccuracies
+=======
+  long SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec))+5; //Some ESP32 are too fast to maintain accurate time
+  esp_sleep_enable_timer_wakeup((SleepTimer+20) * 1000000LL); // Addedd 20-sec extra delay to cater for slow ESP32 RTC timers
+>>>>>>> e10ec573c43d65a96d449dfa84f6c44a6761ae3e
 #ifdef BUILTIN_LED
   pinMode(BUILTIN_LED, INPUT); // If it's On, turn it off and some boards use GPIO-5 for SPI-SS, which remains low after screen use
   digitalWrite(BUILTIN_LED, HIGH);
@@ -592,4 +598,9 @@ void InitialiseDisplay() {
 
   Version 1.2 Changed GxEPD2 initialisation from 115200 to 0
   1.  Display.init(115200); becomes display.init(0); to stop blank screen following update to GxEPD2
+  
+  Version 1.3 
+  1.  Added extra 20-secs to sleep delay to allow for slower ESP32 RTC timers
+  
+  
 */

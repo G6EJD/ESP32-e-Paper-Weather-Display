@@ -29,10 +29,12 @@
 #include <U8g2_for_Adafruit_GFX.h>
 #include "forecast_record.h"
 #include "lang.h"                     // Localisation (English)
-//#include "lang_fr.h"                  // Localisation (French)
-//#include "lang_gr.h"                  // Localisation (German)
-//#include "lang_it.h"                  // Localisation (Italian)
-//#include "lang_cz.h"                  // Localisation (Czech)
+//#include "lang_cz.h"                // Localisation (Czech)
+//#include "lang_fr.h"                // Localisation (French)
+//#include "lang_gr.h"                // Localisation (German)
+//#include "lang_it.h"                // Localisation (Italian)
+//#include "lang_nl.h"                // Localisation (Dutch)
+//#include "lang_pl.h"                // Localisation (Polish)
 
 #define SCREEN_WIDTH   296
 #define SCREEN_HEIGHT  128
@@ -69,7 +71,7 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 // u8g2_font_helvB24_tf
 
 //################# LIBRARIES ##########################
-String version = "6.3";       // Version of this program
+String version = "6.4";       // Version of this program
 //################ VARIABLES ###########################
 
 bool    LargeIcon = true, SmallIcon = false;
@@ -128,7 +130,11 @@ void loop() { // this will never run!
 void BeginSleep() {
   display.powerOff();
   long SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)); //Some ESP32 are too fast to maintain accurate time
+<<<<<<< HEAD
   esp_sleep_enable_timer_wakeup((SleepTimer+20) * 1000000LL); // Added +20 seconnds to cover ESP32 RTC timer source inaccuracies
+=======
+  esp_sleep_enable_timer_wakeup((SleepTimer+20) * 1000000LL); // Added 20-sec extra delay to cater for slow ESP32 RTC timers
+>>>>>>> e10ec573c43d65a96d449dfa84f6c44a6761ae3e
 #ifdef BUILTIN_LED
   pinMode(BUILTIN_LED, INPUT); // If it's On, turn it off and some boards use GPIO-5 for SPI-SS, which remains low after screen use
   digitalWrite(BUILTIN_LED, HIGH);
@@ -412,7 +418,7 @@ boolean UpdateLocalTime() {
   //See http://www.cplusplus.com/reference/ctime/strftime/
   //Serial.println(&timeinfo, "%a %b %d %Y   %H:%M:%S");      // Displays: Saturday, June 24 2017 14:05:49
   if (Units == "M") {
-    if ((Language == "CZ") || (Language == "DE")) {
+    if ((Language == "CZ") || (Language == "DE") || (Language == "NL") || (Language == "PL")) {
       sprintf(day_output, "%s, %02u. %s %04u", weekday_D[timeinfo.tm_wday], timeinfo.tm_mday, month_M[timeinfo.tm_mon], (timeinfo.tm_year) + 1900); // day_output >> So., 23. Juni 2019 <<
     }
     else
@@ -784,5 +790,7 @@ void InitialiseDisplay() {
   Version 6.3 changed u8g2 fonts selection
    1.  Omitted 'FONT(' and added _tf to font names either Regular (R) or Bold (B)
   
+  Version 6.4
+   1. Added an extra 20-secs sleep delay to allow for slow ESP32 RTC timers
 
 */

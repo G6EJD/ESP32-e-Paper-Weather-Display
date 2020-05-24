@@ -20,6 +20,7 @@ Download the software to your Arduino's library directory.
    - Waveshare_4_2
    - Waveshare_7_5 
 (instead of Mini Grafx requires [GxEPD2 library](https://github.com/ZinggJM/GxEPD2), which needs [Adafruit_GFX](https://github.com/adafruit/Adafruit-GFX-Library), additionally requires U8g2_for_Adafruit_GFX)
+   - Waveshare_7_5_T7 (the newer 800x480 version; above is 640x384)
 
 2. Obtain your [OWM API key](https://openweathermap.org/appid) - it's free
 
@@ -33,7 +34,11 @@ The Battery monitor assumes the use of a Lolin D32 board which uses GPIO-35 as a
 
 Compile and upload the code - Enjoy!
 
-7.5" E-Paper Layout
+7.5" 800x480 E-Paper Layout
+
+![alt text width="600"](/Waveshare_7_5_new.jpg)
+
+7.5" 640x384 E-Paper Layout
 
 ![alt text width="600"](/Waveshare_7_5.jpg)
 
