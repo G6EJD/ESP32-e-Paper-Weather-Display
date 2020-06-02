@@ -73,11 +73,7 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 // u8g2_font_helvB24_tf
 
 //################  VERSION  ###########################################
-<<<<<<< HEAD
-String version = "16.7";     // Programme version, see change log at end
-=======
 String version = "16.8";     // Programme version, see change log at end
->>>>>>> e10ec573c43d65a96d449dfa84f6c44a6761ae3e
 //################ VARIABLES ###########################################
 
 boolean LargeIcon = true, SmallIcon = false;
