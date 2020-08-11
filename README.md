@@ -56,5 +56,6 @@ Ensure you have the latest GxEPD2 library
 
 See here: https://github.com/ZinggJM/GxEPD2/releases/tag/1.2.10
 
-Add:
-reset_delay = 2; // to shorten the reset delay for Waveshare's new HAT
+Modify this line in the code:
+
+display.init(115200, true, 2); // init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset_duration, bool pulldown_rst_mode)
