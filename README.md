@@ -52,8 +52,9 @@ Compile and upload the code - Enjoy!
 
 **** NOTE change needed for latest Waveshare HAT versions ****
 
-The GxEPD2 code that needs to be modified, https://github.com/ZinggJM/GxEPD2/blob/master/src/GxEPD2_EPD.cpp
+Ensure you have the latest GxEPD2 library
 
-Scroll down to line 69 you will see the reset function there, the delay used is 20mS not 2mS. You can adjust your library file to try it out, make a back up first then reduce the 20 to 2mS
+See here: https://github.com/ZinggJM/GxEPD2/releases/tag/1.2.10
 
-Until the GxEPD2 code is modified this is a required fix.
+Add:
+reset_delay = 2; // to shorten the reset delay for Waveshare's new HAT
