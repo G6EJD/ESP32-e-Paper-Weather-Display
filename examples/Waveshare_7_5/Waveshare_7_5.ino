@@ -1027,6 +1027,9 @@ void InitialiseDisplay() {
   Version 16.7 changed u8g2 fonts selection
    1.  Omitted 'FONT(' and added _tf to font names either Regular (R) or Bold (B)
 
-  Vrsion 16.8
+  Version 16.8
    1. Added 20-sec extra sleep to allow for slow ESP32 RTC timers
+   
+  Version 16.9
+   1. Added probability of precipitation to the display e.g. 17%
 */
