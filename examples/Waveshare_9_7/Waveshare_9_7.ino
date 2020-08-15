@@ -96,7 +96,7 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 
 
 //################  VERSION  ##################################################
-String version = "1.0 / 9.7in";     // Programme version, see change log at end
+String version = "1.1 / 9.7in";     // Programme version, see change log at end
 //################ VARIABLES ##################################################
 
 boolean LargeIcon = true, SmallIcon = false;
@@ -390,6 +390,8 @@ void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
   }
   if (WxForecast[1].Snowfall >= 0.005)  // Ignore small amounts
     drawString(x - 15, y + 110, String(WxForecast[1].Snowfall, 2) + (Units == "M" ? "mm" : "in") + " **", LEFT); // Only display snowfall total today if > 0
+  if (WxForecast[1].Pop >= 0.005)       // Ignore small amounts
+    drawString(x + 2, y + 120, String(WxForecast[1].Pop*100, 0) + "%", LEFT); // Only display pop if > 0
 }
 //#########################################################################################
 void DisplayAstronomySection(int x, int y) {
@@ -1140,4 +1142,6 @@ void VerboseRecordOfResetReason(RESET_REASON reason) {
       Due to sporadic WiFi connection error or RX receive errors the InitialiseDisplay() 
       is moved to the begin of the setup function. If it is not moved, the ESP32 crashes,
       because the event report can't be written to the not initialized display.
+   Version 1.1 / 9.7in
+   1. Added probability of precipitationto display e,g, 17%
 */
