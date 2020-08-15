@@ -73,7 +73,7 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 // u8g2_font_helvB24_tf
 
 //################  VERSION  ###########################################
-String version = "16.8";     // Programme version, see change log at end
+String version = "16.9";     // Programme version, see change log at end
 //################ VARIABLES ###########################################
 
 boolean LargeIcon = true, SmallIcon = false;
@@ -299,6 +299,8 @@ void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
   }
   if (WxForecast[1].Snowfall >= 0.005)  // Ignore small amounts
     drawString(x - 25, y + 71, String(WxForecast[1].Snowfall, 2) + (Units == "M" ? "mm" : "in") + " **", LEFT); // Only display snowfall total today if > 0
+  if (WxForecast[1].Pop >= 0.005)       // Ignore small amounts
+    drawString(x + 2, y + 81, String(WxForecast[1].Pop*100, 0) + "%", LEFT); // Only display pop if > 0
 }
 //#########################################################################################
 void DisplayAstronomySection(int x, int y) {
@@ -1031,4 +1033,7 @@ void InitialiseDisplay() {
   
   Version 16.8
    1. Added extra 20-secs of sleep to allow for slow ESP32 RTC timers
+   
+  Version 16.9
+   1. Added probability of precipitation display e.g. 17%
 */
