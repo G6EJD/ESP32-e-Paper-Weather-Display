@@ -296,7 +296,7 @@ void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
   if (WxForecast[1].Snowfall >= 0.005)  // Ignore small amounts
     drawString(x - 20, y + 57, String(WxForecast[1].Snowfall, 2) + (Units == "M" ? "mm" : "in") + " **", LEFT); // Only display snowfall total today if > 0
   if (WxForecast[1].Pop >= 0.005)       // Ignore small amounts
-    drawString(x - 10, y + 57, String(WxForecast[1].Pop*100, 0) + "%", LEFT); // Only display pop if > 0
+    drawString(x + 2, y + 67, String(WxForecast[1].Pop*100, 0) + "%", LEFT); // Only display pop if > 0
 }
 //#########################################################################################
 void DisplayAstronomySection(int x, int y) {
