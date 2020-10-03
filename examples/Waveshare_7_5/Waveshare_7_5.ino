@@ -917,10 +917,12 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
 void drawString(int x, int y, String text, alignment align) {
   int16_t  x1, y1; //the bounds of x,y and w and h of the variable 'text' in pixels.
   uint16_t w, h;
+  uint16_t width; //Use U8G2Fonts Width
   display.setTextWrap(false);
   display.getTextBounds(text, x, y, &x1, &y1, &w, &h);
-  if (align == RIGHT)  x = x - w;
-  if (align == CENTER) x = x - w / 2;
+  width = u8g2Fonts.getUTF8Width(text.c_str());
+  if (align == RIGHT)  x = x - width;
+  if (align == CENTER) x = x - width / 2;
   u8g2Fonts.setCursor(x, y + h);
   u8g2Fonts.print(text);
 }
