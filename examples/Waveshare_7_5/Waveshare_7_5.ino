@@ -192,8 +192,8 @@ void DisplayDisplayWindSection(int x, int y, float angle, float windspeed, int C
     dxo = Cradius * cos((a - 90) * PI / 180);
     dyo = Cradius * sin((a - 90) * PI / 180);
     if (a == 45)  drawString(dxo + x + 10, dyo + y - 10, TXT_NE, CENTER);
-    if (a == 135) drawString(dxo + x + 7,  dyo + y + 5,  TXT_SE, CENTER);
-    if (a == 225) drawString(dxo + x - 15, dyo + y,      TXT_SW, CENTER);
+    if (a == 135) drawString(dxo + x + 10, dyo + y + 5,  TXT_SE, CENTER);
+    if (a == 225) drawString(dxo + x - 15, dyo + y + 5,  TXT_SW, CENTER);
     if (a == 315) drawString(dxo + x - 15, dyo + y - 10, TXT_NW, CENTER);
     dxi = dxo * 0.9;
     dyi = dyo * 0.9;
