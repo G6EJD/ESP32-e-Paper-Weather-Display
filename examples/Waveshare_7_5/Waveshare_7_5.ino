@@ -208,10 +208,10 @@ void DisplayDisplayWindSection(int x, int y, float angle, float windspeed, int C
   drawString(x, y + Cradius + 5,    TXT_S, CENTER);
   drawString(x - Cradius - 10, y - 3, TXT_W, CENTER);
   drawString(x + Cradius + 8,  y - 3, TXT_E, CENTER);
-  drawString(x - 5, y - 35, WindDegToDirection(angle), CENTER);
-  drawString(x + 5, y + 24, String(angle, 0) + "°", CENTER);
+  drawString(x, y - 35, WindDegToDirection(angle), CENTER);
+  drawString(x, y + 24, String(angle, 0) + "°", CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB18_tf);
-  drawString(x - 10, y - 3, String(windspeed, 1), CENTER);
+  drawString(x, y - 3, String(windspeed, 1), CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   drawString(x, y + 10, (Units == "M" ? "m/s" : "mph"), CENTER);
 }
