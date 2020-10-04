@@ -237,15 +237,18 @@ String WindDegToDirection(float winddirection) {
 }
 //#########################################################################################
 void DisplayTemperatureSection(int x, int y, int twidth, int tdepth) {
-  display.drawRect(x - 51, y - 1, twidth, tdepth, GxEPD_BLACK); // temp outline
+  uint16_t  x1, y1; //top left corner
+  x1 = x - 51; //top left corner
+  y1 = y - 1;  //top left corner
+  display.drawRect(x1, y1, twidth, tdepth, GxEPD_BLACK); // temp outline
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x, y + 4, TXT_TEMPERATURES, CENTER);
+  drawString(x1 + twidth / 2, y + 4, TXT_TEMPERATURES, CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-  drawString(x + 8, y + 66, String(WxConditions[0].High, 0) + "° | " + String(WxConditions[0].Low, 0) + "°", CENTER); // Show forecast high and Low
+  drawString(x1 + twidth / 2, y + 66, String(WxConditions[0].High, 0) + "° | " + String(WxConditions[0].Low, 0) + "°", CENTER); // Show forecast high and Low
   u8g2Fonts.setFont(u8g2_font_helvB24_tf);
-  drawString(x - 18, y + 43, String(WxConditions[0].Temperature, 1) + "°", CENTER); // Show current Temperature
+  drawString(x1 + twidth / 2 + 37, y + 43, String(WxConditions[0].Temperature, 1) + "°", RIGHT); // Show current Temperature
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-  drawString(x + 35, y + 43, Units == "M" ? "C" : "F", LEFT);
+  drawString(x1 + twidth / 2 + 35, y + 43, Units == "M" ? "C" : "F", LEFT);
 }
 //#########################################################################################
 void DisplayForecastTextSection(int x, int y , int fwidth, int fdepth) {
