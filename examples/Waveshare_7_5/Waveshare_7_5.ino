@@ -246,7 +246,7 @@ void DisplayTemperatureSection(int x, int y, int twidth, int tdepth) {
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
   drawString(x1 + twidth / 2, y + 66, String(WxConditions[0].High, 0) + "° | " + String(WxConditions[0].Low, 0) + "°", CENTER); // Show forecast high and Low
   u8g2Fonts.setFont(u8g2_font_helvB24_tf);
-  drawString(x1 + twidth / 2 + 37, y + 43, String(WxConditions[0].Temperature, 1) + "°", RIGHT); // Show current Temperature
+  drawString(x1 + twidth / 2 + 35, y + 43, String(WxConditions[0].Temperature, 1) + "°", RIGHT); // Show current Temperature
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
   drawString(x1 + twidth / 2 + 35, y + 43, Units == "M" ? "C" : "F", LEFT);
 }
@@ -272,19 +272,22 @@ void DisplayForecastWeather(int x, int y, int index) {
 }
 //#########################################################################################
 void DisplayPressureSection(int x, int y, float pressure, String slope, int pwidth, int pdepth) {
-  display.drawRect(x - 45, y - 1, pwidth, pdepth, GxEPD_BLACK); // pressure outline
+  uint16_t  x1, y1; //top left corner
+  x1 = x - 45; //top left corner
+  y1 = y - 1;  //top left corner
+  display.drawRect(x1, y1, pwidth, pdepth, GxEPD_BLACK); // pressure outline
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x + 5, y + 4, TXT_PRESSURE, CENTER);
+  drawString(x1 + pwidth / 2, y + 4, TXT_PRESSURE, CENTER);
   String slope_direction = TXT_PRESSURE_STEADY;
   if (slope == "+") slope_direction = TXT_PRESSURE_RISING;
   if (slope == "-") slope_direction = TXT_PRESSURE_FALLING;
-  display.drawRect(x + 27, y + 63, 33, 16, GxEPD_BLACK);
+  display.drawRect(x1 + pwidth - 33, y + 63, 33, 16, GxEPD_BLACK);
   u8g2Fonts.setFont(u8g2_font_helvB24_tf);
-  if (Units == "I") drawString(x - 18, y + 44, String(pressure, 2), CENTER); // "Imperial"
-  else              drawString(x - 15, y + 44, String(pressure, 0), CENTER); // "Metric"
+  if (Units == "I") drawString(x1 + pwidth / 2, y + 44, String(pressure, 2), CENTER); // "Imperial"
+  else              drawString(x1 + pwidth / 2, y + 44, String(pressure, 0), CENTER); // "Metric"
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x + 42, y + 67, (Units == "M" ? "hPa" : "in"), CENTER);
-  drawString(x - 03, y + 67, slope_direction, CENTER);
+  drawString(x1 + pwidth - (33 / 2), y + 67, (Units == "M" ? "hPa" : "in"), CENTER);
+  drawString(x1 + (pwidth - 33) / 2, y + 67, slope_direction, CENTER);
 }
 //#########################################################################################
 void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
