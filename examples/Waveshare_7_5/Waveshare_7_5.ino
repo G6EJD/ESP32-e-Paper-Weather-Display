@@ -248,7 +248,7 @@ void DisplayTemperatureSection(int x, int y, int twidth, int tdepth) {
   u8g2Fonts.setFont(u8g2_font_helvB24_tf);
   drawString(x1 + twidth / 2 + 35, y + 43, String(WxConditions[0].Temperature, 1) + "°", RIGHT); // Show current Temperature
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-  drawString(x1 + twidth / 2 + 35, y + 43, Units == "M" ? "C" : "F", LEFT);
+  drawString(x1 + twidth / 2 + 30, y + 43, Units == "M" ? "C" : "F", LEFT);
 }
 //#########################################################################################
 void DisplayForecastTextSection(int x, int y , int fwidth, int fdepth) {
@@ -291,18 +291,23 @@ void DisplayPressureSection(int x, int y, float pressure, String slope, int pwid
 }
 //#########################################################################################
 void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
-  display.drawRect(x - 39, y - 1, pwidth, pdepth, GxEPD_BLACK); // precipitation outline
+  uint16_t  x1, y1; //top left corner
+  x1 = x - 39; //top left corner
+  y1 = y - 1;  //top left corner
+  display.drawRect(x1, y1, pwidth, pdepth, GxEPD_BLACK); // precipitation outline
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x + 20, y + 4, TXT_PRECIPITATION_SOON, CENTER);
+  drawString(x1 + pwidth / 2, y + 4, TXT_PRECIPITATION_SOON, CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB12_tf);
   if (WxForecast[1].Rainfall >= 0.005) { // Ignore small amounts
-    drawString(x - 20, y + 30, String(WxForecast[1].Rainfall, 2) + (Units == "M" ? "mm" : "in"), LEFT); // Only display rainfall total today if > 0
-    addraindrop(x + 47, y + 32, 7);
+    drawString(x1 + pwidth / 2 + 28, y + 30, String(WxForecast[1].Rainfall, 2) + (Units == "M" ? "mm" : "in"), RIGHT); // Only display rainfall total today if > 0
+    addraindrop(x1 + pwidth / 2 + 34, y + 32, 7);
   }
-  if (WxForecast[1].Snowfall >= 0.005)  // Ignore small amounts
-    drawString(x - 20, y + 57, String(WxForecast[1].Snowfall, 2) + (Units == "M" ? "mm" : "in") + " **", LEFT); // Only display snowfall total today if > 0
+  if (WxForecast[1].Snowfall >= 0.005) {  // Ignore small amounts
+    drawString(x1 + pwidth / 2 + 28, y + 57, String(WxForecast[1].Snowfall, 2) + (Units == "M" ? "mm" : "in"), RIGHT); // Only display snowfall total today if > 0
+    addsnow(x1 + pwidth / 2 + 55, y + 45, 2, 7, SmallIcon);
+  }
   if (WxForecast[1].Pop >= 0.005)       // Ignore small amounts
-    drawString(x + 2, y + 67, String(WxForecast[1].Pop*100, 0) + "%", LEFT); // Only display pop if > 0
+    drawString(x1 + pwidth / 2, y + 67, String(WxForecast[1].Pop*100, 0) + "%", CENTER); // Only display pop if > 0
 }
 //#########################################################################################
 void DisplayAstronomySection(int x, int y) {
@@ -610,9 +615,9 @@ void addrain(int x, int y, int scale, bool IconSize) {
   }
 }
 //#########################################################################################
-void addsnow(int x, int y, int scale, bool IconSize) {
+void addsnow(int x, int y, int nrFlakes, int scale, bool IconSize) {
   int dxo, dyo, dxi, dyi;
-  for (int flakes = 0; flakes < 5; flakes++) {
+  for (int flakes = 0; flakes < nrFlakes; flakes++) {
     for (int i = 0; i < 360; i = i + 45) {
       dxo = 0.5 * scale * cos((i - 90) * 3.14 / 180); dxi = dxo * 0.1;
       dyo = 0.5 * scale * sin((i - 90) * 3.14 / 180); dyi = dyo * 0.1;
@@ -778,7 +783,7 @@ void Snow(int x, int y, bool IconSize, String IconName) {
   }
   if (IconName.endsWith("n")) addmoon(x, y, scale, IconSize);
   addcloud(x, y, scale, linesize);
-  addsnow(x, y, scale, IconSize);
+  addsnow(x, y, scale, 5, IconSize);
 }
 //#########################################################################################
 void Fog(int x, int y, bool IconSize, String IconName) {
