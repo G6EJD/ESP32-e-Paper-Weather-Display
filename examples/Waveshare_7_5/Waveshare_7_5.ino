@@ -163,15 +163,15 @@ void DisplayGeneralInfoSection() {
   drawString(5, 2, "[Version: " + version + "]", LEFT); // Programme version
   drawString(SCREEN_WIDTH / 2, 3, City, CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB14_tf);
-  drawString(390, 155, Date_str, CENTER);
+  drawString(421, 155, Date_str, CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-  drawString(400, 180, Time_str, CENTER);
-  display.drawLine(0, 15, SCREEN_WIDTH - 3, 15, GxEPD_BLACK);
+  drawString(421, 180, Time_str, CENTER);
+  display.drawLine(0, 15, SCREEN_WIDTH - 4, 15, GxEPD_BLACK);
 }
 //#########################################################################################
 void DisplayMainWeatherSection(int x, int y) {
   //  display.drawRect(x-67, y-65, 140, 182, GxEPD_BLACK);
-  display.drawLine(0, 30, SCREEN_WIDTH - 3, 30,  GxEPD_BLACK);
+  display.drawLine(0, 30, SCREEN_WIDTH - 4, 30,  GxEPD_BLACK);
   DisplayConditionsSection(x + 2, y + 40, WxConditions[0].Icon, LargeIcon);
   DisplayTemperatureSection(x + 125, y - 64, 110, 80);
   DisplayPressureSection(x + 230, y - 64, WxConditions[0].Pressure, WxConditions[0].Trend, 105, 80);
@@ -192,8 +192,8 @@ void DisplayDisplayWindSection(int x, int y, float angle, float windspeed, int C
     dxo = Cradius * cos((a - 90) * PI / 180);
     dyo = Cradius * sin((a - 90) * PI / 180);
     if (a == 45)  drawString(dxo + x + 10, dyo + y - 10, TXT_NE, CENTER);
-    if (a == 135) drawString(dxo + x + 7,  dyo + y + 5,  TXT_SE, CENTER);
-    if (a == 225) drawString(dxo + x - 15, dyo + y,      TXT_SW, CENTER);
+    if (a == 135) drawString(dxo + x + 10, dyo + y + 5,  TXT_SE, CENTER);
+    if (a == 225) drawString(dxo + x - 15, dyo + y + 5,  TXT_SW, CENTER);
     if (a == 315) drawString(dxo + x - 15, dyo + y - 10, TXT_NW, CENTER);
     dxi = dxo * 0.9;
     dyi = dyo * 0.9;
@@ -208,10 +208,10 @@ void DisplayDisplayWindSection(int x, int y, float angle, float windspeed, int C
   drawString(x, y + Cradius + 5,    TXT_S, CENTER);
   drawString(x - Cradius - 10, y - 3, TXT_W, CENTER);
   drawString(x + Cradius + 8,  y - 3, TXT_E, CENTER);
-  drawString(x - 5, y - 35, WindDegToDirection(angle), CENTER);
-  drawString(x + 5, y + 24, String(angle, 0) + "°", CENTER);
+  drawString(x, y - 35, WindDegToDirection(angle), CENTER);
+  drawString(x, y + 24, String(angle, 0) + "°", CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB18_tf);
-  drawString(x - 10, y - 3, String(windspeed, 1), CENTER);
+  drawString(x, y - 3, String(windspeed, 1), CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   drawString(x, y + 10, (Units == "M" ? "m/s" : "mph"), CENTER);
 }
@@ -237,15 +237,18 @@ String WindDegToDirection(float winddirection) {
 }
 //#########################################################################################
 void DisplayTemperatureSection(int x, int y, int twidth, int tdepth) {
-  display.drawRect(x - 51, y - 1, twidth, tdepth, GxEPD_BLACK); // temp outline
+  uint16_t  x1, y1; //top left corner
+  x1 = x - 51; //top left corner
+  y1 = y - 1;  //top left corner
+  display.drawRect(x1, y1, twidth, tdepth, GxEPD_BLACK); // temp outline
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x, y + 4, TXT_TEMPERATURES, CENTER);
+  drawString(x1 + twidth / 2, y + 4, TXT_TEMPERATURES, CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-  drawString(x + 8, y + 66, String(WxConditions[0].High, 0) + "° | " + String(WxConditions[0].Low, 0) + "°", CENTER); // Show forecast high and Low
+  drawString(x1 + twidth / 2, y + 66, String(WxConditions[0].High, 0) + "° | " + String(WxConditions[0].Low, 0) + "°", CENTER); // Show forecast high and Low
   u8g2Fonts.setFont(u8g2_font_helvB24_tf);
-  drawString(x - 18, y + 43, String(WxConditions[0].Temperature, 1) + "°", CENTER); // Show current Temperature
+  drawString(x1 + twidth / 2 + 35, y + 43, String(WxConditions[0].Temperature, 1) + "°", RIGHT); // Show current Temperature
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-  drawString(x + 35, y + 43, Units == "M" ? "C" : "F", LEFT);
+  drawString(x1 + twidth / 2 + 30, y + 43, Units == "M" ? "C" : "F", LEFT);
 }
 //#########################################################################################
 void DisplayForecastTextSection(int x, int y , int fwidth, int fdepth) {
@@ -265,38 +268,46 @@ void DisplayForecastWeather(int x, int y, int index) {
   display.drawLine(x, y + 13, x + fwidth - 3, y + 13, GxEPD_BLACK);
   DisplayConditionsSection(x + fwidth / 2, y + 35, WxForecast[index].Icon, SmallIcon);
   drawString(x + fwidth / 2, y + 3, String(WxForecast[index].Period.substring(11, 16)), CENTER);
-  drawString(x + fwidth / 2 + 10, y + 53, String(WxForecast[index].High, 0) + "°/" + String(WxForecast[index].Low, 0) + "°", CENTER);
+  drawString(x + fwidth / 2, y + 53, String(WxForecast[index].High, 0) + "°/" + String(WxForecast[index].Low, 0) + "°", CENTER);
 }
 //#########################################################################################
 void DisplayPressureSection(int x, int y, float pressure, String slope, int pwidth, int pdepth) {
-  display.drawRect(x - 45, y - 1, pwidth, pdepth, GxEPD_BLACK); // pressure outline
+  uint16_t  x1, y1; //top left corner
+  x1 = x - 45; //top left corner
+  y1 = y - 1;  //top left corner
+  display.drawRect(x1, y1, pwidth, pdepth, GxEPD_BLACK); // pressure outline
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x + 5, y + 4, TXT_PRESSURE, CENTER);
+  drawString(x1 + pwidth / 2, y + 4, TXT_PRESSURE, CENTER);
   String slope_direction = TXT_PRESSURE_STEADY;
   if (slope == "+") slope_direction = TXT_PRESSURE_RISING;
   if (slope == "-") slope_direction = TXT_PRESSURE_FALLING;
-  display.drawRect(x + 27, y + 63, 33, 16, GxEPD_BLACK);
+  display.drawRect(x1 + pwidth - 33, y + 63, 33, 16, GxEPD_BLACK);
   u8g2Fonts.setFont(u8g2_font_helvB24_tf);
-  if (Units == "I") drawString(x - 18, y + 44, String(pressure, 2), CENTER); // "Imperial"
-  else              drawString(x - 15, y + 44, String(pressure, 0), CENTER); // "Metric"
+  if (Units == "I") drawString(x1 + pwidth / 2, y + 44, String(pressure, 2), CENTER); // "Imperial"
+  else              drawString(x1 + pwidth / 2, y + 44, String(pressure, 0), CENTER); // "Metric"
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x + 42, y + 67, (Units == "M" ? "hPa" : "in"), CENTER);
-  drawString(x - 03, y + 67, slope_direction, CENTER);
+  drawString(x1 + pwidth - (33 / 2), y + 67, (Units == "M" ? "hPa" : "in"), CENTER);
+  drawString(x1 + (pwidth - 33) / 2, y + 67, slope_direction, CENTER);
 }
 //#########################################################################################
 void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
-  display.drawRect(x - 39, y - 1, pwidth, pdepth, GxEPD_BLACK); // precipitation outline
+  uint16_t  x1, y1; //top left corner
+  x1 = x - 39; //top left corner
+  y1 = y - 1;  //top left corner
+  display.drawRect(x1, y1, pwidth, pdepth, GxEPD_BLACK); // precipitation outline
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x + 20, y + 4, TXT_PRECIPITATION_SOON, CENTER);
+  drawString(x1 + pwidth / 2, y + 4, TXT_PRECIPITATION_SOON, CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB12_tf);
   if (WxForecast[1].Rainfall >= 0.005) { // Ignore small amounts
-    drawString(x - 20, y + 30, String(WxForecast[1].Rainfall, 2) + (Units == "M" ? "mm" : "in"), LEFT); // Only display rainfall total today if > 0
-    addraindrop(x + 47, y + 32, 7);
+    drawString(x1 + pwidth / 2 + 28, y + 30, String(WxForecast[1].Rainfall, 2) + (Units == "M" ? "mm" : "in"), RIGHT); // Only display rainfall total today if > 0
+    addraindrop(x1 + pwidth / 2 + 34, y + 32, 7);
   }
-  if (WxForecast[1].Snowfall >= 0.005)  // Ignore small amounts
-    drawString(x - 20, y + 57, String(WxForecast[1].Snowfall, 2) + (Units == "M" ? "mm" : "in") + " **", LEFT); // Only display snowfall total today if > 0
+  if (WxForecast[1].Snowfall >= 0.005) {  // Ignore small amounts
+    drawString(x1 + pwidth / 2 + 28, y + 57, String(WxForecast[1].Snowfall, 2) + (Units == "M" ? "mm" : "in"), RIGHT); // Only display snowfall total today if > 0
+    addsnow(x1 + pwidth / 2 + 55, y + 45, 2, 7, SmallIcon);
+  }
   if (WxForecast[1].Pop >= 0.005)       // Ignore small amounts
-    drawString(x + 2, y + 67, String(WxForecast[1].Pop*100, 0) + "%", LEFT); // Only display pop if > 0
+    drawString(x1 + pwidth / 2, y + 67, String(WxForecast[1].Pop*100, 0) + "%", CENTER); // Only display pop if > 0
 }
 //#########################################################################################
 void DisplayAstronomySection(int x, int y) {
@@ -489,13 +500,13 @@ void StopWiFi() {
 //#########################################################################################
 void DisplayStatusSection(int x, int y, int rssi) {
   display.drawRect(x - 28, y - 26, 117, 51, GxEPD_BLACK);
-  display.drawLine(x - 28, y - 14, x - 28 + 117, y - 14, GxEPD_BLACK);
+  display.drawLine(x - 28, y - 14, x - 28 + 116, y - 14, GxEPD_BLACK);
   display.drawLine(x - 28 + 117 / 2, y - 15, x - 28 + 117 / 2, y - 26, GxEPD_BLACK);
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   drawString(x, y - 24, TXT_WIFI, CENTER);
   drawString(x + 55, y - 24, TXT_POWER, CENTER);
   DrawRSSI(x - 8, y + 5, rssi);
-  DrawBattery(x + 47, y + 5);;
+  DrawBattery(x + 47, y + 5);
 }
 //#########################################################################################
 void DrawRSSI(int x, int y, int rssi) {
@@ -604,9 +615,9 @@ void addrain(int x, int y, int scale, bool IconSize) {
   }
 }
 //#########################################################################################
-void addsnow(int x, int y, int scale, bool IconSize) {
+void addsnow(int x, int y, int nrFlakes, int scale, bool IconSize) {
   int dxo, dyo, dxi, dyi;
-  for (int flakes = 0; flakes < 5; flakes++) {
+  for (int flakes = 0; flakes < nrFlakes; flakes++) {
     for (int i = 0; i < 360; i = i + 45) {
       dxo = 0.5 * scale * cos((i - 90) * 3.14 / 180); dxi = dxo * 0.1;
       dyo = 0.5 * scale * sin((i - 90) * 3.14 / 180); dyi = dyo * 0.1;
@@ -772,7 +783,7 @@ void Snow(int x, int y, bool IconSize, String IconName) {
   }
   if (IconName.endsWith("n")) addmoon(x, y, scale, IconSize);
   addcloud(x, y, scale, linesize);
-  addsnow(x, y, scale, IconSize);
+  addsnow(x, y, scale, 5, IconSize);
 }
 //#########################################################################################
 void Fog(int x, int y, bool IconSize, String IconName) {
@@ -877,7 +888,7 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
   last_x = x_pos + 1;
   last_y = y_pos + (Y1Max - constrain(DataArray[1], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight;
   display.drawRect(x_pos, y_pos, gwidth + 3, gheight + 2, GxEPD_BLACK);
-  drawString(x_pos + gwidth / 2 + 5, y_pos - 13, title, CENTER);
+  drawString(x_pos + gwidth / 2, y_pos - 13, title, CENTER);
   // Draw the data
   for (int gx = 1; gx < readings; gx++) {
     x2 = x_pos + gx * gwidth / (readings - 1) - 1 ; // max_readings is the global variable that sets the maximum data that can be plotted
@@ -896,16 +907,10 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
     for (int j = 0; j < number_of_dashes; j++) { // Draw dashed graph grid lines
       if (spacing < y_minor_axis) display.drawFastHLine((x_pos + 3 + j * gwidth / number_of_dashes), y_pos + (gheight * spacing / y_minor_axis), gwidth / (2 * number_of_dashes), GxEPD_BLACK);
     }
-    if ((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing) < 5 || title == TXT_PRESSURE_IN) {
-      drawString(x_pos, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1), RIGHT);
-    }
+    if (Y1Min < 1 && Y1Max < 10)
+      drawString(x_pos - 3, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1), RIGHT);
     else
-    {
-      if (Y1Min < 1 && Y1Max < 10)
-        drawString(x_pos - 3, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1), RIGHT);
-      else
-        drawString(x_pos - 3, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 0), RIGHT);
-    }
+      drawString(x_pos - 3, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 0), RIGHT);
   }
   for (int i = 0; i <= 2; i++) {
     drawString(15 + x_pos + gwidth / 3 * i, y_pos + gheight + 3, String(i), LEFT);
@@ -919,6 +924,7 @@ void drawString(int x, int y, String text, alignment align) {
   uint16_t w, h;
   display.setTextWrap(false);
   display.getTextBounds(text, x, y, &x1, &y1, &w, &h);
+  w = u8g2Fonts.getUTF8Width(text.c_str()); //Use U8G2Fonts Width
   if (align == RIGHT)  x = x - w;
   if (align == CENTER) x = x - w / 2;
   u8g2Fonts.setCursor(x, y + h);
