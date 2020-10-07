@@ -500,7 +500,7 @@ void StopWiFi() {
 //#########################################################################################
 void DisplayStatusSection(int x, int y, int rssi) {
   display.drawRect(x - 28, y - 26, 117, 51, GxEPD_BLACK);
-  display.drawLine(x - 28, y - 14, x - 28 + 117, y - 14, GxEPD_BLACK);
+  display.drawLine(x - 28, y - 14, x - 28 + 116, y - 14, GxEPD_BLACK);
   display.drawLine(x - 28 + 117 / 2, y - 15, x - 28 + 117 / 2, y - 26, GxEPD_BLACK);
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   drawString(x, y - 24, TXT_WIFI, CENTER);
