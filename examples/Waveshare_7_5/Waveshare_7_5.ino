@@ -171,7 +171,7 @@ void DisplayGeneralInfoSection() {
 //#########################################################################################
 void DisplayMainWeatherSection(int x, int y) {
   //  display.drawRect(x-67, y-65, 140, 182, GxEPD_BLACK);
-  display.drawLine(0, 30, SCREEN_WIDTH - 3, 30,  GxEPD_BLACK);
+  display.drawLine(0, 30, SCREEN_WIDTH - 4, 30,  GxEPD_BLACK);
   DisplayConditionsSection(x + 2, y + 40, WxConditions[0].Icon, LargeIcon);
   DisplayTemperatureSection(x + 125, y - 64, 110, 80);
   DisplayPressureSection(x + 230, y - 64, WxConditions[0].Pressure, WxConditions[0].Trend, 105, 80);
