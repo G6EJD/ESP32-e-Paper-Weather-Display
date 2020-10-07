@@ -163,10 +163,10 @@ void DisplayGeneralInfoSection() {
   drawString(5, 2, "[Version: " + version + "]", LEFT); // Programme version
   drawString(SCREEN_WIDTH / 2, 3, City, CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB14_tf);
-  drawString(390, 155, Date_str, CENTER);
+  drawString(421, 155, Date_str, CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-  drawString(400, 180, Time_str, CENTER);
-  display.drawLine(0, 15, SCREEN_WIDTH - 3, 15, GxEPD_BLACK);
+  drawString(421, 180, Time_str, CENTER);
+  display.drawLine(0, 15, SCREEN_WIDTH - 4, 15, GxEPD_BLACK);
 }
 //#########################################################################################
 void DisplayMainWeatherSection(int x, int y) {
