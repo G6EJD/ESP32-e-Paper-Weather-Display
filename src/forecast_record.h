@@ -4,7 +4,7 @@
 #include <Arduino.h>
 
 typedef struct { // For current Day and Day 1, 2, 3, etc
-  String   Dt;
+  int      Dt;
   String   Period;
   String   Icon;
   String   Trend;
