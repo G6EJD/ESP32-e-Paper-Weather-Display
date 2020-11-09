@@ -59,10 +59,10 @@ bool DecodeWeather(WiFiClient& json, String Type) {
   if (Type == "forecast") {
     //Serial.println(json);
     Serial.print(F("\nReceiving Forecast period - ")); //------------------------------------------------
-    JsonArray list                  = root["list"];
+    JsonArray list                    = root["list"];
     for (byte r = 0; r < max_readings; r++) {
       Serial.println("\nPeriod-" + String(r) + "--------------");
-      WxForecast[r].Dt                = list[r]["dt"].as<char*>();
+      WxForecast[r].Dt                = list[r]["dt"].as<int>();                          Serial.println("DTim: "+String(WxForecast[r].Dt));
       WxForecast[r].Temperature       = list[r]["main"]["temp"].as<float>();              Serial.println("Temp: "+String(WxForecast[r].Temperature));
       WxForecast[r].Low               = list[r]["main"]["temp_min"].as<float>();          Serial.println("TLow: "+String(WxForecast[r].Low));
       WxForecast[r].High              = list[r]["main"]["temp_max"].as<float>();          Serial.println("THig: "+String(WxForecast[r].High));
