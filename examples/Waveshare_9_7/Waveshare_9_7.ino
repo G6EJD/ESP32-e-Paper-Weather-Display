@@ -359,7 +359,7 @@ void DisplayForecastWeather(int x, int y, int index) {
   display.drawLine(x, y + 40, x + fwidth - 3, y + 40, GxEPD_BLACK);
   DisplayConditionsSection(x + fwidth / 2, y + 90, WxForecast[index].Icon, SmallIcon);
   u8g2Fonts.setFont(u8g2_font_helvB14_tf);
-  drawString(x + fwidth / 2 - 10, y + 20, String(ConvertUnixTime(WxForecast[index].Dt + WxConditions[0].timezone).substring(0,5)), CENTER);
+  drawString(x + fwidth / 2 - 10, y + 20, String(ConvertUnixTime(WxForecast[index].Dt + WxConditions[0].Timezone).substring(0,5)), CENTER);
   drawString(x + fwidth / 2 + 0, y + 130, String(WxForecast[index].High, 0) + "°/" + String(WxForecast[index].Low, 0) + "°", CENTER);
 }
 //#########################################################################################
