@@ -11,7 +11,7 @@ const String TXT_HUMIDITY_PERCENT = "Umidade (%)";
 
 // Pressure
 const String TXT_PRESSURE         = "Pressão";
-const String TXT_PRESSURE_HPA     = "Pressão (hpa)";
+const String TXT_PRESSURE_HPA     = "Pressão (hPa)";
 const String TXT_PRESSURE_IN      = "Pressão (in)";
 const String TXT_PRESSURE_STEADY  = "Estável";
 const String TXT_PRESSURE_RISING  = "Subindo";
