@@ -11,7 +11,7 @@ const String TXT_HUMIDITY_PERCENT = "Luchtvochtigheid (%)";
 
 // Pressure
 const String TXT_PRESSURE         = "Luchtdruk";
-const String TXT_PRESSURE_HPA     = "Luchtdruk (hpa)";
+const String TXT_PRESSURE_HPA     = "Luchtdruk (hPa)";
 const String TXT_PRESSURE_IN      = "Luchtdruk (in)";
 const String TXT_PRESSURE_STEADY  = "Stabiel";
 const String TXT_PRESSURE_RISING  = "Steigend";
