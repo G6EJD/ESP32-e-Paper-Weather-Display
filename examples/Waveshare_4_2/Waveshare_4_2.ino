@@ -72,7 +72,7 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 // u8g2_font_helvB24_tf
 
 //################  VERSION  ##########################
-String version = "12.3";     // Version of this program
+String version = "12.4";     // Version of this program
 //################ VARIABLES ###########################
 
 boolean LargeIcon = true, SmallIcon = false;
@@ -805,7 +805,7 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
   int last_x, last_y;
   float x1, y1, x2, y2;
   if (auto_scale == true) {
-    for (int i = 1; i < readings; i++ ) {
+    for (int i = 0; i <= readings; i++ ) {
       if (DataArray[i] >= maxYscale) maxYscale = DataArray[i];
       if (DataArray[i] <= minYscale) minYscale = DataArray[i];
     }
@@ -916,4 +916,7 @@ void InitialiseDisplay() {
 
   Version 12.3
   1. Added 20-secs to allow for slow ESP32 RTC timers
+  
+  Version 12.4
+  1. Improved graph drawing function for negative numbers Line 808
 */
