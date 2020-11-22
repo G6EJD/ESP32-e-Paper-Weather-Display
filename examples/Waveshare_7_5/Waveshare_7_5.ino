@@ -73,7 +73,7 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 // u8g2_font_helvB24_tf
 
 //################  VERSION  ###########################################
-String version = "16.9";     // Programme version, see change log at end
+String version = "16.10";     // Programme version, see change log at end
 //################ VARIABLES ###########################################
 
 boolean LargeIcon = true, SmallIcon = false;
@@ -1038,4 +1038,8 @@ void InitialiseDisplay() {
    
   Version 16.9
    1. Added probability of precipitation to the display e.g. 17%
+  
+  Version 16.10
+   1. Adjusted line 907 graph range to give better negative number drawing
+   
 */
