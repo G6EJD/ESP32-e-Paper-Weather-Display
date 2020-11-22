@@ -1041,5 +1041,4 @@ void InitialiseDisplay() {
   
   Version 16.10
    1. Adjusted line 907 graph range to give better negative number drawing
-   
 */
