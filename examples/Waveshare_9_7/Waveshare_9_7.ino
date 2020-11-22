@@ -96,7 +96,7 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 
 
 //################  VERSION  ##################################################
-String version = "1.1 / 9.7in";     // Programme version, see change log at end
+String version = "1.2 / 9.7in";     // Programme version, see change log at end
 //################ VARIABLES ##################################################
 
 boolean LargeIcon = true, SmallIcon = false;
@@ -1004,7 +1004,7 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
   drawString(x_pos - 20 + gwidth / 2, y_pos - 16, title, CENTER);
   // Draw the data
   // x_pos = x_pos + 10;
-  for (int gx = 1; gx < readings; gx++) {
+  for (int gx = 0; gx <= readings; gx++) {
     x2 = x_pos + gx * gwidth / (readings - 1) - 1 ; // max_readings is the global variable that sets the maximum data that can be plotted
     y2 = y_pos + (Y1Max - constrain(DataArray[gx], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight + 1;
     if (barchart_mode) {
@@ -1144,4 +1144,9 @@ void VerboseRecordOfResetReason(RESET_REASON reason) {
       because the event report can't be written to the not initialized display.
    Version 1.1 / 9.7in
    1. Added probability of precipitationto display e,g, 17%
+   
+   Version 1.2 / 9.7in
+   1. Adjusted graph drawing function to improve negative number drawing Line 1007
+   
+   
 */
