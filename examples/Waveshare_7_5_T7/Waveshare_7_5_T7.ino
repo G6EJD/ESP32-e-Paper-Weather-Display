@@ -73,7 +73,7 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 // u8g2_font_helvB24_tf
 
 //################  VERSION  ###########################################
-String version = "16.10";    // Programme version, see change log at end
+String version = "16.11";    // Programme version, see change log at end
 //################ VARIABLES ###########################################
 
 boolean LargeIcon = true, SmallIcon = false;
@@ -868,7 +868,7 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
   int last_x, last_y;
   float x2, y2;
   if (auto_scale == true) {
-    for (int i = 1; i < readings; i++ ) {
+    for (int i = 0; i <= readings; i++ ) {
       if (DataArray[i] >= maxYscale) maxYscale = DataArray[i];
       if (DataArray[i] <= minYscale) minYscale = DataArray[i];
     }
@@ -1039,6 +1039,9 @@ void InitialiseDisplay() {
 
   Version 16.10
    1. Updated display inittialisation for 7.5" T7 display type, which iss now the standard 7.5" display type.
-   
+  
+  Version 16.11
+   1. Adjusted graph drawing for negative numbers
+ 
 */
 
