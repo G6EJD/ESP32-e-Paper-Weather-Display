@@ -875,7 +875,7 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
   int last_x, last_y;
   float x2, y2;
   if (auto_scale == true) {
-    for (int i = 0; i <= readings; i++ ) { // Adjusted graph range
+    for (int i = 1; i < readings; i++ ) { // Adjusted graph range
       if (DataArray[i] >= maxYscale) maxYscale = DataArray[i];
       if (DataArray[i] <= minYscale) minYscale = DataArray[i];
     }
