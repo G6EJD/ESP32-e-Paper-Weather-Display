@@ -17,6 +17,7 @@ Download the software to your Arduino's library directory.
 1. From the examples, choose depending on your module either
    - Waveshare_1_54
    - Waveshare_2_9
+   - Waveshare_2_13
    - Waveshare_4_2
    - Waveshare_7_5 
 (instead of Mini Grafx requires [GxEPD2 library](https://github.com/ZinggJM/GxEPD2), which needs [Adafruit_GFX](https://github.com/adafruit/Adafruit-GFX-Library), additionally requires U8g2_for_Adafruit_GFX)
@@ -28,9 +29,9 @@ Download the software to your Arduino's library directory.
 
 4. Save your files.
 
-NOTE: See schematic for the wiring diagram, all displays are wired the same, so wire a 7.5" the same as a 4.2", 2.9" or 1.54" display!
+NOTE: See schematic for the wiring diagram, all displays are wired the same, so wire a 7.5" the same as a 4.2", 2.9" or 1.54" display! The 2.13" TTGO T5 board comes pre-wired.
 
-The Battery monitor assumes the use of a Lolin D32 board which uses GPIO-35 as an ADC input, also it has an on-board 100K+100K voltage divider directly connected to the Battery terminals. On other boards, you will need to change the analogRead(35) statement to your board e.g. (39) and attach a voltage divider to the battery terminals.
+The Battery monitor assumes the use of a Lolin D32 board which uses GPIO-35 as an ADC input, also it has an on-board 100K+100K voltage divider directly connected to the Battery terminals. On other boards, you will need to change the analogRead(35) statement to your board e.g. (39) and attach a voltage divider to the battery terminals. The TTGO T5 board already contains the resistor divider on the correct pin.
 
 Compile and upload the code - Enjoy!
 
@@ -45,6 +46,10 @@ Compile and upload the code - Enjoy!
 4.2" E-Paper Layout
 
 ![alt_text, width="400"](/Waveshare_4_2.jpg)
+
+2.13" 250x122 E-Paper Layout
+
+![alt_text, width="200"](/Waveshare_2_13.jpg)
 
 1.54" E-Paper Layout
 
