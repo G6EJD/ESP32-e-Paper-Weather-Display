@@ -16,8 +16,9 @@ Download the software to your Arduino's library directory.
 
 1. From the examples, choose depending on your module either
    - Waveshare_1_54
-   - Waveshare_2_9
    - Waveshare_2_13
+   - Waveshare_2_7
+   - Waveshare_2_9
    - Waveshare_4_2
    - Waveshare_7_5 
 (instead of Mini Grafx requires [GxEPD2 library](https://github.com/ZinggJM/GxEPD2), which needs [Adafruit_GFX](https://github.com/adafruit/Adafruit-GFX-Library), additionally requires U8g2_for_Adafruit_GFX)
@@ -46,6 +47,10 @@ Compile and upload the code - Enjoy!
 4.2" E-Paper Layout
 
 ![alt_text, width="400"](/Waveshare_4_2.jpg)
+
+2.7" 264x176 E-Paper Layout
+
+![alt_text, width="400"](/Waveshare_2_7.jpg)
 
 2.13" 250x122 E-Paper Layout
 
