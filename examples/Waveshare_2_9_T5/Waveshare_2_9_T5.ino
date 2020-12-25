@@ -41,23 +41,15 @@
 
 enum alignmentType {LEFT, RIGHT, CENTER};
 
-// Connections for e.g. LOLIN D32
+// Connections for LilyGo TTGO T5 v2.2
+// see reference: https://github.com/Xinyuan-LilyGO/T5-Ink-Screen-Series#board-pins
 static const uint8_t EPD_BUSY = 4;  // to EPD BUSY
 static const uint8_t EPD_CS   = 5;  // to EPD CS
-static const uint8_t EPD_RST  = 16; // to EPD RST
-static const uint8_t EPD_DC   = 17; // to EPD DC
+static const uint8_t EPD_RST  = 12; // to EPD RST
+static const uint8_t EPD_DC   = 19; // to EPD DC
 static const uint8_t EPD_SCK  = 18; // to EPD CLK
-static const uint8_t EPD_MISO = 19; // Master-In Slave-Out not used, as no data from display
+static const uint8_t EPD_MISO = 2; // Master-In Slave-Out not used, as no data from display
 static const uint8_t EPD_MOSI = 23; // to EPD DIN
-
-// Connections for e.g. Waveshare ESP32 e-Paper Driver Board
-//static const uint8_t EPD_BUSY = 25;
-//static const uint8_t EPD_CS   = 15;
-//static const uint8_t EPD_RST  = 26; 
-//static const uint8_t EPD_DC   = 27; 
-//static const uint8_t EPD_SCK  = 13;
-//static const uint8_t EPD_MISO = 12; // Master-In Slave-Out not used, as no data from display
-//static const uint8_t EPD_MOSI = 14;
 
 GxEPD2_BW<GxEPD2_290, GxEPD2_290::HEIGHT> display(GxEPD2_290(/*CS=D8*/ EPD_CS, /*DC=D3*/ EPD_DC, /*RST=D4*/ EPD_RST, /*BUSY=D2*/ EPD_BUSY));
 
@@ -114,6 +106,7 @@ void setup() {
         if (RxForecast == false) RxForecast = obtain_wx_data(client, "forecast");
         Attempts++;
       }
+      Serial.println("Received weather and forecast: " + String(RxWeather) + " " + String(RxForecast));
       if (RxWeather && RxForecast) { // Only if received both Weather or Forecast proceed
         StopWiFi(); // Reduces power consumption
         DisplayWeather();
@@ -404,7 +397,7 @@ boolean SetupTime() {
 boolean UpdateLocalTime() {
   struct tm timeinfo;
   char   time_output[30], day_output[30], update_time[30];
-  while (!getLocalTime(&timeinfo, 5000)) { // Wait for 5-sec for time to synchronise
+  while (!getLocalTime(&timeinfo, 15000)) { // Wait for 15-sec for time to synchronise
     Serial.println("Failed to obtain time");
     return false;
   }
@@ -412,7 +405,8 @@ boolean UpdateLocalTime() {
   CurrentMin  = timeinfo.tm_min;
   CurrentSec  = timeinfo.tm_sec;
   //See http://www.cplusplus.com/reference/ctime/strftime/
-  //Serial.println(&timeinfo, "%a %b %d %Y   %H:%M:%S");      // Displays: Saturday, June 24 2017 14:05:49
+  Serial.println("Obtained time");
+  Serial.println(&timeinfo, "%a %b %d %Y   %H:%M:%S");      // Displays: Saturday, June 24 2017 14:05:49
   if (Units == "M") {
     if ((Language == "CZ") || (Language == "DE") || (Language == "NL") || (Language == "PL")) {
       sprintf(day_output, "%s, %02u. %s %04u", weekday_D[timeinfo.tm_wday], timeinfo.tm_mday, month_M[timeinfo.tm_mon], (timeinfo.tm_year) + 1900); // day_output >> So., 23. Juni 2019 <<
@@ -757,6 +751,7 @@ void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alig
 }
 //#########################################################################################
 void InitialiseDisplay() {
+  Serial.println("Initializing display");
   display.init(0);
   SPI.end();
   SPI.begin(EPD_SCK, EPD_MISO, EPD_MOSI, EPD_CS);
@@ -769,6 +764,8 @@ void InitialiseDisplay() {
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);   // Explore u8g2 fonts from here: https://github.com/olikraus/u8g2/wiki/fntlistall
   display.fillScreen(GxEPD_WHITE);
   display.setFullWindow();
+
+  Serial.println("Display initialized");
 }
 
 /*
