@@ -694,7 +694,7 @@ void Snow(int x, int y, bool IconSize, String IconName) {
     scale = Small;
     linesize = 1;
   }
-  if (IconName.endsWith("n")) addmoon(x, y + 5, scale, IconSize);
+  if (IconName.endsWith("n")) addmoon(x, y + 10, scale, IconSize);
   addcloud(x, y, scale, linesize);
   addsnow(x, y, scale, IconSize);
 }
