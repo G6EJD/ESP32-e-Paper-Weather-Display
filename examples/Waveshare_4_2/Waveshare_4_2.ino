@@ -648,7 +648,7 @@ void Rain(int x, int y, bool IconSize, String IconName) {
     scale = Small;
     linesize = 1;
   }
-  if (IconName.endsWith("n")) addmoon(x, y, scale, IconSize);
+  if (IconName.endsWith("n")) addmoon(x, y + 10, scale, IconSize);
   addcloud(x, y, scale, linesize);
   addrain(x, y, scale, IconSize);
 }
