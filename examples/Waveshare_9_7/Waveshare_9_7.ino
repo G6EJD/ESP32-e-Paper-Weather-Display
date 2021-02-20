@@ -1074,7 +1074,7 @@ void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alig
 }
 //#########################################################################################
 void InitialiseDisplay() {
-  display.init(115200);
+  display.init(115200, true, 2, false);
   SPI.end();
   SPI.begin(EPD_SCK, EPD_MISO, EPD_MOSI, EPD_CS);
   u8g2Fonts.begin(display); // connect u8g2 procedures to Adafruit GFX
