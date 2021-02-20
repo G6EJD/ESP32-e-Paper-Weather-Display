@@ -76,7 +76,7 @@ GxEPD2_BW<GxEPD2_154, GxEPD2_154::HEIGHT> display(GxEPD2_154(/*CS=5*/ EPD_CS, /*
 //GxEPD2_3C<GxEPD2_154, GxEPD2_154c::HEIGHT> display(GxEPD2_154c(/*CS=5*/ EPD_SS, /*DC=15*/ EPD_DC, /*RST=16*/ EPD_RST, /*BUSY=4*/ EPD_BUSY));
 
 //################  VERSION  ##########################
-String version = "1.3";      // Version of this program
+String version = "1.4";      // Version of this program
 //################ VARIABLES ###########################
 
 bool LargeIcon = true, SmallIcon = false, RxWeather = false, RxForecast = false;
@@ -575,7 +575,7 @@ void DisplayWxPerson(int x, int y, String IconName) {
 }
 
 void InitialiseDisplay() {
-  display.init(0);
+  display.init(115200, true, 2, false);
   SPI.end();
   SPI.begin(EPD_SCK, EPD_MISO, EPD_MOSI, EPD_CS);
   display.setRotation(3);
@@ -597,5 +597,7 @@ void InitialiseDisplay() {
   Version 1.3 
   1.  Added extra 20-secs to sleep delay to allow for slower ESP32 RTC timers
   
+  Version 1.4
+  1. Modified for GxEPD2
   
 */
