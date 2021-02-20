@@ -72,7 +72,7 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 // u8g2_font_helvB24_tf
 
 //################  VERSION  ##########################
-String version = "12.4";     // Version of this program
+String version = "12.5";     // Version of this program
 //################ VARIABLES ###########################
 
 boolean LargeIcon = true, SmallIcon = false;
@@ -890,7 +890,7 @@ void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alig
 }
 //#########################################################################################
 void InitialiseDisplay() {
-  display.init(0);
+  display.init(115200, true, 2, false);
   SPI.end();
   SPI.begin(EPD_SCK, EPD_MISO, EPD_MOSI, EPD_CS);
   u8g2Fonts.begin(display); // connect u8g2 procedures to Adafruit GFX
@@ -919,4 +919,7 @@ void InitialiseDisplay() {
   
   Version 12.4
   1. Improved graph drawing function for negative numbers Line 808
+  
+  Version 12.5
+  1. Modified for GxEPD2 changes
 */
