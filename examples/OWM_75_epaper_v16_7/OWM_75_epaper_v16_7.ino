@@ -60,7 +60,7 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 // u8g2_font_helvB24_tf
 
 //################  VERSION  ###########################################
-String version = "16.8";     // Programme version, see change log at end
+String version = "16.9";     // Programme version, see change log at end
 //################ VARIABLES ###########################################
 
 boolean LargeIcon = true, SmallIcon = false;
@@ -968,7 +968,7 @@ void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alig
 }
 //#########################################################################################
 void InitialiseDisplay() {
-  display.init(0);
+  display.init(115200, true, 2, false);
   u8g2Fonts.begin(display); // connect u8g2 procedures to Adafruit GFX
   u8g2Fonts.setFontMode(1);                  // use u8g2 transparent mode (this is default)
   u8g2Fonts.setFontDirection(0);             // left to right (this is default)
@@ -1074,5 +1074,8 @@ void VerboseRecordOfResetReason(RESET_REASON reason) {
   Version 16.8
   1. Updated to resolve changes in GxEPD2 setfont command, removed 'FONT(' and renamed helv08tf to helvR08_tf etc
   2. Adjusted graph drawing to improve negative number drawing
+  
+  Version 16.9
+  1. Updated for GxEPD2
 
 */
