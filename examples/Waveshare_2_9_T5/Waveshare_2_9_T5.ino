@@ -63,7 +63,7 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 // u8g2_font_helvB24_tf
 
 //################# LIBRARIES ##########################
-String version = "6.4";       // Version of this program
+String version = "6.5";       // Version of this program
 //################ VARIABLES ###########################
 
 bool    LargeIcon = true, SmallIcon = false;
@@ -752,7 +752,7 @@ void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alig
 //#########################################################################################
 void InitialiseDisplay() {
   Serial.println("Initializing display");
-  display.init(0);
+  display.init(115200, true, 2, false);
   SPI.end();
   SPI.begin(EPD_SCK, EPD_MISO, EPD_MOSI, EPD_CS);
   display.setRotation(3);                    // Use 1 or 3 for landscape modes
@@ -785,5 +785,8 @@ void InitialiseDisplay() {
   
   Version 6.4
    1. Added an extra 20-secs sleep delay to allow for slow ESP32 RTC timers
+   
+  Version 6.5
+  1. Modified for GxEPD2 changes
 
 */
