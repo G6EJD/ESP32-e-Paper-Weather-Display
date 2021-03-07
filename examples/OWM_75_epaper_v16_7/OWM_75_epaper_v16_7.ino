@@ -969,6 +969,7 @@ void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alig
 //#########################################################################################
 void InitialiseDisplay() {
   display.init(115200, true, 2, false);
+  // display.init(); for older Waveshare HAT's
   u8g2Fonts.begin(display); // connect u8g2 procedures to Adafruit GFX
   u8g2Fonts.setFontMode(1);                  // use u8g2 transparent mode (this is default)
   u8g2Fonts.setFontDirection(0);             // left to right (this is default)
