@@ -28,7 +28,11 @@ Download the software to your Arduino's library directory.
 
 3. Edit the owm_credentials.h file in the IDE (TAB at top of IDE) and change your Language, Country, choose your units Metric or Imperial and be sure to find a valid weather station location on OpenWeatherMap, if your display has all blank values your location does not exist!
 
-4. Save your files.
+4. If your are using the older style Waveshare HAT then you need to use:
+  ** display.init(); **//for older Waveshare HAT's 
+   In the InitialiseDisplay() function, comment out as required 
+
+5. Save your files.
 
 NOTE: See schematic for the wiring diagram, all displays are wired the same, so wire a 7.5" the same as a 4.2", 2.9" or 1.54" display! Both 2.13" TTGO T5 and 2.7" T5S boards come pre-wired.
 
