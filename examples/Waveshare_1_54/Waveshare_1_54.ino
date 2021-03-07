@@ -576,6 +576,7 @@ void DisplayWxPerson(int x, int y, String IconName) {
 
 void InitialiseDisplay() {
   display.init(115200, true, 2, false);
+  //// display.init(); for older Waveshare HAT's
   SPI.end();
   SPI.begin(EPD_SCK, EPD_MISO, EPD_MOSI, EPD_CS);
   display.setRotation(3);
