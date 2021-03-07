@@ -806,6 +806,7 @@ void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alig
 void InitialiseDisplay() {
   Serial.println("Begin InitialiseDisplay...");
   display.init(115200, true, 2, false);
+  // display.init(); for older Waveshare HAT's
   SPI.end();
   SPI.begin(EPD_SCK, EPD_MISO, EPD_MOSI, EPD_CS);
   display.setRotation(3);                    // Use 1 or 3 for landscape modes
