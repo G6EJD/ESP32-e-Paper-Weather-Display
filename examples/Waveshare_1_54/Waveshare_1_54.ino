@@ -174,18 +174,17 @@ void DisplayTempHumiSection(int x, int y) {
 void DisplayHeadingSection() {
   drawString(2, 2, Time_str, LEFT);
   drawString(SCREEN_WIDTH - 2, 0, Date_str, RIGHT);
-  drawString(SCREEN_WIDTH / 2, 2, version, CENTER);
+  drawString(SCREEN_WIDTH / 2, 0, version, CENTER);
   display.drawLine(0, 12, SCREEN_WIDTH, 12, GxEPD_BLACK);
 }
 //#########################################################################################
 void DisplayMainWeatherSection(int x, int y) {
   display.drawRect(x, y - 4, SCREEN_WIDTH, 28, GxEPD_BLACK);
-  String Wx_Description = WxConditions[0].Forecast0;
-  if (!RxWeather)  Wx_Description += " ## No Weather ##";
-  if (!RxForecast) Wx_Description += " ## No Forecast ##";
+  String Wx_Description1 = WxConditions[0].Forecast0;
   display.setFont(&DejaVu_Sans_Bold_11);
-  Wx_Description += "," + WindDegToDirection(WxConditions[0].Winddir) + " wind, " + String(WxConditions[0].Windspeed, 1) + (Units == "M" ? "m/s" : "mph");
-  drawStringMaxWidth(x + 2, y - 2, 27, TitleCase(Wx_Description), LEFT);
+  String Wx_Description2 = WindDegToDirection(WxConditions[0].Winddir) + " wind, " + String(WxConditions[0].Windspeed, 1) + (Units == "M" ? "m/s" : "mph");
+  drawStringMaxWidth(x + 2, y - 2, 27, TitleCase(Wx_Description1), LEFT);
+  drawStringMaxWidth(x + 2, y +10, 27, TitleCase(Wx_Description2), LEFT);  
 }
 //#########################################################################################
 void DisplayForecastSection(int x, int y) {
@@ -209,7 +208,7 @@ void DisplayForecastWeather(int x, int y, int offset, int index) {
   display.drawRect(x, y, offset, 65, GxEPD_BLACK);
   display.drawLine(x, y + 13, x + offset, y + 13, GxEPD_BLACK);
   DisplayWxIcon(x + offset / 2 + 1, y + 35, WxForecast[index].Icon, SmallIcon);
-  drawString(x + offset / 2 / 2, y + 3, String(ConvertUnixTime(WxForecast[index].Dt + WxConditions[0].Timezone).substring(0,5)), CENTER);
+  drawString(x + offset / 2, y  + 3, String(ConvertUnixTime(WxForecast[index].Dt + WxConditions[0].Timezone).substring(0,5)), CENTER);
   drawString(x + offset / 2, y + 50, String(WxForecast[index].High, 0) + "/" + String(WxForecast[index].Low, 0), CENTER);
 }
 //#########################################################################################
