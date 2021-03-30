@@ -174,7 +174,7 @@ void DisplayWeather() {             // 2.9" e-paper display is 296x128 resolutio
       Dposition++;
     }
     Forecast++;
-  } while (Forecast < max_readings - 1);
+  } while (Forecast < max_readings);
 }
 //#########################################################################################
 void DisplayForecastWeather(int x, int y, int forecast, int Dposition, int fwidth) {
