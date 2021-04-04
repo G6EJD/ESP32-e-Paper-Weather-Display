@@ -358,12 +358,12 @@ void arrow(int x, int y, int asize, float aangle, int pwidth, int plength) {
   // aangle is angle to draw the pointer at e.g. at 45° for NW
   // pwidth is the pointer width in pixels
   // plength is the pointer length in pixels
-  float dx = (asize - 10) * cos((aangle - 90) * PI / 180) + x; // calculate X position
-  float dy = (asize - 10) * sin((aangle - 90) * PI / 180) + y; // calculate Y position
+  float dx = (asize + 28) * cos((aangle - 90) * PI / 180) + x; // calculate X position
+  float dy = (asize + 28) * sin((aangle - 90) * PI / 180) + y; // calculate Y position
   float x1 = 0;         float y1 = plength;
   float x2 = pwidth / 2;  float y2 = pwidth / 2;
   float x3 = -pwidth / 2; float y3 = pwidth / 2;
-  float angle = aangle * PI / 180 - 135;
+  float angle = aangle * PI / 180;
   float xx1 = x1 * cos(angle) - y1 * sin(angle) + dx;
   float yy1 = y1 * cos(angle) + x1 * sin(angle) + dy;
   float xx2 = x2 * cos(angle) - y2 * sin(angle) + dx;
