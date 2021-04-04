@@ -254,7 +254,7 @@ void DisplayTemperatureSection(int x, int y, int twidth, int tdepth) {
 void DisplayForecastTextSection(int x, int y , int fwidth, int fdepth) {
   display.drawRect(x - 6, y - 3, fwidth, fdepth, GxEPD_BLACK); // forecast text outline
   u8g2Fonts.setFont(u8g2_font_helvB14_tf);
-  String Wx_Description = WxConditions[0].Forecast;
+  String Wx_Description = WxConditions[0].Forecast0;
   int MsgWidth = 35; // Using proportional fonts, so be aware of making it too wide!
   if (Language == "DE") drawStringMaxWidth(x - 3, y + 18, MsgWidth, Wx_Description, LEFT); // Leave German text in original format, 28 character screen width at this font size
   else                  drawStringMaxWidth(x - 3, y + 18, MsgWidth, TitleCase(Wx_Description), LEFT); // 28 character screen width at this font size
