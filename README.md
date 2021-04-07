@@ -50,7 +50,7 @@ Compile and upload the code - Enjoy!
 
 ![alt text width="600"](/Waveshare_7_5.jpg)
 
-4.2" E-Paper Layout
+4.2" 400x300 E-Paper Layout
 
 ![alt_text, width="400"](/Waveshare_4_2.jpg)
 
@@ -62,7 +62,7 @@ Compile and upload the code - Enjoy!
 
 ![alt_text, width="200"](/Waveshare_2_13.jpg)
 
-1.54" E-Paper Layout
+1.54" 200x200 E-Paper Layout
 
 ![alt_text, width="200"](/Waveshare_1_54.jpg)
 
