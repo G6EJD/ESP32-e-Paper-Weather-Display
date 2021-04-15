@@ -75,3 +75,6 @@ See here: https://github.com/ZinggJM/GxEPD2/releases/tag/1.2.10
 Modify this line in the code:
 
 display.init(115200, true, 2); // init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset_duration, bool pulldown_rst_mode)
+
+Wiring Schematic for ALL Waveshare E-Paper Displays
+![alt_text, width="300"](/Schematic.JPG)
