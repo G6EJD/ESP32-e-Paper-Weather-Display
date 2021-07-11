@@ -29,21 +29,15 @@
 #include <Fonts/FreeMonoBold12pt7b.h>
 #include "epaper_fonts.h"
 #include "forecast_record.h"
+#include "M5CoreInk.h"
 
 #define SCREEN_WIDTH  200
 #define SCREEN_HEIGHT 200
-#define ENABLE_GxEPD2_GFX 0
+
+RTC_TimeTypeDef RTCtime;
+RTC_DateTypeDef RTCDate;
 
 enum alignment {LEFT, RIGHT, CENTER};
-
-// Connections for e.g. LOLIN D32
-static const uint8_t EPD_BUSY = 4;  // to EPD BUSY
-static const uint8_t EPD_CS   = 5;  // to EPD CS
-static const uint8_t EPD_RST  = 16; // to EPD RST
-static const uint8_t EPD_DC   = 17; // to EPD DC
-static const uint8_t EPD_SCK  = 18; // to EPD CLK
-static const uint8_t EPD_MISO = 19; // Master-In Slave-Out not used, as no data from display
-static const uint8_t EPD_MOSI = 23; // to EPD DIN
 
 // Connections for M5-CoreInk
 static const uint8_t EPD_BUSY = 4;
@@ -91,9 +85,11 @@ int  SleepTime     = 23; // Sleep after (23+1) 00:00 to save battery power
 //#########################################################################################
 void setup() {
   StartTime = millis();
-  Serial.begin(115200);
-  if (StartWiFi() == WL_CONNECTED && SetupTime() == true) {
-    if ((CurrentHour >= WakeupTime && CurrentHour <= SleepTime)) {
+  Serial.begin(115200);  
+
+  UpdateLocalTimeFromRTC();  
+  if (RTCDate.Year < 2021 || (CurrentHour >= WakeupTime && CurrentHour <= SleepTime)) {
+    if (StartWiFi() == WL_CONNECTED && SetupTime() == true) {
       InitialiseDisplay(); // Give screen time to initialise by getting weather data!
       byte Attempts = 1;
       WiFiClient client;   // wifi client object
@@ -108,25 +104,23 @@ void setup() {
         display.display(false); // Full screen update mode
       }
     }
-    BeginSleep();
   }
+  BeginSleep();
 }
 //#########################################################################################
 void loop() { // this will never run!
 }
 //#########################################################################################
 void BeginSleep() {
-  display.powerOff();
   long SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)); //Some ESP32 are too fast to maintain accurate time
   esp_sleep_enable_timer_wakeup((SleepTimer+20) * 1000000LL); // Added +20 seconnds to cover ESP32 RTC timer source inaccuracies
-#ifdef BUILTIN_LED
-  pinMode(BUILTIN_LED, INPUT); // If it's On, turn it off and some boards use GPIO-5 for SPI-SS, which remains low after screen use
-  digitalWrite(BUILTIN_LED, HIGH);
-#endif
   Serial.println("Entering " + String(SleepTimer) + "-secs of sleep time");
   Serial.println("Awake for : " + String((millis() - StartTime) / 1000.0, 3) + "-secs");
+  M5.shutdown((int)SleepTimer); // deep sleep if on battery
+  delay(500);
+  // low power if on usb
   Serial.println("Starting deep-sleep period...");
-  esp_deep_sleep_start();      // Sleep for e.g. 30 minutes
+  esp_deep_sleep_start();
 }
 //#########################################################################################
 void DisplayWeather() {                                    // 1.54" e-paper display is 200x200 resolution
@@ -270,7 +264,16 @@ boolean SetupTime() {
   bool TimeStatus = UpdateLocalTime();
   return TimeStatus;
 }
+
 //#########################################################################################
+boolean UpdateLocalTimeFromRTC() {
+  M5.rtc.GetTime(&RTCtime);
+  M5.rtc.GetDate(&RTCDate);
+  CurrentHour = RTCtime.Hours;
+  CurrentMin  = RTCtime.Minutes;
+  CurrentSec  = RTCtime.Seconds;  
+}
+
 boolean UpdateLocalTime() {
   struct tm timeinfo;
   char output[30], day_output[30];
@@ -282,6 +285,17 @@ boolean UpdateLocalTime() {
   CurrentHour = timeinfo.tm_hour;
   CurrentMin  = timeinfo.tm_min;
   CurrentSec  = timeinfo.tm_sec;
+  
+  RTCtime.Hours = timeinfo.tm_hour;
+  RTCtime.Minutes = timeinfo.tm_min;
+  RTCtime.Seconds = timeinfo.tm_sec;
+  M5.rtc.SetTime(&RTCtime);
+  
+  RTCDate.Year = timeinfo.tm_year;
+  RTCDate.Month = timeinfo.tm_mon;
+  RTCDate.Date = timeinfo.tm_mday;
+  M5.rtc.SetDate(&RTCDate);
+  
   //See http://www.cplusplus.com/reference/ctime/strftime/
   //Serial.println(&timeinfo, "%a %b %d %Y   %H:%M:%S"); // Displays: Saturday, June 24 2017 14:05:49
   Serial.println(&timeinfo, "%H:%M:%S");                 // Displays: 14:05:49
@@ -554,9 +568,7 @@ void DisplayWxPerson(int x, int y, String IconName) {
 
 void InitialiseDisplay() {
   display.init(115200, true, 2, false);
-  //// display.init(); for older Waveshare HAT's
-  SPI.end();
-  SPI.begin(EPD_SCK, EPD_MISO, EPD_MOSI, EPD_CS);
+  M5.begin();
   display.setRotation(0);
   display.setTextSize(0);
   display.setFont(&DejaVu_Sans_Bold_11);
