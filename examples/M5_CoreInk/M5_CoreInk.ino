@@ -30,6 +30,7 @@
 #include "epaper_fonts.h"
 #include "forecast_record.h"
 #include "M5CoreInk.h"
+#include "esp_adc_cal.h"
 
 #define SCREEN_WIDTH  200
 #define SCREEN_HEIGHT 200
@@ -144,11 +145,31 @@ void DisplayTempHumiSection(int x, int y) {
   display.setTextSize(1);
   drawString(x + 60,  y + 83, String(WxConditions[0].Humidity, 0) + "% RH", CENTER);                               // Show Humidity
 }
+
+
+float getBatVoltage()
+{
+    analogSetPinAttenuation(35,ADC_11db);
+    esp_adc_cal_characteristics_t *adc_chars = (esp_adc_cal_characteristics_t *)calloc(1, sizeof(esp_adc_cal_characteristics_t));
+    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 3600, adc_chars);
+    uint16_t ADCValue = analogRead(35);
+    
+    uint32_t BatVolmV  = esp_adc_cal_raw_to_voltage(ADCValue,adc_chars);
+    float BatVol = float(BatVolmV) * 25.1 / 5.1 / 1000;
+    return BatVol;
+}
+
+
 //#########################################################################################
 void DisplayHeadingSection() {
   drawString(2, 2, Time_str, LEFT);
   drawString(SCREEN_WIDTH - 2, 0, Date_str, RIGHT);
-  drawString(SCREEN_WIDTH / 2, 0, version, CENTER);
+
+  char batteryStrBuff[64];
+  int batPerc = (int)(123-(123/(powf(1+powf(getBatVoltage()/3.7f, 80), 0.165f))));
+  sprintf(batteryStrBuff,"%d %%", batPerc);  
+  Serial.println(batteryStrBuff);
+  drawString(SCREEN_WIDTH / 2, 0, batteryStrBuff, CENTER);
   display.drawLine(0, 12, SCREEN_WIDTH, 12, GxEPD_BLACK);
 }
 //#########################################################################################
