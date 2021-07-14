@@ -23,7 +23,6 @@
 #include <WiFi.h>              // Built-in
 #include "time.h"              // Built-in
 #include <SPI.h>               // Built-in 
-#define  ENABLE_GxEPD2_display 0
 #include <GxEPD2_BW.h>         // GxEPD2 from Sketch, Include Library, Manage Libraries, search for GxEDP2
 #include <GxEPD2_3C.h>
 #include <Fonts/FreeMonoBold12pt7b.h>
@@ -37,6 +36,8 @@
 
 RTC_TimeTypeDef RTCtime;
 RTC_DateTypeDef RTCDate;
+
+char timeStrbuff[64];
 
 enum alignment {LEFT, RIGHT, CENTER};
 
@@ -85,8 +86,9 @@ int  SleepTime     = 23; // Sleep after (23+1) 00:00 to save battery power
 
 //#########################################################################################
 void setup() {
-  StartTime = millis();
   Serial.begin(115200);  
+  M5.begin(false, false, true);
+  StartTime = millis();
 
   UpdateLocalTimeFromRTC();  
   if (RTCDate.Year < 2021 || (CurrentHour >= WakeupTime && CurrentHour <= SleepTime)) {
@@ -113,7 +115,8 @@ void loop() { // this will never run!
 }
 //#########################################################################################
 void BeginSleep() {
-  long SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)); //Some ESP32 are too fast to maintain accurate time
+  UpdateLocalTimeFromRTC();  
+  long SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)) + 20; //Some ESP32 are too fast to maintain accurate time
   esp_sleep_enable_timer_wakeup((SleepTimer+20) * 1000000LL); // Added +20 seconnds to cover ESP32 RTC timer source inaccuracies
   Serial.println("Entering " + String(SleepTimer) + "-secs of sleep time");
   Serial.println("Awake for : " + String((millis() - StartTime) / 1000.0, 3) + "-secs");
@@ -293,6 +296,14 @@ boolean UpdateLocalTimeFromRTC() {
   CurrentHour = RTCtime.Hours;
   CurrentMin  = RTCtime.Minutes;
   CurrentSec  = RTCtime.Seconds;  
+
+  
+  sprintf(timeStrbuff,"M5 RTC %d/%02d/%02d %02d:%02d:%02d",
+                      RTCDate.Year,RTCDate.Month,RTCDate.Date,
+                      RTCtime.Hours,RTCtime.Minutes,RTCtime.Seconds);
+                      
+  Serial.printf(timeStrbuff);
+                                 
 }
 
 boolean UpdateLocalTime() {
@@ -312,8 +323,8 @@ boolean UpdateLocalTime() {
   RTCtime.Seconds = timeinfo.tm_sec;
   M5.rtc.SetTime(&RTCtime);
   
-  RTCDate.Year = timeinfo.tm_year;
-  RTCDate.Month = timeinfo.tm_mon;
+  RTCDate.Year = timeinfo.tm_year + 1900;
+  RTCDate.Month = timeinfo.tm_mon + 1;
   RTCDate.Date = timeinfo.tm_mday;
   M5.rtc.SetDate(&RTCDate);
   
@@ -588,14 +599,15 @@ void DisplayWxPerson(int x, int y, String IconName) {
 }
 
 void InitialiseDisplay() {
-  display.init(115200, true, 2, false);
-  M5.begin();
+  display.init(115200, true, 2000, false);
   display.setRotation(0);
   display.setTextSize(0);
   display.setFont(&DejaVu_Sans_Bold_11);
   display.setTextColor(GxEPD_BLACK);
   display.fillScreen(GxEPD_WHITE);
   display.setFullWindow();
+  display.clearScreen(0xFF);
+  delay(500);
 }
 
 /*
