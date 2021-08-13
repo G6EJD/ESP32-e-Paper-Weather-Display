@@ -1,4 +1,4 @@
-/* ESP Weather Display using an EPD 2.7" Display, obtains data from Open Weather Map, decodes it and then displays it.
+/* ESP Weather Display using an EPD 2.13" Display, obtains data from Open Weather Map, decodes it and then displays it.
   ####################################################################################################################################
   This software, the ideas and concepts is Copyright (c) David Bird 2018. All rights to this software are reserved.
 
