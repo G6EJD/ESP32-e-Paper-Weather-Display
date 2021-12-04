@@ -8,12 +8,6 @@
 ; Please visit documentation for the other options and examples
 ; https://docs.platformio.org/page/projectconf.html
 
-[platformio]
-; esp32dev works for the majority of ESP32 based dev boards, change this 
-; for your board if desired
-default_envs = esp32dev
-src_dir = .
-
 [common]
 framework = arduino
 monitor_speed = 115200
@@ -54,4 +48,7 @@ extends = base:esp32
 board = lolin_d32_pro
 extends = base:esp32
 
+[env:m5stack-coreink]
+extends = base:esp32
+board = m5stack-coreink
 
