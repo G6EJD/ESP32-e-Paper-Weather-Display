@@ -9,7 +9,6 @@ After inclusion, Go to File, Examples and scroll down to 'ESP32-e-paperWeather-d
 
 Also see: https://www.arduino.cc/en/Guide/Libraries#toc4
 
-- [Mini Grafx](https://github.com/ThingPulse/minigrafx) by Daniel Eichhorn
 - [Arduino JSON](https://github.com/bblanchon/ArduinoJson) (v6 or above) by Benoît Blanchon
 
 Download the software to your Arduino's library directory.
@@ -20,9 +19,12 @@ Download the software to your Arduino's library directory.
    - Waveshare_2_7
    - Waveshare_2_9
    - Waveshare_4_2
-   - Waveshare_7_5 
-(instead of Mini Grafx requires [GxEPD2 library](https://github.com/ZinggJM/GxEPD2), which needs [Adafruit_GFX](https://github.com/adafruit/Adafruit-GFX-Library), additionally requires U8g2_for_Adafruit_GFX)
-   - Waveshare_7_5_T7 (the newer 800x480 version; above is 640x384)
+   - Waveshare_7_5
+   - Waveshare_7_5_T7
+Requires [GxEPD2 library](https://github.com/ZinggJM/GxEPD2)
+   - which needs [Adafruit_GFX](https://github.com/adafruit/Adafruit-GFX-Library)
+   - an also requires U8g2_for_Adafruit_GFX)
+   - Waveshare_7_5_T7 is the newer 800x480 version of the older 640x384
 
 2. Obtain your [OWM API key](https://openweathermap.org/appid) - it's free
 
@@ -30,9 +32,9 @@ Download the software to your Arduino's library directory.
 
 4. If your are using the older style Waveshare HAT then you need to use:
   
-  **display.init();**//for older Waveshare HAT's 
+  **display.init(); //for older Waveshare HAT's 
   
-  In the InitialiseDisplay() function, comment out as required 
+  In the InitialiseDisplay() function, comment out the variant as required 
 
 5. Save your files.
 
