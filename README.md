@@ -72,7 +72,7 @@ Compile and upload the code - Enjoy!
 
 Ensure you have the latest GxEPD2 library
 
-See here: https://github.com/ZinggJM/GxEPD2/releases/tag/1.2.10
+See here: https://github.com/ZinggJM/GxEPD2/releases/
 
 Modify this line in the code:
 
