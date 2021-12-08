@@ -268,7 +268,7 @@ void DisplayForecastWeather(int x, int y, int index) {
   display.drawRect(x, y, fwidth - 1, 81, GxEPD_BLACK);
   display.drawLine(x, y + 16, x + fwidth - 3, y + 16, GxEPD_BLACK);
   DisplayConditionsSection(x + fwidth / 2, y + 43, WxForecast[index].Icon, SmallIcon);
-  drawString(x + fwidth / 2, y + 4, String(ConvertUnixTime(WxForecast[index].Dt).substring(0,5)), CENTER);
+  drawString(x + fwidth / 2, y + 4, String(ConvertUnixTime(WxForecast[index].Dt + WxConditions[0].Timezone).substring(0,5)), CENTER);
   drawString(x + fwidth / 2 + 12, y + 66, String(WxForecast[index].High, 0) + "°/" + String(WxForecast[index].Low, 0) + "°", CENTER);
 }
 //#########################################################################################
