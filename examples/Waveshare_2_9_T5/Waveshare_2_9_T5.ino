@@ -185,8 +185,8 @@ void Draw_3hr_Forecast(int x, int y, int index) {
 void DisplayAstronomySection(int x, int y) {
   display.drawRect(x, y + 13, 173, 52, GxEPD_BLACK);
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x + 5, y + 18, ConvertUnixTime(WxConditions[0].Sunrise).substring(0, (Units == "M"?5:7)) + " " + TXT_SUNRISE, LEFT);
-  drawString(x + 5, y + 34, ConvertUnixTime(WxConditions[0].Sunset).substring(0, (Units == "M"?5:7)) + " " + TXT_SUNSET, LEFT);
+  drawString(x + 5, y + 18, ConvertUnixTime(WxConditions[0].Sunrise + WxConditions[0].Timezone).substring(0, (Units == "M"?5:7)) + " " + TXT_SUNRISE, LEFT);
+  drawString(x + 5, y + 34, ConvertUnixTime(WxConditions[0].Sunset + WxConditions[0].Timezone).substring(0, (Units == "M"?5:7)) + " " + TXT_SUNSET, LEFT);
   time_t now = time(NULL);
   struct tm * now_utc = gmtime(&now);
   const int day_utc   = now_utc->tm_mday;

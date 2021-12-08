@@ -267,7 +267,7 @@ void DisplayForecastWeather(int x, int y, int index) {
   display.drawRect(x, y, fwidth - 1, 65, GxEPD_BLACK);
   display.drawLine(x, y + 13, x + fwidth - 3, y + 13, GxEPD_BLACK);
   DisplayConditionsSection(x + fwidth / 2, y + 35, WxForecast[index].Icon, SmallIcon);
-  drawString(x + fwidth / 2, y + 3, String(ConvertUnixTime(WxForecast[index].Dt + WxConditions[0].Timezone).substring(0,5)), CENTER);
+  drawString(x + fwidth / 2, y + 3, String(ConvertUnixTime(WxForecast[index].Dt + WxForecast[index].Timezone).substring(0,5)), CENTER);
   drawString(x + fwidth / 2, y + 53, String(WxForecast[index].High, 0) + "°/" + String(WxForecast[index].Low, 0) + "°", CENTER);
 }
 //#########################################################################################
@@ -313,8 +313,8 @@ void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
 void DisplayAstronomySection(int x, int y) {
   display.drawRect(x, y + 13, 173, 52, GxEPD_BLACK);
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x + 3, y + 18, ConvertUnixTime(WxConditions[0].Sunrise).substring(0, 5) + " " + TXT_SUNRISE, LEFT);
-  drawString(x + 3, y + 32, ConvertUnixTime(WxConditions[0].Sunset).substring(0, 5) + " " + TXT_SUNSET, LEFT);
+  drawString(x + 3, y + 18, ConvertUnixTime(WxConditions[0].Sunrise + WxConditions[0].Timezone).substring(0, 5) + " " + TXT_SUNRISE, LEFT);
+  drawString(x + 3, y + 32, ConvertUnixTime(WxConditions[0].Sunset + WxConditions[0].Timezone).substring(0, 5) + " " + TXT_SUNSET, LEFT);
   time_t now = time(NULL);
   struct tm * now_utc  = gmtime(&now);
   const int day_utc = now_utc->tm_mday;

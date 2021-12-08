@@ -97,7 +97,7 @@ bool DecodeWeather(WiFiClient& json, String Type) {
 String ConvertUnixTime(int unix_time) {
   // Returns either '21:12  ' or ' 09:12pm' depending on Units mode
   time_t tm = unix_time;
-  struct tm *now_tm = localtime(&tm);
+  struct tm *now_tm = gmtime(&tm);
   char output[40];
   if (Units == "M") {
     strftime(output, sizeof(output), "%H:%M %d/%m/%y", now_tm);
