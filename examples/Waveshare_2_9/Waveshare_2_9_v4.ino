@@ -168,7 +168,7 @@ void DisplayWeather() {             // 2.9" e-paper display is 296x128 resolutio
   String MidTime    = "09:00" + String((Units == "M" ? "" : "a"));
   String FinishTime = "10:00" + String((Units == "M" ? "" : "a"));
   do {
-    String Ftime = ConvertUnixTime(WxForecast[Forecast].Dt).substring(0, (Units == "M" ? 5 : 6));
+    String Ftime = ConvertUnixTime(WxForecast[Forecast].Dt + WxForecast[Forecast].Timezone).substring(0, (Units == "M" ? 5 : 6));
     if (Ftime == StartTime || Ftime == MidTime || Ftime == FinishTime) {
       DisplayForecastWeather(18, 104, Forecast, Dposition, 57); // x,y coordinates, forecast number, position, spacing width
       Dposition++;
@@ -216,9 +216,9 @@ void DisplayAstronomySection(int x, int y) {
   display.drawRect(x, y + 13, 126, 51, GxEPD_BLACK);
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   SunRise(x + 64, y + 23);
-  drawString(x + 80, y + 20, ConvertUnixTime(WxConditions[0].Sunrise).substring(0, (Units == "M" ? 5 : 7)), LEFT);
+  drawString(x + 80, y + 20, ConvertUnixTime(WxConditions[0].Sunrise + WxConditions[0].Timezone).substring(0, (Units == "M" ? 5 : 7)), LEFT);
   SunSet(x + 64, y + 38);
-  drawString(x + 80, y + 35, ConvertUnixTime(WxConditions[0].Sunset).substring(0, (Units == "M" ? 5 : 7)), LEFT);
+  drawString(x + 80, y + 35, ConvertUnixTime(WxConditions[0].Sunset + WxConditions[0].Timezone).substring(0, (Units == "M" ? 5 : 7)), LEFT);
   time_t now = time(NULL);
   struct tm * now_utc = gmtime(&now);
   const int day_utc   = now_utc->tm_mday;
@@ -392,8 +392,8 @@ void GetHighsandLows() {
   String StartTime  = "08:00" + String((Units == "M" ? "" : "a"));
   String FinishTime = "10:00" + String((Units == "M" ? "" : "a"));
   for (int r = 0; r < max_readings; r++) {
-    if (ConvertUnixTime(WxForecast[r].Dt).substring(0, (Units == "M" ? 5 : 6)) >= StartTime && ConvertUnixTime(WxForecast[r].Dt).substring(0, (Units == "M" ? 5 : 6)) <= FinishTime) { // found first period in day
-      HLReadings[Day].Time = ConvertUnixTime(WxForecast[r].Dt).substring(0, (Units == "M" ? 5 : 6));
+    if (ConvertUnixTime(WxForecast[r].Dt + WxForecast[r].Timezone).substring(0, (Units == "M" ? 5 : 6)) >= StartTime && ConvertUnixTime(WxForecast[r].Dt + WxForecast[r].Timezone).substring(0, (Units == "M" ? 5 : 6)) <= FinishTime) { // found first period in day
+      HLReadings[Day].Time = ConvertUnixTime(WxForecast[r].Dt + WxForecast[r].Timezone).substring(0, (Units == "M" ? 5 : 6));
       for (int InDay = 0; InDay < 8; InDay++) { // 00:00 to 21:00 is 8 readings
         if (r + InDay < max_readings) {
           if (WxForecast[r + InDay].High > HLReadings[Day].High) {
