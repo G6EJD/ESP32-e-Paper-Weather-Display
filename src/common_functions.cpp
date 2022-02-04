@@ -1,4 +1,10 @@
 #include "common_functions.h"
+
+float ms_to_knots(float value_ms)
+{
+    return 1.94384 * value_ms;
+}
+
 float mm_to_inches(float value_mm)
 {
   return 0.0393701 * value_mm;

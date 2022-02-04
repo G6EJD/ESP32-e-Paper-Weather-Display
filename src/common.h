@@ -13,6 +13,8 @@ void Convert_Readings_to_Imperial() {
   WxConditions[0].Pressure = hPa_to_inHg(WxConditions[0].Pressure);
   WxForecast[1].Rainfall   = mm_to_inches(WxForecast[1].Rainfall);
   WxForecast[1].Snowfall   = mm_to_inches(WxForecast[1].Snowfall);
+  // mf wind is not converted
+
 }
 
 //#########################################################################################
