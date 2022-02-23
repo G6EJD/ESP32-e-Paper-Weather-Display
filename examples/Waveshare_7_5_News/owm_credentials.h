@@ -10,7 +10,7 @@ const char server[] = "api.openweathermap.org";
 //Set your location according to OWM locations
 
 // Use youur own News API key and select your News source accordingly, in this example it's 'bbc-news'
-String NewsServer = "newsapi.org";
+String NewsServer = "newsapi.org"; 
 String NewsSource = "bbc-news";  // https://newsapi.org/sources forfull list of news sources available
 String NewsApiKey = "your News API key";
 
