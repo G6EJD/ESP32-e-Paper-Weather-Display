@@ -60,7 +60,6 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 // u8g2_font_helvB10_tf
 // u8g2_font_helvB12_tf
 // u8g2_font_helvB14_tf
-// u8g2_font_helvB18_tf
 // u8g2_font_helvB24_tf
 
 //################# LIBRARIES ##########################
