@@ -18,6 +18,7 @@ Download the software to your Arduino's library directory.
    - Waveshare_2_13
    - Waveshare_2_7
    - Waveshare_2_9
+   - Waveshare_3_7
    - Waveshare_4_2
    - Waveshare_7_5
    - Waveshare_7_5_T7 (newer 800x480 version of the older 640x384)
@@ -38,9 +39,9 @@ Download the software to your Arduino's library directory.
 
 5. Save your files.
 
-NOTE: See schematic for the wiring diagram, all displays are wired the same, so wire a 7.5" the same as a 4.2", 2.9" or 1.54" display! Both 2.13" TTGO T5 and 2.7" T5S boards come pre-wired.
+NOTE: See schematic for the wiring diagram, all displays are wired the same, so wire a 7.5" the same as a 4.2", 2.9" or 1.54" display! Both 2.13" TTGO T5 and 2.7" T5S boards come pre-wired. The 3.7" FireBeetle example contains wiring details.
 
-The Battery monitor assumes the use of a Lolin D32 board which uses GPIO-35 as an ADC input, also it has an on-board 100K+100K voltage divider directly connected to the Battery terminals. On other boards, you will need to change the analogRead(35) statement to your board e.g. (39) and attach a voltage divider to the battery terminals. The TTGO T5 and T5S boards already contain the resistor divider on the correct pin.
+The Battery monitor assumes the use of a Lolin D32 board which uses GPIO-35 as an ADC input, also it has an on-board 100K+100K voltage divider directly connected to the Battery terminals. On other boards, you will need to change the analogRead(35) statement to your board e.g. (39) and attach a voltage divider to the battery terminals. The TTGO T5 and T5S boards already contain the resistor divider on the correct pin. The FireBeetle has a battery monitor on GPIO-36.
 
 Compile and upload the code - Enjoy!
 
@@ -55,6 +56,10 @@ Compile and upload the code - Enjoy!
 4.2" 400x300 E-Paper Layout
 
 ![alt_text, width="400"](/Waveshare_4_2.jpg)
+
+3.7" 480x280 E-Paper Layout
+
+![alt_text, width="400"](/Waveshare_3_7.jpg)
 
 2.7" 264x176 E-Paper Layout
 
