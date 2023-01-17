@@ -108,50 +108,50 @@
 //#define MQTT_SUB_IN "v3/flora-lora@ttn/devices/eui-9876b6000011c941/up"
 #endif
 
-//#define MITHERMOMETER_EN
-#define MITHERMOMETER_BATTALERT 6 //!< Low battery alert threshold [%]
-#define THEENGSDECODER_EN
-#define WATER_TEMP_INVALID -30.0 //!< Water temperature invalid marker [°C]
-#define BME280_EN
-#define I2C_SDA 21
-#define I2C_SCL 22
+//#define MITHERMOMETER_EN         //!< Enable MiThermometer   (BLE sensors)
+#define THEENGSDECODER_EN          //!< Enable Theengs Decoder (BLE sensors)
+#define BME280_EN                  //!< Enable BME280 T/H/p-sensor (I2C)
+#define MITHERMOMETER_BATTALERT 6  //!< Low battery alert threshold [%]
+#define WATER_TEMP_INVALID -30.0   //!< Water temperature invalid marker [°C]
+#define I2C_SDA 21                 //!< I2C Serial Data
+#define I2C_SCL 22                 //!< I2C Serial Clock
 
 #define  ENABLE_GxEPD2_display 1
-#include <GxEPD2_BW.h>          // https://github.com/ZinggJM/GxEPD2
+#include <GxEPD2_BW.h>             //!< https://github.com/ZinggJM/GxEPD2
 //#include <GxEPD2_3C.h>
-#include <U8g2_for_Adafruit_GFX.h>  // https://github.com/olikraus/U8g2_for_Adafruit_GFX
+#include <U8g2_for_Adafruit_GFX.h> //!< https://github.com/olikraus/U8g2_for_Adafruit_GFX
 #include "src/epaper_fonts.h"
 #include "src/forecast_record.h"
-//#include "src/lang.h"         // Localisation (English)
-//#include "src/lang_cz.h"      // Localisation (Czech)
-//#include "src/lang_fr.h"      // Localisation (French)
-#include "src/lang_de.h"        // Localisation (German)
-//#include "src/lang_it.h"      // Localisation (Italian)
-//#include "src/lang_nl.h"      // Localization (Dutch)
-//#include "src/lang_pl.h"      // Localisation (Polish)
+//#include "src/lang.h"            // Localisation (English)
+//#include "src/lang_cz.h"         // Localisation (Czech)
+//#include "src/lang_fr.h"         // Localisation (French)
+#include "src/lang_de.h"           // Localisation (German)
+//#include "src/lang_it.h"         // Localisation (Italian)
+//#include "src/lang_nl.h"         // Localization (Dutch)
+//#include "src/lang_pl.h"         // Localisation (Polish)
 
 #ifdef MITHERMOMETER_EN
     // BLE Temperature/Humidity Sensor
-    #include <ATC_MiThermometer.h>  // https://github.com/matthias-bs/ATC_MiThermometer
+    #include <ATC_MiThermometer.h>  //!< https://github.com/matthias-bs/ATC_MiThermometer
 #endif
 
 #ifdef THEENGSDECODER_EN
-    #include "NimBLEDevice.h"
-    #include "decoder.h"
+    #include "NimBLEDevice.h"       //!< https://github.com/h2zero/NimBLE-Arduino
+    #include "decoder.h"            //!< https://github.com/theengs/decoder
 #endif
 
 #ifdef BME280_EN
   #include <pocketBME280.h>         // https://github.com/angrest/pocketBME280
 #endif
 
-#define SCREEN_WIDTH  800             // Set for landscape mode
-#define SCREEN_HEIGHT 480
+#define SCREEN_WIDTH  800           //!< EPD screen width
+#define SCREEN_HEIGHT 480           //!< EPD screen height
 
 long SleepDuration = 30;            //!< Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour (+ SleepOffset)
 long SleepOffset   = -120;          //!< Offset in seconds from SleepDuration; -120 will trigger wakeup 2 minutes earlier
 int  WakeupTime    = 7;             //!< Don't wakeup until after 07:00 to save battery power
 int  SleepTime     = 23;            //!< Sleep after (23+1) 00:00 to save battery power (currently only used for OWM screen)
-bool DebugDisplayUpdate = false;    //<! If true, ignore SleepTime/WakeupTime
+bool DebugDisplayUpdate = true;     //!< If true, ignore SleepTime/WakeupTime
 
 enum alignment {LEFT, RIGHT, CENTER};
 
@@ -167,16 +167,16 @@ enum alignment {LEFT, RIGHT, CENTER};
 //static const uint8_t EPD_MOSI = 23; // to EPD DIN
 
 // Connections for e.g. Waveshare ESP32 e-Paper Driver Board
-static const uint8_t    EPD_BUSY   = 25;
-static const uint8_t    EPD_CS     = 15;
-static const uint8_t    EPD_RST    = 26; 
-static const uint8_t    EPD_DC     = 27; 
-static const uint8_t    EPD_SCK    = 13;
-static const uint8_t    EPD_MISO   = 12; // Master-In Slave-Out not used, as no data from display
-static const uint8_t    EPD_MOSI   = 14;
-static const uint8_t    TOUCH_NEXT = 32;
-static const uint8_t    TOUCH_PREV = 33;
-static const uint8_t    TOUCH_MID  = 35;
+static const uint8_t    EPD_BUSY   = 25; //!< EPD Busy
+static const uint8_t    EPD_CS     = 15; //!< EPD Chip Select
+static const uint8_t    EPD_RST    = 26; //!< EPD Reset
+static const uint8_t    EPD_DC     = 27; //!< EPD Data / Command
+static const uint8_t    EPD_SCK    = 13; //!< EPD Serial Clock 
+static const uint8_t    EPD_MISO   = 12; //!< EPD Master-In Slave-Out not used, as no data from display
+static const uint8_t    EPD_MOSI   = 14; //!< EPD Master-Out Slave-In
+static const uint8_t    TOUCH_NEXT = 32; //!< Touch sensor right (next)
+static const uint8_t    TOUCH_PREV = 33; //!< Touch sensor left  (previous)
+static const uint8_t    TOUCH_MID  = 35; //!< Touch sensor middle
 
 #ifdef SIMULATE_MQTT
 const char * MqttBuf = "{\"end_device_ids\":{\"device_id\":\"eui-9876b6000011c87b\",\"application_ids\":{\"application_id\":\"flora-lora\"},\"dev_eui\":\"9876B6000011C87B\",\"join_eui\":\"0000000000000000\",\"dev_addr\":\"260BFFCA\"},\"correlation_ids\":[\"as:up:01GH0PHSCTGKZ51EB8XCBBGHQD\",\"gs:conn:01GFQX269DVXYK9W6XF8NNZWDD\",\"gs:up:host:01GFQX26AXQM4QHEAPW48E8EWH\",\"gs:uplink:01GH0PHS6A65GBAPZB92XNGYAP\",\"ns:uplink:01GH0PHS6BEPXS9Y7DMDRNK84Y\",\"rpc:/ttn.lorawan.v3.GsNs/HandleUplink:01GH0PHS6BY76SY2VPRSHNDDRH\",\"rpc:/ttn.lorawan.v3.NsAs/HandleUplink:01GH0PHSCS7D3V8ERSKF0DTJ8H\"],\"received_at\":\"2022-11-04T06:51:44.409936969Z\",\"uplink_message\":{\"session_key_id\":\"AYRBaM/qASfqUi+BQK75Gg==\",\"f_port\":1,\"frm_payload\":\"PwOOWAgACAAIBwAAYEKAC28LAw0D4U0DwAoAAAAAwMxMP8DMTD/AzEw/AAAAAAAAAAAA\",\"decoded_payload\":{\"bytes\":{\"air_temp_c\":\"9.1\",\"battery_v\":2927,\"humidity\":88,\"indoor_humidity\":77,\"indoor_temp_c\":\"9.9\",\"rain_day\":\"0.8\",\"rain_hr\":\"0.0\",\"rain_mm\":\"56.0\",\"rain_mon\":\"0.8\",\"rain_week\":\"0.8\",\"soil_moisture\":10,\"soil_temp_c\":\"9.6\",\"status\":{\"ble_ok\":true,\"res\":false,\"rtc_sync_req\":false,\"runtime_expired\":true,\"s1_batt_ok\":true,\"s1_dec_ok\":true,\"ws_batt_ok\":true,\"ws_dec_ok\":true},\"supply_v\":2944,\"water_temp_c\":\"7.8\",\"wind_avg_meter_sec\":\"0.8\",\"wind_direction_deg\":\"180.0\",\"wind_gust_meter_sec\":\"0.8\"}},\"rx_metadata\":[{\"gateway_ids\":{\"gateway_id\":\"lora-db0fc\",\"eui\":\"3135323538002400\"},\"time\":\"2022-11-04T06:51:44.027496Z\",\"timestamp\":1403655780,\"rssi\":-104,\"channel_rssi\":-104,\"snr\":8.25,\"location\":{\"latitude\":52.27640735,\"longitude\":10.54058183,\"altitude\":65,\"source\":\"SOURCE_REGISTRY\"},\"uplink_token\":\"ChgKFgoKbG9yYS1kYjBmYxIIMTUyNTgAJAAQ5KyonQUaCwiA7ZKbBhCw6tpgIKDtnYPt67cC\",\"channel_index\":4,\"received_at\":\"2022-11-04T06:51:44.182146570Z\"}],\"settings\":{\"data_rate\":{\"lora\":{\"bandwidth\":125000,\"spreading_factor\":8,\"coding_rate\":\"4/5\"}},\"frequency\":\"867300000\",\"timestamp\":1403655780,\"time\":\"2022-11-04T06:51:44.027496Z\"},\"received_at\":\"2022-11-04T06:51:44.203702153Z\",\"confirmed\":true,\"consumed_airtime\":\"0.215552s\",\"locations\":{\"user\":{\"latitude\":52.24619,\"longitude\":10.50106,\"source\":\"SOURCE_REGISTRY\"}},\"network_ids\":{\"net_id\":\"000013\",\"tenant_id\":\"ttn\",\"cluster_id\":\"eu1\",\"cluster_address\":\"eu1.cloud.thethings.network\"}}}";
@@ -558,6 +558,7 @@ void setup() {
     // Initialize history data queues if required (time has to be set already)
     if (!q_isInitialized(&MqttHistQCtrl)) {
         q_init_static(&MqttHistQCtrl, sizeof(MqttHist[0]), MQTT_HIST_SIZE, FIFO, true, (uint8_t *)MqttHist, sizeof(MqttHist));
+        MqttSensors.water_temp_c   = WATER_TEMP_INVALID;
         MqttSensors.received_at[0] = '\0';
     }
     if (!q_isInitialized(&RainHrHistQCtrl)) {
@@ -2198,7 +2199,7 @@ void DisplayMqttHistory() {
   }
 
   // (x, y, width, height, MinValue, MaxValue, Title, DataArray[], AutoScale, ChartMode, xmin, xmax, dx, data_offset, x_label, ValidArray[])
-  DrawGraph(gx + 2 * gap + 5, gy, gwidth, gheight, 0, 300, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_hr, RAIN_HR_HIST_SIZE, autoscale_on, barchart_on, -20, -4,  8, offs, TXT_HOURS, rain_hr_valid);
+  DrawGraph(gx + 2 * gap + 5, gy, gwidth, gheight, 0, 300, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_hr, RAIN_HR_HIST_SIZE+1, autoscale_on, barchart_on, -20, -4,  8, offs, TXT_HOURS, rain_hr_valid);
 
   
   // Daily Rain History
