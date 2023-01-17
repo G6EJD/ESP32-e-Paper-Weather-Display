@@ -176,6 +176,7 @@ boolean LargeIcon = true, SmallIcon = false;
 #define Small  6            // For icon drawing, needs to be odd number for best effect
 String  Time_str;           //!< Curent time as string
 String  Date_str;           //!< Current date as stringstrings to hold time and received weather data
+extern long _timezone;      //!<
 int     wifi_signal = 0;    //!< WiFi signal strength
 int     CurrentHour = 0;    //!< Current time - hour
 int     CurrentMin = 0;     //!< Current time - minutes
@@ -216,6 +217,7 @@ float snow_readings[max_readings]        = {0}; //!< OWM snow readings
 // MQTT Sensor Data
 struct MqttS {
     bool     valid;                //!< 
+    char     received_at[32];
     struct {
         unsigned int ws_batt_ok:1; //!< weather sensor battery o.k.
         unsigned int ws_dec_ok:1;  //!< weather sensor decoding o.k.
@@ -513,6 +515,7 @@ void setup() {
     // Initialize history data queues if required (time has to be set already)
     if (!q_isInitialized(&MqttHistQCtrl)) {
         q_init_static(&MqttHistQCtrl, sizeof(MqttHist[0]), MQTT_HIST_SIZE, FIFO, true, (uint8_t *)MqttHist, sizeof(MqttHist));
+        MqttSensors.received_at[0] = '\0';
     }
     if (!q_isInitialized(&RainHrHistQCtrl)) {
         q_init_static(&RainHrHistQCtrl, sizeof(RainHrHist[0]), RAIN_HR_HIST_SIZE, FIFO, true, (uint8_t *)RainHrHist, sizeof(RainHrHist));
@@ -877,6 +880,27 @@ void findMqttMinMaxTemp(float * t_min, float * t_max) {
   *t_max = outdoorTMax;
 }
 
+void convertUtcTimestamp(String time_str_utc, struct tm * ti_local, int tz_offset)
+{
+  struct tm received_at_utc;
+  memset(&received_at_utc, 0, sizeof(struct tm));
+  memset(ti_local, 0, sizeof(struct tm));
+
+  // Read time string
+  strptime(time_str_utc.c_str(), "%Y-%m-%dT%H:%M:%S%z", &received_at_utc);
+  log_d("UTC: %d-%02d-%02d %02d:%02d DST: %d\n", received_at_utc.tm_year+1900, received_at_utc.tm_mon+1, received_at_utc.tm_mday, received_at_utc.tm_hour, received_at_utc.tm_min, received_at_utc.tm_isdst);
+
+  // Convert time struct and calculate offset
+  time_t received_at = mktime(&received_at_utc) - tz_offset;
+  
+  // Convert time value to time struct (local time; with consideration of DST)
+  localtime_r(&received_at, ti_local);
+  char tbuf[26];
+  strftime(tbuf, 25, "%Y-%m-%d %H:%M", ti_local);
+  Serial.printf("Message received at: %s local time, DST: %d\n", tbuf, ti_local->tm_isdst);
+}
+
+    
 /**
  * \brief Get MQTT data from broker
  * 
@@ -948,6 +972,10 @@ void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
   }
   MqttSensors.valid = true;
   
+  const char * received_at  = doc["received_at"];
+  strncpy(MqttSensors.received_at, received_at, 30);
+  //MqttSensors.received_at   = received_at;
+  //MqttSensors.received_at   = doc["received_at"].as<String>();
   JsonObject uplink_message = doc["uplink_message"];
 
   // uplink_message_decoded_payload_bytes -> payload
@@ -1056,7 +1084,7 @@ void SaveRainDayData(void) {
  */
 void DisplayMQTTWeather(void) {
   DisplayGeneralInfoSection();
-  DisplayDateTime(90, 225);
+  DisplayMQTTDateTime(90, 225);
   display.drawBitmap(  5,  25, epd_bitmap_garten_sw, 220, 165, GxEPD_BLACK);
   display.drawRect(    4,  24, 222, 167, GxEPD_BLACK);
   display.drawBitmap(240,  45, epd_bitmap_temperatur_aussen, 64, 48, GxEPD_BLACK);
@@ -1071,8 +1099,7 @@ void DisplayMQTTWeather(void) {
   #ifdef FORCE_NO_SIGNAL
   MqttSensors.status.ws_dec_ok = false;
   #endif
-  //float outdoorTMin;
-  //float outdoorTMax;
+  
   // Find min/max temperature in local history data
   float outdoorTMin = 0;
   float outdoorTMax = 0;
@@ -1463,6 +1490,29 @@ void DisplayDateTime(int x, int y) {
   drawString(x, y, Date_str, CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
   drawString(x + 13, y+31, Time_str, CENTER);
+}
+
+/**
+ * \brief Print date and time as localized string at the given position
+ * 
+ * \param x   x-coordinate
+ * \param y   y-coordinate
+ */
+void DisplayMQTTDateTime(int x, int y) {
+  struct tm timeinfo;
+  char mqtt_date[32];
+  char mqtt_time[32];
+
+  if (MqttSensors.received_at[0] == '\0')
+    return;
+     
+  convertUtcTimestamp(MqttSensors.received_at, &timeinfo, _timezone);
+  printTime(timeinfo, mqtt_date, mqtt_time, 32);
+  
+  u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+  drawString(x, y, mqtt_date, CENTER);
+  u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  drawString(x + 13, y+31, mqtt_time, CENTER);
 }
 
 
@@ -2287,7 +2337,7 @@ boolean SetupTime() {
  */
 boolean UpdateLocalTime() {
   struct tm timeinfo;
-  char   time_output[32], day_output[30], update_time[30];
+  char   time_output[32], day_output[32];
   while (!getLocalTime(&timeinfo, 10000)) { // Wait for 10-sec for time to synchronise
     log_w("Failed to obtain time");
     return false;
@@ -2296,6 +2346,16 @@ boolean UpdateLocalTime() {
   CurrentMin  = timeinfo.tm_min;
   CurrentSec  = timeinfo.tm_sec;
   CurrentDay  = timeinfo.tm_mday;
+  printTime(timeinfo, time_output, day_output, 32);
+            
+  Date_str = day_output;
+  Time_str = time_output;
+  return true;
+}
+
+void printTime(struct tm &timeinfo, char *day_output, char *time_output, int max_size) {
+  char update_time[30];
+  
   //See http://www.cplusplus.com/reference/ctime/strftime/
   //Serial.println(&timeinfo, "%a %b %d %Y   %H:%M:%S");      // Displays: Saturday, June 24 2017 14:05:49
   if (Units == "M") {
@@ -2306,18 +2366,15 @@ boolean UpdateLocalTime() {
     {
       sprintf(day_output, "%s %02u-%s-%04u", weekday_D[timeinfo.tm_wday], timeinfo.tm_mday, month_M[timeinfo.tm_mon], (timeinfo.tm_year) + 1900);
     }
-    strftime(update_time, sizeof(update_time), "%H:%M:%S", &timeinfo);  // Creates: '14:05:49'
+    strftime(update_time, max_size, "%H:%M:%S", &timeinfo);  // Creates: '14:05:49'
     sprintf(time_output, "%s %s", TXT_UPDATED, update_time);
   }
   else
   {
-    strftime(day_output, sizeof(day_output), "%a %b-%d-%Y", &timeinfo); // Creates  'Sat May-31-2019'
+    strftime(day_output, max_size, "%a %b-%d-%Y", &timeinfo); // Creates  'Sat May-31-2019'
     strftime(update_time, sizeof(update_time), "%r", &timeinfo);        // Creates: '02:05:49pm'
     sprintf(time_output, "%s %s", TXT_UPDATED, update_time);
   }
-  Date_str = day_output;
-  Time_str = time_output;
-  return true;
 }
 
 #if 0
