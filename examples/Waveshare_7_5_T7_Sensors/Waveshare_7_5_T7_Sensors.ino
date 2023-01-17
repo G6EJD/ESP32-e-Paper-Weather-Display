@@ -443,7 +443,7 @@ void DisplayOWMWeather() {                        // 7.5" e-paper display is 800
   DisplayStatusSection(690, 215, wifi_signal); // Wi-Fi signal strength and Battery voltage
 }
 
-bool MqttConnect(WiFiClient net, MQTTClient MqttClient) {
+bool MqttConnect(WiFiClient& net, MQTTClient& MqttClient) {
   Serial.print("checking wifi...");
   if (StartWiFi() != WL_CONNECTED) {
     return false;
@@ -535,7 +535,7 @@ void SubscribeMqttData(WiFiClient wifi_client) {
 }
 #endif
 //#########################################################################################
-void GetMqttData(MQTTClient MqttClient) {
+void GetMqttData(MQTTClient& MqttClient) {
   /*
   MQTTClient mqtt_client(MQTT_PAYLOAD_SIZE);
   mqtt_client.begin(MQTT_HOST, MQTT_PORT, wifi_client);
@@ -588,8 +588,8 @@ void GetMqttData(MQTTClient MqttClient) {
   Serial.print(F("\nCreating JSON object..."));
 
   // allocate the JsonDocument
-  //StaticJsonDocument<MQTT_PAYLOAD_SIZE> doc;
-  DynamicJsonDocument doc(MQTT_PAYLOAD_SIZE);
+  StaticJsonDocument<MQTT_PAYLOAD_SIZE> doc;
+  //DynamicJsonDocument doc(MQTT_PAYLOAD_SIZE);
   
   // Deserialize the JSON document
   DeserializationError error = deserializeJson(doc, MqttBuf, MQTT_PAYLOAD_SIZE);
@@ -1285,24 +1285,11 @@ void DisplayForecastSection(int x, int y) {
 //#########################################################################################
 void DisplayLocalHistory() {
   /*
-  int r = 1;
-  do {
-    if (Units == "I") pressure_readings[r] = WxForecast[r].Pressure * 0.02953;   else pressure_readings[r] = WxForecast[r].Pressure;
-    if (Units == "I") rain_readings[r]     = WxForecast[r].Rainfall * 0.0393701; else rain_readings[r]     = WxForecast[r].Rainfall;
-    if (Units == "I") snow_readings[r]     = WxForecast[r].Snowfall * 0.0393701; else snow_readings[r]     = WxForecast[r].Snowfall;
-    temperature_readings[r] = WxForecast[r].Temperature;
-    humidity_readings[r]    = WxForecast[r].Humidity;
-    r++;
-  } while (r <= max_readings);
-  */
-  
-  /*
   local_data.temperature = LocalSensors.ble_thsensor[0].temperature;
   local_data.humidity    = LocalSensors.ble_thsensor[0].temperature;
   local_data.pressure    = LocalSensors.i2c_thpsensor[0].pressure;
   */
 
-  
   local_hist_t local_data;
   float temperature[LOCAL_HIST_SIZE];
   float humidity[LOCAL_HIST_SIZE];
@@ -1937,7 +1924,7 @@ void DisplayLocalTemperatureSection(int x, int y, int twidth, int tdepth, String
   if (!valid) {
     if (minmax) {
       u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-      drawString(x-5, y + 82, "? " + _unit + " | ? " + _unit, CENTER); // Show forecast high and Low
+      drawString(x-5, y + 70, "? " + _unit + " | ? " + _unit, CENTER); // Show forecast high and Low
     }
     //u8g2Fonts.setFont(u8g2_font_helvB24_tf);
     //u8g2Fonts.setFont(u8g2_font_helvB18_tf);
@@ -1948,7 +1935,7 @@ void DisplayLocalTemperatureSection(int x, int y, int twidth, int tdepth, String
   } else {
     if (minmax) {
       u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-      drawString(x-5, y + 82, String(tmax, 0) + _unit + " | " + String(tmin, 0) + _unit, CENTER); // Show forecast high and Low
+      drawString(x-5, y + 70, String(tmax, 0) + _unit + " | " + String(tmin, 0) + _unit, CENTER); // Show forecast high and Low
     }
     //u8g2Fonts.setFont(u8g2_font_helvB24_tf);
     //u8g2Fonts.setFont(u8g2_font_helvB18_tf);
