@@ -18,17 +18,6 @@
   See more at http://www.dsbird.org.uk
 */
 
-// TODO
-// - store MQTT history
-// - display MQTT history
-// - update local/MQTT history indepently of wake-up cause
-// - store MQTT data in NV RAM
-// - move data retrieving to begin
-// - add MQTT receive timeout
-// - add minimum functionality in case WiFi is not available
-// - add independent display update rate for local data screen
-// - change screen before time consuming processes start
-// - intterrupt waiting for MQTT message by touch sensor
 
 #include "owm_credentials.h"          // See 'owm_credentials' tab and enter your OWM API key and set the Wifi SSID and PASSWORD
 #include <ArduinoJson.h>              // https://github.com/bblanchon/ArduinoJson needs version v6 or above
@@ -167,10 +156,15 @@ String version = "16.11";    // Programme version, see change log at end
 boolean LargeIcon = true, SmallIcon = false;
 #define Large  17           // For icon drawing, needs to be odd number for best effect
 #define Small  6            // For icon drawing, needs to be odd number for best effect
-String  Time_str, Date_str; // strings to hold time and received weather data
-int     wifi_signal = 0, CurrentHour = 0, CurrentMin = 0, CurrentSec = 0;
-long    StartTime = 0;
-bool    touchTrig = false;
+String  Time_str;                    // Curent time as string
+String  Date_str;                    // Current date as stringstrings to hold time and received weather data
+int     wifi_signal = 0;             //!< WiFi signal strength
+int     CurrentHour = 0;             //!< Current time - hour
+int     CurrentMin = 0;              //!< Current time - minutes
+int     CurrentSec = 0;              //!< Current time - seconds
+long    StartTime = 0;               //!< Start timestamp
+RTC_DATA_ATTR bool    touchTrig = false;           //!< Flag: Touch sensor has been triggered
+bool    mqttMessageReceived = false; //!< Flag: MQTT message has been received
 
 //################ PROGRAM VARIABLES and OBJECTS ################
 
@@ -234,7 +228,7 @@ struct MqttS {
 typedef struct MqttS mqtt_sensors_t;      //!< Shortcut for struct Sensor
 RTC_DATA_ATTR mqtt_sensors_t MqttSensors; //!< MQTT sensor data
 
-RTC_DATA_ATTR Queue_t MqttHistQCtrl;
+RTC_DATA_ATTR Queue_t MqttHistQCtrl;      //!< MQTT Sensor Data History FIFO Control
 
 struct MqttHistQData {
   float temperature;  //!< temperature in degC
@@ -242,9 +236,9 @@ struct MqttHistQData {
   float rain;         //!< precipitation in mm
 };
 
-typedef struct MqttHistQData mqtt_hist_t;
+typedef struct MqttHistQData mqtt_hist_t; //!< Shortcut for struct MqttHistQData
 
-RTC_DATA_ATTR mqtt_hist_t MqttHist[MQTT_HIST_SIZE];
+RTC_DATA_ATTR mqtt_hist_t MqttHist[MQTT_HIST_SIZE]; //<! MQTT Sensor Data History
 
 
 // Local Sensor Data
@@ -265,10 +259,10 @@ struct LocalS {
   } i2c_thpsensor[1];
 };
 
-typedef struct LocalS local_sensors_t;
-local_sensors_t LocalSensors;
+typedef struct LocalS local_sensors_t; //!< Shortcut for struct LocalS
+local_sensors_t LocalSensors;          //!< Local Sensor Data
 
-RTC_DATA_ATTR Queue_t LocalHistQCtrl;
+RTC_DATA_ATTR Queue_t LocalHistQCtrl;  //!< Local Sensor Data History FIFO Control
 
 struct LocalHistQData {
   float temperature;  //!< temperature in degC
@@ -276,24 +270,20 @@ struct LocalHistQData {
   float pressure;     //!< pressure in hPa
 };
 
-typedef struct LocalHistQData local_hist_t;
+typedef struct LocalHistQData local_hist_t;            //!< Shortcut for struct LocalHistQData
 
-RTC_DATA_ATTR local_hist_t LocalHist[LOCAL_HIST_SIZE];
+RTC_DATA_ATTR local_hist_t LocalHist[LOCAL_HIST_SIZE]; // Local Sensor Data History
 
 
 long SleepDuration = 30; // Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
 int  WakeupTime    = 7;  // Don't wakeup until after 07:00 to save battery power
 int  SleepTime     = 23; // Sleep after (23+1) 00:00 to save battery power
 
-RTC_DATA_ATTR int   ScreenNo     = START_SCREEN;
-RTC_DATA_ATTR int   PrevScreenNo = START_SCREEN;
-//RTC_DATA_ATTR float OutdoorTmin = 200;
-//RTC_DATA_ATTR float OutdoorTmax = -200;
-RTC_DATA_ATTR float mqtt_outdoor_temp_c;
+RTC_DATA_ATTR int   ScreenNo     = START_SCREEN; //!< Current Screen No.
+RTC_DATA_ATTR int   PrevScreenNo = -1;           //!< Previous Screen No.
 
-bool mqttMessageReceived = false;
-bool swResetCaught = false;
 
+//#########################################################################################
 // Touch Interrupt Service Routine
 void ARDUINO_ISR_ATTR touch_isr() {
     touchTrig = true;
@@ -302,24 +292,22 @@ void ARDUINO_ISR_ATTR touch_isr() {
 //#########################################################################################
 void setup() {
   WiFiClient net;
-  //MQTTClient MqttClient(MQTT_PAYLOAD_SIZE);
 
   StartTime = millis();
   Serial.begin(115200);
   bool mqtt_connected = false;
   
-  
-  //GetLocalData();
-  
-  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
+  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0 || touchTrig) {
     PrevScreenNo = ScreenNo;
     ScreenNo = (ScreenNo == LAST_SCREEN) ? 0 : ScreenNo + 1;
+    touchTrig = false;
   } else if (esp_sleep_get_wakeup_cause() == 0xC /* SW_CPU_RESET */) {
     ;
-  } else if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER) {
+  } 
+  //else if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER) {
     // FIXME Check if touch wakeup occurs at the same time as timer wakeup
     //SaveLocalData();
-  }
+  //}
   
   Serial.printf("Screen No: %d\n", ScreenNo);
   
@@ -332,19 +320,22 @@ void setup() {
     //mqtt_connected = MqttConnect(net, MqttClient); 
   }
 
+  InitialiseDisplay();
+  if (display.epd2.hasFastPartialUpdate)
+  {
+    Serial.println("Display has Fast Partial Update");
+  }
+  else if (display.epd2.hasPartialUpdate)
+  {
+    Serial.println("Display has Partial Update");
+  }
+  else
+  {
+    Serial.println("Display has No Partial Update");
+  }
   
-  //for (int i=0; i<q_getCount(&LocalHistQCtrl); i++) {
-  //  q_peekIdx(&LocalHistQCtrl, &local_data, i);
-  //  Serial.printf("Data %d: t: %.1f h: %.0f p: %.0f\n", i, local_data.temperature, local_data.humidity, local_data.pressure);
-  //}
   // FIXME
-  if (StartWiFi() == WL_CONNECTED && SetupTime() == true) {
-    //WiFiClient client;   // wifi client object
-    //client.setInsecure();
-    //WiFiClientSecure sec_client;   // wifi client object
-    //sec_client.setInsecure();
-    //delay(100);
-    
+  if (StartWiFi() == WL_CONNECTED && SetupTime() == true) {    
     if (ScreenNo == ScreenOWM) {
         //WiFiClient client;
         if ((CurrentHour >= WakeupTime && CurrentHour <= SleepTime) || DebugDisplayUpdate) {
@@ -366,7 +357,7 @@ void setup() {
     }
 
     GetLocalData();
-    if ((CurrentMin % HIST_UPDATE_RATE) < HIST_UPDATE_TOL) {
+    if (HistoryUpdateDue()) {
         SaveLocalData();
     }
     
@@ -388,9 +379,16 @@ void setup() {
     MQTTClient MqttClient(MQTT_PAYLOAD_SIZE);
     mqtt_connected = MqttConnect(net, MqttClient); 
     if (mqtt_connected) {
-         GetMqttData(net, MqttClient);
+        int x = (ScreenNo == ScreenOWM) ? 595 :  88;
+        int y = (ScreenNo == ScreenOWM) ? 190 : 272;
+        display.drawBitmap(x, y, epd_bitmap_downloading, 48, 48, GxEPD_BLACK);
+        display.displayWindow(x, y, 48, 48);
+        GetMqttData(net, MqttClient);
+        display.fillRect(x, y, 48, 48, GxEPD_WHITE);
+        display.displayWindow(x, y, 48, 48);
+        display.setFullWindow();
     }
-    if ((CurrentMin % HIST_UPDATE_RATE) < HIST_UPDATE_TOL) {
+    if (HistoryUpdateDue()) {
         SaveMqttData();
     }
     
@@ -460,8 +458,16 @@ void loop() { // this will never run!
 //#########################################################################################
 void BeginSleep() {
   display.powerOff();
-  long SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)); //Some ESP32 are too fast to maintain accurate time
-  esp_sleep_enable_timer_wakeup((SleepTimer+20) * 1000000LL); // Added extra 20-secs of sleep to allow for slow ESP32 RTC timers
+  long SleepTimer;
+  if (touchTrig) {
+      // wake up immediately
+      SleepTimer = 1000;
+  } else {
+      // Wake up at fixed interval, synchronized to begin of full hour
+      SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)); //Some ESP32 are too fast to maintain accurate time
+      SleepTimer = (SleepTimer + 20) * 1000000LL; // Added extra 20-secs of sleep to allow for slow ESP32 RTC timers
+  }
+  esp_sleep_enable_timer_wakeup(SleepTimer); 
   esp_sleep_enable_ext0_wakeup(TOUCH_WAKE, 1); // Wake up from touch sensor
 #ifdef BUILTIN_LED
   pinMode(BUILTIN_LED, INPUT); // If it's On, turn it off and some boards use GPIO-5 for SPI-SS, which remains low after screen use
@@ -473,7 +479,17 @@ void BeginSleep() {
   esp_deep_sleep_start();      // Sleep for e.g. 30 minutes
 }
 
-
+//#########################################################################################
+bool HistoryUpdateDue(void) {
+    if (SetupTime()) {
+      Serial.println("HistoryUpdateDue(): " + Date_str + " " + Time_str);
+    }
+    int mins = (CurrentHour * 60 + CurrentMin) % HIST_UPDATE_RATE;
+    bool rv = (mins <= HIST_UPDATE_TOL) || (mins >= (HIST_UPDATE_RATE - HIST_UPDATE_TOL));
+    Serial.println("HistoryUpdateDue(): " + String(rv));
+    return rv;
+    
+}
 //#########################################################################################
 void mqttMessageCb(String &topic, String &payload) {
   mqttMessageReceived = true;
@@ -571,28 +587,6 @@ void findMqttMinMaxTemp(float * t_min, float * t_max) {
   *t_max = outdoorTMax;
 }
 
-//#########################################################################################
-#if 0
-void SubscribeMqttData(WiFiClient wifi_client) {
-  
-  
-  mqtt_client.begin(MQTT_HOST, MQTT_PORT, wifi_client);
-  mqtt_client.setOptions(MQTT_KEEPALIVE /* keepAlive [s] */, MQTT_CLEAN_SESSION /* cleanSession */, MQTT_TIMEOUT /* timeout [ms] */);
-  mqtt_connect(mqtt_client);
-  //mqtt_client.onMessageAdvanced(mqttMessageAdvancedCb);
-  mqtt_client.onMessage(mqttMessageCb);
-  while (!mqtt_client.connect(Hostname, MQTT_USER, MQTT_PASS)) {
-    Serial.print(".");
-    delay(1000);
-  }
-  Serial.println("\nconnected!");
-
-  if (!mqtt_client.subscribe(MQTT_SUB_IN)) {
-    Serial.println("Subscription failed!");
-  }
-
-}
-#endif
 //#########################################################################################
 void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
   /*
@@ -726,12 +720,12 @@ void SaveMqttData() {
 
 //#########################################################################################
 void DisplayMQTTWeather(void) { 
-  Serial.println("DisplayMQTTWeather(): calling DisplayGeneralInfoSection()");
+  //Serial.println("DisplayMQTTWeather(): calling DisplayGeneralInfoSection()");
   DisplayGeneralInfoSection();
-  Serial.println("DisplayMQTTWeather(): DisplayGeneralInfoSection() o.k.");
-  Serial.println("DisplayMQTTWeather(): Date_str=" + Date_str + " - calling DisplayDateTime()");
+  //Serial.println("DisplayMQTTWeather(): DisplayGeneralInfoSection() o.k.");
+  //Serial.println("DisplayMQTTWeather(): Date_str=" + Date_str + " - calling DisplayDateTime()");
   DisplayDateTime(90, 225);
-  Serial.println("DisplayMQTTWeather(): DisplayDateTime() o.k.");
+  //Serial.println("DisplayMQTTWeather(): DisplayDateTime() o.k.");
   display.drawBitmap(  5,  25, epd_bitmap_garten_sw, 220, 165, GxEPD_BLACK);
   display.drawRect(    4,  24, 222, 167, GxEPD_BLACK);
   display.drawBitmap(240,  45, epd_bitmap_temperatur_aussen, 64, 48, GxEPD_BLACK);
@@ -755,17 +749,14 @@ void DisplayMQTTWeather(void) {
 
   if (MqttSensors.status.ws_dec_ok) {
     DisplayLocalTemperatureSection(358,  22, 137, 100, "", true, MqttSensors.air_temp_c, true, outdoorTMin, outdoorTMax);
-    DisplayLocalTemperatureSection(358,  77, 137, 100, "", true, MqttSensors.indoor_temp_c, false, 0, 0);
     u8g2Fonts.setFont(u8g2_font_helvR24_tf);
     drawString(524,  75, String(MqttSensors.humidity) + "%", CENTER);
-    drawString(524, 130, String(MqttSensors.indoor_humidity) + "%", CENTER);
 
     #ifdef FORCE_LOW_BATTERY
     MqttSensors.status.ws_batt_ok = false;
     #endif
     if (!MqttSensors.status.ws_batt_ok) {
       display.drawBitmap(577,  60, epd_bitmap_battery_alert, 24, 24, GxEPD_BLACK);
-      display.drawBitmap(577, 115, epd_bitmap_battery_alert, 24, 24, GxEPD_BLACK);
     }
   }
   else {
@@ -773,12 +764,28 @@ void DisplayMQTTWeather(void) {
     display.drawBitmap(320,  47, epd_bitmap_signal_disconnected, 40, 40, GxEPD_BLACK);
     // No outdoor humidity
     display.drawBitmap(518,  47, epd_bitmap_signal_disconnected, 40, 40, GxEPD_BLACK);
+  }
+  
+  // Indoor Sensor (BLE)
+  if (MqttSensors.status.ble_ok) {
+    DisplayLocalTemperatureSection(358,  77, 137, 100, "", true, MqttSensors.indoor_temp_c, false, 0, 0);
+    u8g2Fonts.setFont(u8g2_font_helvR24_tf);
+    drawString(524, 130, String(MqttSensors.indoor_humidity) + "%", CENTER);
+
+    #ifdef FORCE_LOW_BATTERY
+    MqttSensors.status.ws_batt_ok = false;
+    #endif
+    if (!MqttSensors.status.ws_batt_ok) {
+      display.drawBitmap(577, 115, epd_bitmap_battery_alert, 24, 24, GxEPD_BLACK);
+    }
+  }
+  else {
     // No indoor temperature
     display.drawBitmap(320, 102, epd_bitmap_signal_disconnected, 40, 40, GxEPD_BLACK);
-    // No outdor humidity
+    // No indoor humidity
     display.drawBitmap(518, 102, epd_bitmap_signal_disconnected, 40, 40, GxEPD_BLACK);
   }
-
+      
   // Soil Sensor
   #ifdef FORCE_NO_SIGNAL
   MqttSensors.status.s1_dec_ok = false;
@@ -904,10 +911,6 @@ void SaveLocalData() {
       }
     }
     if (LocalSensors.i2c_thpsensor[0].valid) {
-      // BEGIN FIXME remove!!!
-      local_data.temperature = LocalSensors.i2c_thpsensor[0].temperature;
-      local_data.humidity    = LocalSensors.i2c_thpsensor[0].humidity;
-      // END
       local_data.pressure = LocalSensors.i2c_thpsensor[0].pressure;
     }
     else {
@@ -1046,7 +1049,7 @@ void DisplayTestScreen(void) {
     DisplayStatusSection(690, 215, wifi_signal); // Wi-Fi signal strength and Battery voltage
 }
 
-
+//#########################################################################################
 void DisplayGeneralInfoSection(void) {
   const int dist = 40;
   uint16_t offs;
@@ -1096,7 +1099,6 @@ void DisplayDateTime(int x, int y) {
   drawString(x, y, Date_str, CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
   drawString(x + 13, y+31, Time_str, CENTER);
-  //display.drawLine(0, 18, SCREEN_WIDTH - 3, 18, GxEPD_BLACK);
 }
 
 //#########################################################################################
@@ -2020,10 +2022,10 @@ void DisplayLocalTemperatureSection(int x, int y, int twidth, int tdepth, String
 //#########################################################################################
 void InitialiseDisplay() {
   display.init(115200, true, 2, false); // init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset_duration, bool pulldown_rst_mode)
-  // display.init(); for older Waveshare HAT's
+  // display.init(); for older Waveshare HATs
   SPI.end();
   SPI.begin(EPD_SCK, EPD_MISO, EPD_MOSI, EPD_CS);
-  u8g2Fonts.begin(display); // connect u8g2 procedures to Adafruit GFX
+  u8g2Fonts.begin(display);                  // connect u8g2 procedures to Adafruit GFX
   u8g2Fonts.setFontMode(1);                  // use u8g2 transparent mode (this is default)
   u8g2Fonts.setFontDirection(0);             // left to right (this is default)
   u8g2Fonts.setForegroundColor(GxEPD_BLACK); // apply Adafruit GFX color
