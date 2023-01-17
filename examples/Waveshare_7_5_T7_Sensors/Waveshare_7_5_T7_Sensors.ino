@@ -28,6 +28,8 @@
 // - add minimum functionality in case WiFi is not available
 // - add independent display update rate for local data screen
 // - change screen before time consuming processes start
+// - intterrupt waiting for MQTT message by touch sensor
+
 #include "owm_credentials.h"          // See 'owm_credentials' tab and enter your OWM API key and set the Wifi SSID and PASSWORD
 #include <ArduinoJson.h>              // https://github.com/bblanchon/ArduinoJson needs version v6 or above
 #include <WiFi.h>                     // Built-in
@@ -44,24 +46,30 @@
 
 #define START_SCREEN 2
 #define LAST_SCREEN  2
-#define SIMULATE_MQTT
+//#define SIMULATE_MQTT
 //#define FORCE_LOW_BATTERY
 //#define FORCE_NO_SIGNAL
 
 #define MQTT_PAYLOAD_SIZE 4096
-#define MQTT_DATA_TIMEOUT 180
+#define MQTT_CONNECT_TIMEOUT 30
+#define MQTT_DATA_TIMEOUT 600
 #define MQTT_KEEPALIVE    60
-#define MQTT_TIMEOUT      30
+#define MQTT_TIMEOUT      1800
 #define MQTT_CLEAN_SESSION false
 
 #define MQTT_HIST_SIZE  144
 #define LOCAL_HIST_SIZE 144
+#define HIST_UPDATE_RATE 30
+#define HIST_UPDATE_TOL   6
 
 #ifdef FLORA
 #define MQTT_SUB_IN "ESPWeather-267B81/data/WeatherSensor"
 #endif
 #ifdef TTN
-#define MQTT_SUB_IN "v3/flora-lora@ttn/devices/eui-9876b6000011c87b/up"
+// #2
+//#define MQTT_SUB_IN "v3/flora-lora@ttn/devices/eui-9876b6000011c87b/up"
+// #1
+#define MQTT_SUB_IN "v3/flora-lora@ttn/devices/eui-9876b6000011c941/up"
 #endif
 
 #define MITHERMOMETER_EN
@@ -111,14 +119,15 @@ enum alignment {LEFT, RIGHT, CENTER};
 //static const uint8_t EPD_MOSI = 23; // to EPD DIN
 
 // Connections for e.g. Waveshare ESP32 e-Paper Driver Board
-static const uint8_t    EPD_BUSY = 25;
-static const uint8_t    EPD_CS   = 15;
-static const uint8_t    EPD_RST  = 26; 
-static const uint8_t    EPD_DC   = 27; 
-static const uint8_t    EPD_SCK  = 13;
-static const uint8_t    EPD_MISO = 12; // Master-In Slave-Out not used, as no data from display
-static const uint8_t    EPD_MOSI = 14;
-static const gpio_num_t TOUCH    = GPIO_NUM_32;
+static const uint8_t    EPD_BUSY   = 25;
+static const uint8_t    EPD_CS     = 15;
+static const uint8_t    EPD_RST    = 26; 
+static const uint8_t    EPD_DC     = 27; 
+static const uint8_t    EPD_SCK    = 13;
+static const uint8_t    EPD_MISO   = 12; // Master-In Slave-Out not used, as no data from display
+static const uint8_t    EPD_MOSI   = 14;
+static const gpio_num_t TOUCH_WAKE = GPIO_NUM_32;
+static const uint8_t    TOUCH_INT  = 32;
 
 #ifdef SIMULATE_MQTT
 const char * MqttBuf = "{\"end_device_ids\":{\"device_id\":\"eui-9876b6000011c87b\",\"application_ids\":{\"application_id\":\"flora-lora\"},\"dev_eui\":\"9876B6000011C87B\",\"join_eui\":\"0000000000000000\",\"dev_addr\":\"260BFFCA\"},\"correlation_ids\":[\"as:up:01GH0PHSCTGKZ51EB8XCBBGHQD\",\"gs:conn:01GFQX269DVXYK9W6XF8NNZWDD\",\"gs:up:host:01GFQX26AXQM4QHEAPW48E8EWH\",\"gs:uplink:01GH0PHS6A65GBAPZB92XNGYAP\",\"ns:uplink:01GH0PHS6BEPXS9Y7DMDRNK84Y\",\"rpc:/ttn.lorawan.v3.GsNs/HandleUplink:01GH0PHS6BY76SY2VPRSHNDDRH\",\"rpc:/ttn.lorawan.v3.NsAs/HandleUplink:01GH0PHSCS7D3V8ERSKF0DTJ8H\"],\"received_at\":\"2022-11-04T06:51:44.409936969Z\",\"uplink_message\":{\"session_key_id\":\"AYRBaM/qASfqUi+BQK75Gg==\",\"f_port\":1,\"frm_payload\":\"PwOOWAgACAAIBwAAYEKAC28LAw0D4U0DwAoAAAAAwMxMP8DMTD/AzEw/AAAAAAAAAAAA\",\"decoded_payload\":{\"bytes\":{\"air_temp_c\":\"9.1\",\"battery_v\":2927,\"humidity\":88,\"indoor_humidity\":77,\"indoor_temp_c\":\"9.9\",\"rain_day\":\"0.8\",\"rain_hr\":\"0.0\",\"rain_mm\":\"56.0\",\"rain_mon\":\"0.8\",\"rain_week\":\"0.8\",\"soil_moisture\":10,\"soil_temp_c\":\"9.6\",\"status\":{\"ble_ok\":true,\"res\":false,\"rtc_sync_req\":false,\"runtime_expired\":true,\"s1_batt_ok\":true,\"s1_dec_ok\":true,\"ws_batt_ok\":true,\"ws_dec_ok\":true},\"supply_v\":2944,\"water_temp_c\":\"7.8\",\"wind_avg_meter_sec\":\"0.8\",\"wind_direction_deg\":\"180.0\",\"wind_gust_meter_sec\":\"0.8\"}},\"rx_metadata\":[{\"gateway_ids\":{\"gateway_id\":\"lora-db0fc\",\"eui\":\"3135323538002400\"},\"time\":\"2022-11-04T06:51:44.027496Z\",\"timestamp\":1403655780,\"rssi\":-104,\"channel_rssi\":-104,\"snr\":8.25,\"location\":{\"latitude\":52.27640735,\"longitude\":10.54058183,\"altitude\":65,\"source\":\"SOURCE_REGISTRY\"},\"uplink_token\":\"ChgKFgoKbG9yYS1kYjBmYxIIMTUyNTgAJAAQ5KyonQUaCwiA7ZKbBhCw6tpgIKDtnYPt67cC\",\"channel_index\":4,\"received_at\":\"2022-11-04T06:51:44.182146570Z\"}],\"settings\":{\"data_rate\":{\"lora\":{\"bandwidth\":125000,\"spreading_factor\":8,\"coding_rate\":\"4/5\"}},\"frequency\":\"867300000\",\"timestamp\":1403655780,\"time\":\"2022-11-04T06:51:44.027496Z\"},\"received_at\":\"2022-11-04T06:51:44.203702153Z\",\"confirmed\":true,\"consumed_airtime\":\"0.215552s\",\"locations\":{\"user\":{\"latitude\":52.24619,\"longitude\":10.50106,\"source\":\"SOURCE_REGISTRY\"}},\"network_ids\":{\"net_id\":\"000013\",\"tenant_id\":\"ttn\",\"cluster_id\":\"eu1\",\"cluster_address\":\"eu1.cloud.thethings.network\"}}}";
@@ -161,6 +170,7 @@ boolean LargeIcon = true, SmallIcon = false;
 String  Time_str, Date_str; // strings to hold time and received weather data
 int     wifi_signal = 0, CurrentHour = 0, CurrentMin = 0, CurrentSec = 0;
 long    StartTime = 0;
+bool    touchTrig = false;
 
 //################ PROGRAM VARIABLES and OBJECTS ################
 
@@ -221,8 +231,8 @@ struct MqttS {
     float    rain_month;           //!< monthly precipitatiion in mm
 };
 
-typedef struct MqttS mqtt_sensors_t; //!< Shortcut for struct Sensor
-mqtt_sensors_t MqttSensors;          //!< MQTT sensor data
+typedef struct MqttS mqtt_sensors_t;      //!< Shortcut for struct Sensor
+RTC_DATA_ATTR mqtt_sensors_t MqttSensors; //!< MQTT sensor data
 
 RTC_DATA_ATTR Queue_t MqttHistQCtrl;
 
@@ -275,7 +285,8 @@ long SleepDuration = 30; // Sleep time in minutes, aligned to the nearest minute
 int  WakeupTime    = 7;  // Don't wakeup until after 07:00 to save battery power
 int  SleepTime     = 23; // Sleep after (23+1) 00:00 to save battery power
 
-RTC_DATA_ATTR int   ScreenNo = START_SCREEN;
+RTC_DATA_ATTR int   ScreenNo     = START_SCREEN;
+RTC_DATA_ATTR int   PrevScreenNo = START_SCREEN;
 //RTC_DATA_ATTR float OutdoorTmin = 200;
 //RTC_DATA_ATTR float OutdoorTmax = -200;
 RTC_DATA_ATTR float mqtt_outdoor_temp_c;
@@ -283,10 +294,16 @@ RTC_DATA_ATTR float mqtt_outdoor_temp_c;
 bool mqttMessageReceived = false;
 bool swResetCaught = false;
 
+// Touch Interrupt Service Routine
+void ARDUINO_ISR_ATTR touch_isr() {
+    touchTrig = true;
+}
+
 //#########################################################################################
 void setup() {
   WiFiClient net;
-  
+  //MQTTClient MqttClient(MQTT_PAYLOAD_SIZE);
+
   StartTime = millis();
   Serial.begin(115200);
   bool mqtt_connected = false;
@@ -295,6 +312,7 @@ void setup() {
   //GetLocalData();
   
   if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
+    PrevScreenNo = ScreenNo;
     ScreenNo = (ScreenNo == LAST_SCREEN) ? 0 : ScreenNo + 1;
   } else if (esp_sleep_get_wakeup_cause() == 0xC /* SW_CPU_RESET */) {
     ;
@@ -304,6 +322,11 @@ void setup() {
   }
   
   Serial.printf("Screen No: %d\n", ScreenNo);
+  
+  pinMode(TOUCH_INT, INPUT);
+  
+  attachInterrupt(TOUCH_INT, touch_isr, RISING);
+  
   
   if ((ScreenNo == ScreenMQTT) || (ScreenNo == ScreenLocal)) {
     //mqtt_connected = MqttConnect(net, MqttClient); 
@@ -322,58 +345,94 @@ void setup() {
     //sec_client.setInsecure();
     //delay(100);
     
-    switch (ScreenNo) {
-      case ScreenOWM:
-        {
-          //WiFiClient client;
-          if ((CurrentHour >= WakeupTime && CurrentHour <= SleepTime) || DebugDisplayUpdate) {
+    if (ScreenNo == ScreenOWM) {
+        //WiFiClient client;
+        if ((CurrentHour >= WakeupTime && CurrentHour <= SleepTime) || DebugDisplayUpdate) {
             InitialiseDisplay(); // Give screen time to initialise by getting weather data!
             byte Attempts = 1;
             bool RxWeather = false, RxForecast = false;
-           // WiFiClient client;   // wifi client object
+            // WiFiClient client;   // wifi client object
             while ((RxWeather == false || RxForecast == false) && Attempts <= 2) { // Try up-to 2 time for Weather and Forecast data
-              if (RxWeather  == false) RxWeather  = obtain_wx_data(net, "weather");
-              if (RxForecast == false) RxForecast = obtain_wx_data(net, "forecast");
-              Attempts++;
+                if (RxWeather  == false) RxWeather  = obtain_wx_data(net, "weather");
+                if (RxForecast == false) RxForecast = obtain_wx_data(net, "forecast");
+                Attempts++;
             }
             if (RxWeather && RxForecast) { // Only if received both Weather or Forecast proceed
-              //StopWiFi(); // Reduces power consumption
-              DisplayOWMWeather();
-              display.display(false); // Full screen update mode
+                //StopWiFi(); // Reduces power consumption
+                DisplayOWMWeather();
+                display.display(false); // Full screen update mode
             }
-          }
         }
-        break;
-      case ScreenMQTT:
-        {
-          MQTTClient MqttClient(MQTT_PAYLOAD_SIZE);
-          mqtt_connected = MqttConnect(net, MqttClient); 
-          InitialiseDisplay();
-          //SubscribeMqttData();
-          if (mqtt_connected) {
-            GetMqttData(MqttClient);
-          }
-          SaveMqttData();
-          DisplayMQTTWeather();
-          display.display(false);
-        }
-        break;
-      case ScreenLocal:
-        {
-          GetLocalData();
-          SaveLocalData();
-          InitialiseDisplay();
-          DisplayLocalWeather();
-          display.display(false);
-        }
-        break;
-      case ScreenTest:
-        InitialiseDisplay();
-        StopWiFi();
-        DisplayTestScreen();
-        display.display(false);
-        break;          
     }
+
+    GetLocalData();
+    if ((CurrentMin % HIST_UPDATE_RATE) < HIST_UPDATE_TOL) {
+        SaveLocalData();
+    }
+    
+    if (ScreenNo == ScreenLocal) {
+         InitialiseDisplay();
+         DisplayLocalWeather();
+         display.display(false);      
+    }
+
+
+    // Screen has changed to MQTT - immediately update screen with saved data 
+    if (ScreenNo == ScreenMQTT && ScreenNo != PrevScreenNo) {
+        InitialiseDisplay();
+        DisplayMQTTWeather();
+        display.display(false);      
+    }
+
+    // Fetch MQTT data
+    MQTTClient MqttClient(MQTT_PAYLOAD_SIZE);
+    mqtt_connected = MqttConnect(net, MqttClient); 
+    if (mqtt_connected) {
+         GetMqttData(net, MqttClient);
+    }
+    if ((CurrentMin % HIST_UPDATE_RATE) < HIST_UPDATE_TOL) {
+        SaveMqttData();
+    }
+    
+    // Update MQTT screen if active and data is available
+    if (ScreenNo == ScreenMQTT && MqttSensors.valid) {
+        display.fillScreen(GxEPD_WHITE);
+        DisplayMQTTWeather();
+        display.display(false);
+    }
+
+  
+//        break;
+//      case ScreenMQTT:
+//        {
+//          MQTTClient MqttClient(MQTT_PAYLOAD_SIZE);
+//          mqtt_connected = MqttConnect(net, MqttClient); 
+//          InitialiseDisplay();
+//          //SubscribeMqttData();
+//          if (mqtt_connected) {
+//            GetMqttData(MqttClient);
+//          }
+//          SaveMqttData();
+//          DisplayMQTTWeather();
+//          display.display(false);
+//        }
+//        break;
+//      case ScreenLocal:
+//        {
+//          GetLocalData();
+//          SaveLocalData();
+//          InitialiseDisplay();
+//          DisplayLocalWeather();
+//          display.display(false);
+//        }
+//        break;
+//      case ScreenTest:
+//        InitialiseDisplay();
+//        StopWiFi();
+//        DisplayTestScreen();
+//        display.display(false);
+//        break;          
+//    }
   } //  if (StartWiFi() == WL_CONNECTED && SetupTime() == true)
   /*
   if (!mqtt_connected) {
@@ -403,7 +462,7 @@ void BeginSleep() {
   display.powerOff();
   long SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)); //Some ESP32 are too fast to maintain accurate time
   esp_sleep_enable_timer_wakeup((SleepTimer+20) * 1000000LL); // Added extra 20-secs of sleep to allow for slow ESP32 RTC timers
-  esp_sleep_enable_ext0_wakeup(TOUCH, 1); // Wake up from touch sensor
+  esp_sleep_enable_ext0_wakeup(TOUCH_WAKE, 1); // Wake up from touch sensor
 #ifdef BUILTIN_LED
   pinMode(BUILTIN_LED, INPUT); // If it's On, turn it off and some boards use GPIO-5 for SPI-SS, which remains low after screen use
   digitalWrite(BUILTIN_LED, HIGH);
@@ -457,7 +516,7 @@ bool MqttConnect(WiFiClient& net, MQTTClient& MqttClient) {
 
   while (!MqttClient.connect(Hostname, MQTT_USER, MQTT_PASS)) {
     Serial.print(".");
-    if (millis() > start + 15000) { // Wait 15-secs maximum
+    if (millis() > start + MQTT_CONNECT_TIMEOUT * 1000) {
       Serial.println("\nconnect timeout!");
       return false;
     }
@@ -535,7 +594,7 @@ void SubscribeMqttData(WiFiClient wifi_client) {
 }
 #endif
 //#########################################################################################
-void GetMqttData(MQTTClient& MqttClient) {
+void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
   /*
   MQTTClient mqtt_client(MQTT_PAYLOAD_SIZE);
   mqtt_client.begin(MQTT_HOST, MQTT_PORT, wifi_client);
@@ -561,16 +620,23 @@ void GetMqttData(MQTTClient& MqttClient) {
   Serial.println(F("Waiting for MQTT message..."));
   #ifndef SIMULATE_MQTT
     unsigned long start = millis();
+    int count = 0;
     while (!mqttMessageReceived) {
       MqttClient.loop();
       delay(10);
+      if (count++ == 1000) {
+          Serial.print(".");
+          count = 0;
+      }
       if (mqttMessageReceived)
         break;
       if (!MqttClient.connected()) {
-        MqttConnect(MqttClient);
+        MqttConnect(net, MqttClient);
       }
-      Serial.print(".");
-      delay(10000);
+      if (touchTrig) {
+          Serial.println(F("Touch interrupt!"));
+          return;
+      }
       if (millis() > start + MQTT_DATA_TIMEOUT * 1000) {
         Serial.println(F("Timeout!"));
         MqttClient.disconnect();
@@ -588,8 +654,8 @@ void GetMqttData(MQTTClient& MqttClient) {
   Serial.print(F("\nCreating JSON object..."));
 
   // allocate the JsonDocument
-  StaticJsonDocument<MQTT_PAYLOAD_SIZE> doc;
-  //DynamicJsonDocument doc(MQTT_PAYLOAD_SIZE);
+  //StaticJsonDocument<MQTT_PAYLOAD_SIZE> doc;
+  DynamicJsonDocument doc(MQTT_PAYLOAD_SIZE);
   
   // Deserialize the JSON document
   DeserializationError error = deserializeJson(doc, MqttBuf, MQTT_PAYLOAD_SIZE);
@@ -659,9 +725,13 @@ void SaveMqttData() {
 }
 
 //#########################################################################################
-void DisplayMQTTWeather(void) {  
+void DisplayMQTTWeather(void) { 
+  Serial.println("DisplayMQTTWeather(): calling DisplayGeneralInfoSection()");
   DisplayGeneralInfoSection();
+  Serial.println("DisplayMQTTWeather(): DisplayGeneralInfoSection() o.k.");
+  Serial.println("DisplayMQTTWeather(): Date_str=" + Date_str + " - calling DisplayDateTime()");
   DisplayDateTime(90, 225);
+  Serial.println("DisplayMQTTWeather(): DisplayDateTime() o.k.");
   display.drawBitmap(  5,  25, epd_bitmap_garten_sw, 220, 165, GxEPD_BLACK);
   display.drawRect(    4,  24, 222, 167, GxEPD_BLACK);
   display.drawBitmap(240,  45, epd_bitmap_temperatur_aussen, 64, 48, GxEPD_BLACK);
