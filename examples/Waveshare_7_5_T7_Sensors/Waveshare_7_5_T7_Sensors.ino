@@ -134,7 +134,6 @@ static const uint8_t    EPD_DC     = 27;
 static const uint8_t    EPD_SCK    = 13;
 static const uint8_t    EPD_MISO   = 12; // Master-In Slave-Out not used, as no data from display
 static const uint8_t    EPD_MOSI   = 14;
-static const gpio_num_t TOUCH_WAKE = GPIO_NUM_32;
 static const uint8_t    TOUCH_NEXT = 32;
 static const uint8_t    TOUCH_PREV = 33;
 static const uint8_t    TOUCH_MID  = 35;
@@ -184,9 +183,9 @@ int     CurrentSec = 0;     //!< Current time - seconds
 int     CurrentDay = 0;     //!< Current date - day of month
 long    StartTime = 0;      //!< Start timestamp
 
-RTC_DATA_ATTR bool    touchPrevTrig = false;    //!< Flag: Left   touch sensor has been triggered
-RTC_DATA_ATTR bool    touchNextTrig = false;    //!< Flag: Right  touch sensor has been triggered
-RTC_DATA_ATTR bool    touchMidTrig  = false;    //!< Flag: Middle touch sensor has been triggered
+RTC_DATA_ATTR bool    touchPrevTrig = false;        //!< Flag: Left   touch sensor has been triggered
+RTC_DATA_ATTR bool    touchNextTrig = false;        //!< Flag: Right  touch sensor has been triggered
+RTC_DATA_ATTR bool    touchMidTrig  = false;        //!< Flag: Middle touch sensor has been triggered
 
 NimBLEScan* pBLEScan;
 bool    mqttMessageReceived = false; //!< Flag: MQTT message has been received
@@ -452,7 +451,7 @@ void setup() {
     bool wifi_ok = false;
     bool time_ok;
     
-    if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT1 || touchPrevTrig || touchNextTrig) {
+    if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT1 || touchPrevTrig || touchNextTrig || touchMidTrig) {
         if (touchPrevTrig || (esp_sleep_get_ext1_wakeup_status() & (1ULL << TOUCH_PREV))) {
             ScreenNo = (ScreenNo == 0) ? LAST_SCREEN : ScreenNo - 1;
             touchPrevTrig = false;
