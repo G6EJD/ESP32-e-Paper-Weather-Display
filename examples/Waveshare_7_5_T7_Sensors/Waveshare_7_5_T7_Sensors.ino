@@ -76,7 +76,7 @@
 #define ScreenMQTT  2
 #define ScreenStart 3
 
-#define TXT_START "Papas Wetterstation"
+#define TXT_START "Your Weather Station"
 #define START_SCREEN ScreenStart // ScreenMQTT
 #define LAST_SCREEN  ScreenMQTT
 
@@ -98,14 +98,12 @@
 #define HIST_UPDATE_RATE     30
 #define HIST_UPDATE_TOL       5
 
-#ifdef FLORA
+// MQTT Brokers
+#ifdef LOCAL
 #define MQTT_SUB_IN "ESPWeather-267B81/data/WeatherSensor"
 #endif
 #ifdef TTN
-// #2
 #define MQTT_SUB_IN "v3/flora-lora@ttn/devices/eui-9876b6000011c87b/up"
-// #1
-//#define MQTT_SUB_IN "v3/flora-lora@ttn/devices/eui-9876b6000011c941/up"
 #endif
 
 //#define MITHERMOMETER_EN         //!< Enable MiThermometer   (BLE sensors)
@@ -245,7 +243,7 @@ Forecast_record_type  WxForecast[max_readings];      //!< OWM Weather Forecast
 #define barchart_on   true
 #define barchart_off  false
 
-String Locations[] = {"Braunschweig", "Wohnung", "Garten", "Start"}; //!< Locations/Screen Titles
+String Locations[] = {"Forecast", "Local", "Remote", "Start"}; //!< Locations/Screen Titles
 
 // OWM Forecast Data
 float pressure_readings[max_readings]    = {0}; //!< OWM pressure readings
