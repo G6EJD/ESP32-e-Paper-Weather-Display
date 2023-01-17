@@ -33,14 +33,16 @@
 #include "garten.h"
 #include "wohnung.h"
 #include "bitmaps.h"
+#include "weather_report.h"
 
 // Screen definitions
 #define ScreenOWM   0
 #define ScreenLocal 1
 #define ScreenMQTT  2
-#define ScreenTest  3
+#define ScreenStart 3
 
-#define START_SCREEN ScreenMQTT
+#define TXT_START "Papas Wetterstation"
+#define START_SCREEN ScreenStart // ScreenMQTT
 #define LAST_SCREEN  ScreenMQTT
 
 //#define SIMULATE_MQTT
@@ -71,8 +73,9 @@
 //#define MQTT_SUB_IN "v3/flora-lora@ttn/devices/eui-9876b6000011c941/up"
 #endif
 
-#define MITHERMOMETER_EN
+//#define MITHERMOMETER_EN
 #define MITHERMOMETER_BATTALERT 6 //!< Low battery alert threshold [%]
+#define THEENGSDECODER_EN
 #define WATER_TEMP_INVALID -30.0 //!< Water temperature invalid marker [°C]
 #define BME280_EN
 #define I2C_SDA 21
@@ -95,6 +98,11 @@
 #ifdef MITHERMOMETER_EN
     // BLE Temperature/Humidity Sensor
     #include <ATC_MiThermometer.h>  // https://github.com/matthias-bs/ATC_MiThermometer
+#endif
+
+#ifdef THEENGSDECODER_EN
+    #include "NimBLEDevice.h"
+    #include "decoder.h"
 #endif
 
 #ifdef BME280_EN
@@ -127,7 +135,6 @@ static const uint8_t    EPD_SCK    = 13;
 static const uint8_t    EPD_MISO   = 12; // Master-In Slave-Out not used, as no data from display
 static const uint8_t    EPD_MOSI   = 14;
 static const gpio_num_t TOUCH_WAKE = GPIO_NUM_32;
-static const uint8_t    TOUCH_INT  = 32;
 static const uint8_t    TOUCH_NEXT = 32;
 static const uint8_t    TOUCH_PREV = 33;
 static const uint8_t    TOUCH_MID  = 35;
@@ -139,9 +146,10 @@ char        MqttBuf[MQTT_PAYLOAD_SIZE+1]; //!< MQTT Payload Buffer
 #endif
 
 
-#ifdef MITHERMOMETER_EN
-    const int bleScanTime = 10; //!< BLE scan time in seconds
-    std::vector<std::string> knownBLEAddresses = {"a4:c1:38:b8:1f:7f"}; //!< List of known BLE sensors' MAC addresses
+#if defined(MITHERMOMETER_EN) || defined(THEENGSDECODER_EN)
+    const int bleScanTime = 31; //!< BLE scan time in seconds
+    //std::vector<std::string> knownBLEAddresses = {"a4:c1:38:b8:1f:7f"}; //!< List of known BLE sensors' MAC addresses
+    std::vector<std::string> knownBLEAddresses = {"49:22:05:17:0c:1f"}; //!< List of known BLE sensors' MAC addresses
 #endif
 
 
@@ -175,9 +183,12 @@ int     CurrentMin = 0;     //!< Current time - minutes
 int     CurrentSec = 0;     //!< Current time - seconds
 int     CurrentDay = 0;     //!< Current date - day of month
 long    StartTime = 0;      //!< Start timestamp
-RTC_DATA_ATTR bool    touchTrig = false;           //!< Flag: Touch sensor has been triggered
-RTC_DATA_ATTR bool    touchPrevTrig = false;
-RTC_DATA_ATTR bool    touchNextTrig = false;
+
+RTC_DATA_ATTR bool    touchPrevTrig = false;    //!< Flag: Left   touch sensor has been triggered
+RTC_DATA_ATTR bool    touchNextTrig = false;    //!< Flag: Right  touch sensor has been triggered
+RTC_DATA_ATTR bool    touchMidTrig  = false;    //!< Flag: Middle touch sensor has been triggered
+
+NimBLEScan* pBLEScan;
 bool    mqttMessageReceived = false; //!< Flag: MQTT message has been received
 
 //################ PROGRAM VARIABLES and OBJECTS ################
@@ -194,7 +205,7 @@ Forecast_record_type  WxForecast[max_readings];      //!< OWM Weather Forecast
 #define barchart_on   true
 #define barchart_off  false
 
-String Locations[] = {"Braunschweig", "Wohnung", "Garten", "Test"}; //!< Locations/Screen Titles
+String Locations[] = {"Braunschweig", "Wohnung", "Garten", "Start"}; //!< Locations/Screen Titles
 
 // OWM Forecast Data
 float pressure_readings[max_readings]    = {0}; //!< OWM pressure readings
@@ -287,7 +298,6 @@ struct LocalS {
       bool     valid;              //!< data valid
       float    temperature;        //!< temperature in degC
       float    humidity;           //!< humidity in %
-      uint16_t batt_voltage;       //!< battery voltage in mV
       uint8_t  batt_level;         //!< battery level in %
       int      rssi;               //!< RSSI in dBm
   } ble_thsensor[1];
@@ -325,19 +335,10 @@ int  SleepTime     = 23;   //!< Sleep after (23+1) 00:00 to save battery power
 RTC_DATA_ATTR int   ScreenNo     = START_SCREEN; //!< Current Screen No.
 RTC_DATA_ATTR int   PrevScreenNo = -1;           //!< Previous Screen No.
 
-//Ticker HistoryUpdater;
-
-//void UpdateHistory() {
-//  SaveMqttData();
-//}
 
 /**
- * \brief Touch Interrupt Service Routine
+ * \brief Touch Interrupt Service Routines
  */
-void ARDUINO_ISR_ATTR touch_isr() {
-    touchTrig = true;
-}
-
 void ARDUINO_ISR_ATTR touch_prev_isr() {
     touchPrevTrig = true;
 }
@@ -345,6 +346,98 @@ void ARDUINO_ISR_ATTR touch_prev_isr() {
 void ARDUINO_ISR_ATTR touch_next_isr() {
     touchNextTrig = true;
 }
+
+void ARDUINO_ISR_ATTR touch_mid_isr() {
+    touchMidTrig = true;
+}
+
+#ifdef THEENGSDECODER_EN
+class MyAdvertisedDeviceCallbacks: public NimBLEAdvertisedDeviceCallbacks {
+
+  std::string convertServiceData(std::string deviceServiceData) {
+    int serviceDataLength = (int)deviceServiceData.length();
+    char spr[2 * serviceDataLength + 1];
+    for (int i = 0; i < serviceDataLength; i++) sprintf(spr + 2 * i, "%.2x", (unsigned char)deviceServiceData[i]);
+    spr[2 * serviceDataLength] = 0;
+    return spr;
+  }
+
+  void onResult(BLEAdvertisedDevice* advertisedDevice) {
+    TheengsDecoder decoder;
+    bool device_found = false;
+    unsigned idx;
+    StaticJsonDocument<512> doc;
+
+    log_v("Advertised Device: %s", advertisedDevice->toString().c_str());
+    JsonObject BLEdata = doc.to<JsonObject>();
+    String mac_adress = advertisedDevice->getAddress().toString().c_str();
+   
+    BLEdata["id"] = (char*)mac_adress.c_str();
+    for (idx = 0; idx < knownBLEAddresses.size(); idx++) {
+        if (mac_adress == knownBLEAddresses[idx].c_str()) {
+            log_v("BLE device found at index %d", idx);
+            device_found = true;
+            break;
+        }
+    }
+    
+    if (advertisedDevice->haveName())
+      BLEdata["name"] = (char*)advertisedDevice->getName().c_str();
+
+    if (advertisedDevice->haveManufacturerData()) {
+      char* manufacturerdata = BLEUtils::buildHexData(NULL, (uint8_t*)advertisedDevice->getManufacturerData().data(), advertisedDevice->getManufacturerData().length());
+      BLEdata["manufacturerdata"] = manufacturerdata;
+      free(manufacturerdata);
+    }
+    
+    if (advertisedDevice->haveRSSI())
+      BLEdata["rssi"] = (int)advertisedDevice->getRSSI();
+
+    if (advertisedDevice->haveTXPower())
+      BLEdata["txpower"] = (int8_t)advertisedDevice->getTXPower();
+
+    if (advertisedDevice->haveServiceData()) {
+      int serviceDataCount = advertisedDevice->getServiceDataCount();
+      for (int j = 0; j < serviceDataCount; j++) {
+        std::string service_data = convertServiceData(advertisedDevice->getServiceData(j));
+        BLEdata["servicedata"] = (char*)service_data.c_str();
+        std::string serviceDatauuid = advertisedDevice->getServiceDataUUID(j).toString();
+        BLEdata["servicedatauuid"] = (char*)serviceDatauuid.c_str();
+      }
+    }
+
+    if (decoder.decodeBLEJson(BLEdata) && device_found) {
+      if (CORE_DEBUG_LEVEL >= ESP_LOG_WARN) {
+        char buf[512];
+        serializeJson(BLEdata, buf);
+        log_d("TheengsDecoder found device: %s", buf);
+      }
+      BLEdata.remove("manufacturerdata");
+      BLEdata.remove("servicedata");
+      
+      LocalSensors.ble_thsensor[idx].temperature  = (float)BLEdata["tempc"];
+      LocalSensors.ble_thsensor[idx].humidity     = (float)BLEdata["hum"];
+      LocalSensors.ble_thsensor[idx].batt_level   = (uint8_t)BLEdata["batt"];
+      LocalSensors.ble_thsensor[idx].rssi         = (int)BLEdata["rssi"];
+      LocalSensors.ble_thsensor[idx].valid        = (LocalSensors.ble_thsensor[idx].batt_level > 0);
+      log_i("Temperature:       %.1f°C", LocalSensors.ble_thsensor[idx].temperature);
+      log_i("Humidity:          %.1f%%", LocalSensors.ble_thsensor[idx].humidity);
+      log_i("Battery level:     %d%%",   LocalSensors.ble_thsensor[idx].batt_level);
+      log_i("RSSI             %ddBm",    LocalSensors.ble_thsensor[idx].rssi = (int)BLEdata["rssi"]);      
+    }
+    /*
+     * FIXME: This lead to a Guru Meditation...
+     */
+    /*
+    if (touchPrevTrig || touchNextTrig) {
+      log_i("Touch interrupt!");
+      pBLEScan->stop();
+    }
+    */
+  }
+};
+#endif
+
 /**
  * \brief Arduino setup()
  */
@@ -357,13 +450,9 @@ void setup() {
     
     bool mqtt_connected = false;
     bool wifi_ok = false;
-    bool time_ok = false;
+    bool time_ok;
     
-    if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0 || touchTrig) {
-        PrevScreenNo = ScreenNo;
-        ScreenNo = (ScreenNo == LAST_SCREEN) ? 0 : ScreenNo + 1;
-        touchTrig = false;
-    } else if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT1 || touchPrevTrig || touchNextTrig) {
+    if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT1 || touchPrevTrig || touchNextTrig) {
         if (touchPrevTrig || (esp_sleep_get_ext1_wakeup_status() & (1ULL << TOUCH_PREV))) {
             ScreenNo = (ScreenNo == 0) ? LAST_SCREEN : ScreenNo - 1;
             touchPrevTrig = false;
@@ -372,38 +461,46 @@ void setup() {
             ScreenNo = (ScreenNo == LAST_SCREEN) ? 0 : ScreenNo + 1;
             touchNextTrig = false;
         }
-    } else if (esp_sleep_get_wakeup_cause() == 0xC /* SW_CPU_RESET */) {
-        ;
-    } 
-    //else if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER) {
-        // FIXME Check if touch wakeup occurs at the same time as timer wakeup
-        //SaveLocalData();
-    //}
+        if (touchMidTrig || (esp_sleep_get_ext1_wakeup_status() & (1ULL << TOUCH_MID))) {
+            touchMidTrig = false;
+        }
 
+    }
     log_i("Screen No: %d", ScreenNo);
     
-//    pinMode(TOUCH_INT, INPUT);
+    // Set GPIO pins for touch sensors to input
     pinMode(TOUCH_PREV, INPUT);
     pinMode(TOUCH_NEXT, INPUT);
+    pinMode(TOUCH_MID,  INPUT);
     
-//    attachInterrupt(TOUCH_INT, touch_isr, RISING);
+    // Attach interrupt service routines to inputs
     attachInterrupt(TOUCH_PREV, touch_prev_isr, RISING);
     attachInterrupt(TOUCH_NEXT, touch_next_isr, RISING);
+    attachInterrupt(TOUCH_MID,  touch_mid_isr,  RISING);
 
-
-    // Screen has changed -
-    // clear screen, update title bar and show hourglass
+    // Screen has changed
     if (ScreenNo != PrevScreenNo) {
         InitialiseDisplay();
-        //display.fillRect(0, 0, SCREEN_WIDTH, 18, GxEPD_WHITE);
+
+        // Display start screen for 10 seconds
+        if (ScreenNo == ScreenStart) {
+            display.fillScreen(GxEPD_WHITE);
+            DisplayStartScreen();
+            display.display(false);
+            delay(10000L);
+            display.fillScreen(GxEPD_WHITE);
+            display.display(false);
+            ScreenNo = ScreenOWM;
+        }
+
+        // Update title bar and show hourglass
         DisplayGeneralInfoSection();
         display.displayWindow(0, 0, SCREEN_WIDTH, 19);
-        int x = SCREEN_WIDTH/2 - 24;
-        int y = SCREEN_HEIGHT/2 -24;
+        int x = SCREEN_WIDTH/2 -  24;
+        int y = SCREEN_HEIGHT/2 - 24;
         display.fillRect(x, y, 48, 48, GxEPD_WHITE);
         display.drawBitmap(x, y, epd_bitmap_hourglass_top, 48, 48, GxEPD_BLACK);
         display.displayWindow(x, y, 48, 48);
-
         display.setFullWindow();
     }
     
@@ -432,7 +529,6 @@ void setup() {
     
     // Screen: Open Weather Map
     if (ScreenNo == ScreenOWM && wifi_ok) {
-        //WiFiClient client;
         if ((CurrentHour >= WakeupTime && CurrentHour <= SleepTime) || DebugDisplayUpdate) {
             byte Attempts = 1;
             bool RxWeather = false, RxForecast = false;
@@ -449,9 +545,43 @@ void setup() {
             }
         }
     }
-    
+
+    // Screen has changed to MQTT - immediately update screen with saved data 
+    if (ScreenNo == ScreenMQTT && ScreenNo != PrevScreenNo) {
+        ClearHourglass();
+        DisplayMQTTWeather();
+        display.display(false);      
+    }
+
+    #if defined(MITHERMOMETER_EN) || defined(THEENGSDECODER_EN)
+      if (ScreenNo == ScreenMQTT) {
+          ClearHourglass();
+      }
+      
+      if (ScreenNo == ScreenOWM || ScreenNo == ScreenMQTT) {
+        // Show "Bluetooth Searching" icon
+        int x = 88;
+        int y = (ScreenNo == ScreenOWM) ? 300 : 272;
+        display.drawBitmap(x, y, epd_bitmap_bluetooth_searching, 48, 48, GxEPD_BLACK);
+        display.displayWindow(x, y, 48, 48);
+      }
+    #endif
     
     GetLocalData();
+    
+    #if defined(MITHERMOMETER_EN) || defined(THEENGSDECODER_EN)
+      if (ScreenNo == ScreenOWM || ScreenNo == ScreenMQTT) {
+        int x = 88;
+        int y = (ScreenNo == ScreenOWM) ? 300 : 272;
+
+        // Remove "Bluetooth Searching" icon
+        display.fillRect(x, y, 48, 48, GxEPD_WHITE);
+        display.displayWindow(x, y, 48, 48);
+        display.setFullWindow();
+      }
+    #endif
+    
+    
     if (HistoryUpdateDue()) {
         time_t now = time(NULL);
         if (now - LocalHistTStamp >= (HIST_UPDATE_RATE - HIST_UPDATE_TOL) * 60) {
@@ -468,19 +598,6 @@ void setup() {
         display.display(false);      
     }
 
-    // Screen has changed to MQTT - immediately update screen with saved data 
-    if (ScreenNo == ScreenMQTT && ScreenNo != PrevScreenNo) {
-        //InitialiseDisplay();
-        ClearHourglass();
-        DisplayMQTTWeather();
-        display.display(false);      
-    }
-
-    if (ScreenNo == ScreenTest) {
-        display.fillScreen(GxEPD_WHITE);
-        DisplayTestScreen();
-        display.display(false);      
-    }
 
     // WiFi is disconnected - display WiFi-Off-Icon
     if (!wifi_ok) {
@@ -567,7 +684,7 @@ void BeginSleep() {
   display.powerOff();
   long SleepTimer;
   
-  if (touchTrig || touchPrevTrig || touchNextTrig) {
+  if (touchMidTrig || touchPrevTrig || touchNextTrig) {
       // wake up immediately
       SleepTimer = 1000;
   } else {
@@ -612,11 +729,10 @@ void BeginSleep() {
  */
 void ClearHourglass(void) {
 
-    int x = SCREEN_WIDTH/2 - 24;
-    int y = SCREEN_HEIGHT/2 -24;
+    int x = SCREEN_WIDTH/2 -  24;
+    int y = SCREEN_HEIGHT/2 - 24;
     display.fillRect(x, y, 48, 48, GxEPD_WHITE);
     display.displayWindow(x, y, 48, 48);
-
     display.setFullWindow();
 }
 
@@ -787,7 +903,7 @@ void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
       if (!MqttClient.connected()) {
         MqttConnect(net, MqttClient);
       }
-      if (touchTrig || touchPrevTrig || touchNextTrig) {
+      if (touchMidTrig || touchPrevTrig || touchNextTrig) {
           log_i("Touch interrupt!");
           return;
       }
@@ -812,7 +928,7 @@ void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
 
   log_i("done!");
   MqttClient.disconnect();
-  log_d(MqttBuf);
+  log_d("%s", MqttBuf);
   
   log_d("Creating JSON object...");
 
@@ -1070,16 +1186,36 @@ void GetLocalData(void) {
         LocalSensors.ble_thsensor[0].temperature = miThermometer.data[0].temperature/100.0;
         LocalSensors.ble_thsensor[0].humidity    = miThermometer.data[0].humidity/100.0;
         LocalSensors.ble_thsensor[0].batt_level  = miThermometer.data[0].batt_level;
-        log_d("Outdoor Air Temp.:   % 3.1f °C", LocalSensors.ble_thsensor[0].temperature);
-        log_d("Outdoor Humidity:     %3.1f %%", LocalSensors.ble_thsensor[0].humidity);
-        log_d("Outdoor Sensor Batt:    %d %%", LocalSensors.ble_thsensor[0].batt_level);
-    } else {
-        log_d("Outdoor Air Temp.:    --.- °C");
-        log_d("Outdoor Humidity:     --   %%");
-        log_d("Outdoor Sensor Batt:  --   %%");
     }
     miThermometer.clearScanResults();
   #endif
+  
+  #ifdef THEENGSDECODER_EN
+    //NimBLEScan* pBLEScan;
+
+    NimBLEDevice::setScanFilterMode(CONFIG_BTDM_SCAN_DUPL_TYPE_DEVICE);
+    NimBLEDevice::setScanDuplicateCacheSize(200);
+    NimBLEDevice::init("");
+
+    pBLEScan = NimBLEDevice::getScan(); //create new scan
+    // Set the callback for when devices are discovered, no duplicates.
+    pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks(), false);
+    pBLEScan->setActiveScan(true); // Set active scanning, this will get more data from the advertiser.
+    pBLEScan->setInterval(97); // How often the scan occurs / switches channels; in milliseconds,
+    pBLEScan->setWindow(37);  // How long to scan during the interval; in milliseconds.
+    pBLEScan->setMaxResults(0); // do not store the scan results, use callback only.
+    pBLEScan->start(bleScanTime, false /* is_continue */);
+  #endif
+      
+  if (LocalSensors.ble_thsensor[0].valid) {
+    log_d("Outdoor Air Temp.:   % 3.1f °C", LocalSensors.ble_thsensor[0].temperature);
+    log_d("Outdoor Humidity:     %3.1f %%", LocalSensors.ble_thsensor[0].humidity);
+    log_d("Outdoor Sensor Batt:    %d %%", LocalSensors.ble_thsensor[0].batt_level);
+  } else {
+    log_d("Outdoor Air Temp.:    --.- °C");
+    log_d("Outdoor Humidity:     --   %%");
+    log_d("Outdoor Sensor Batt:  --   %%");
+  }
 
   #ifdef BME280_EN
     TwoWire myWire = TwoWire(0);
@@ -1248,29 +1384,23 @@ void DisplayLocalWeather() {
  * 
  * Playground for testing without the need to wait for real data.
  */
-void DisplayTestScreen(void) {
-    DisplayGeneralInfoSection();
+void DisplayStartScreen(void) {
+    u8g2Fonts.setFont(u8g2_font_helvB24_tf);
+    //u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+    //u8g2Fonts.setFont(u8g2_font_helvR24_tf);
+    drawString(240, 40, TXT_START, LEFT);
 
-    float rain[]       = {0, 1, 2, 3, 4, 0, 2, 4, 8, 4, 2, 0, 1, 5,  7, 9,  5, 1, 3, 8, 6, 0, 7, 9};
-    bool  rain_valid[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  0, 0,  0, 0, 1, 1, 1, 1, 1, 1};    
-
-    for (int i=0; i < 24; i++) {
-        MqttSensors.rain_hr = rain[i];
-        MqttSensors.valid   = rain_valid[i];
-        SaveRainHrData();
-    }
-
-
-    float temp[]       = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 8, 8, 7, 17, 6, 15, 5, 5, 4, 4, 3, 3, 2};
-    bool  temp_valid[] = {0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  0, 0,  0, 0, 1, 1, 1, 1, 1, 1};
-
-    for (int i=0; i<24; i++) {
-        MqttSensors.air_temp_c = temp[i];
-        MqttSensors.valid      = temp_valid[i];
-        SaveMqttData();
-    }
-    DisplayMqttHistory();
-    DrawRSSI(705, 15, wifi_signal);
+    display.drawBitmap(75, 50, epd_bitmap_weather_report, 650, 300, GxEPD_BLACK);
+    display.drawBitmap(10, 380, epd_bitmap_OpenWeather_Logo, 228, 103, GxEPD_BLACK);
+    u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+    int x = 110;
+    int y = 370;
+    drawString(x + 8, y + 24, "Weather data provided by OpenWeather", LEFT);
+    drawString(x + 8, y + 44, "https://openweathermap.org/", LEFT);
+    x = 610;
+    y = 420;
+    drawString(x + 8, y + 24, "Material Design icons by Google -", LEFT);
+    drawString(x + 8, y + 44, "Apache License 2.0", LEFT);
 }
 
 
