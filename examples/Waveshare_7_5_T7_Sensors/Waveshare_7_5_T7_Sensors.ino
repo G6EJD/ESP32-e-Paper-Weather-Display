@@ -28,10 +28,14 @@
 #include <string>
 #include "garten.h"
 #include "wohnung.h"
-#include "bluetooth.h"
 #include "bitmaps.h"
 
-#define START_SCREEN 2
+#define START_SCREEN 1
+#define LAST_SCREEN  2
+#define SIMULATE_MQTT
+//#define FORCE_LOW_BATTERY
+//#define FORCE_NO_SIGNAL
+
 #define MQTT_PAYLOAD_SIZE 4096
 #ifdef FLORA
 #define MQTT_SUB_IN "ESPWeather-267B81/data/WeatherSensor"
@@ -56,7 +60,7 @@
 //#include "src/lang.h"                     // Localisation (English)
 //#include "lang_cz.h"                  // Localisation (Czech)
 //#include "lang_fr.h"                  // Localisation (French)
-#include "src/lang_gr.h"                  // Localisation (German)
+#include "src/lang_de.h"                  // Localisation (German)
 //#include "lang_it.h"                  // Localisation (Italian)
 //#include "lang_nl.h"
 //#include "lang_pl.h"                  // Localisation (Polish)
@@ -72,7 +76,7 @@
 
 #define SCREEN_WIDTH  800             // Set for landscape mode
 #define SCREEN_HEIGHT 480
-bool DebugDisplayUpdate = false;
+bool DebugDisplayUpdate = true;
 
 enum alignment {LEFT, RIGHT, CENTER};
 /*
@@ -81,7 +85,7 @@ enum alignment {LEFT, RIGHT, CENTER};
        'soil_temp_c', 'soil_moisture', 'rain_hr',   'rain_day',            'rain_week',          'rain_mon'
       ]
 */
-struct LoraWanWS {
+struct MqttS {
     //uint8_t  status;
     struct {
         unsigned int ws_batt_ok:1;
@@ -103,15 +107,15 @@ struct LoraWanWS {
     float    indoor_temp_c;
     uint8_t  indoor_humidity;
     float    soil_temp_c;
-    uint8_t  spol_moisture;             //!< moisture in % (only 6-in-1)
+    uint8_t  soil_moisture;             //!< moisture in % (only 6-in-1)
     float    rain_hr;
     float    rain_day;
     float    rain_week;
     float    rain_month;
 };
 
-typedef struct LoraWanWS sensor_t;    //!< Shortcut for struct Sensor
-sensor_t wsensor;      //!< sensor data array
+typedef struct MqttS mqtt_sensors_t;    //!< Shortcut for struct Sensor
+mqtt_sensors_t MqttSensors;      //!< sensor data array
 
 struct LocalS {
   struct {
@@ -152,7 +156,12 @@ static const uint8_t    EPD_MISO = 12; // Master-In Slave-Out not used, as no da
 static const uint8_t    EPD_MOSI = 14;
 static const gpio_num_t TOUCH    = GPIO_NUM_32;
 
-char MqttBuf[MQTT_PAYLOAD_SIZE+1];
+#ifdef SIMULATE_MQTT
+const char * MqttBuf = "{\"end_device_ids\":{\"device_id\":\"eui-9876b6000011c87b\",\"application_ids\":{\"application_id\":\"flora-lora\"},\"dev_eui\":\"9876B6000011C87B\",\"join_eui\":\"0000000000000000\",\"dev_addr\":\"260BFFCA\"},\"correlation_ids\":[\"as:up:01GH0PHSCTGKZ51EB8XCBBGHQD\",\"gs:conn:01GFQX269DVXYK9W6XF8NNZWDD\",\"gs:up:host:01GFQX26AXQM4QHEAPW48E8EWH\",\"gs:uplink:01GH0PHS6A65GBAPZB92XNGYAP\",\"ns:uplink:01GH0PHS6BEPXS9Y7DMDRNK84Y\",\"rpc:/ttn.lorawan.v3.GsNs/HandleUplink:01GH0PHS6BY76SY2VPRSHNDDRH\",\"rpc:/ttn.lorawan.v3.NsAs/HandleUplink:01GH0PHSCS7D3V8ERSKF0DTJ8H\"],\"received_at\":\"2022-11-04T06:51:44.409936969Z\",\"uplink_message\":{\"session_key_id\":\"AYRBaM/qASfqUi+BQK75Gg==\",\"f_port\":1,\"frm_payload\":\"PwOOWAgACAAIBwAAYEKAC28LAw0D4U0DwAoAAAAAwMxMP8DMTD/AzEw/AAAAAAAAAAAA\",\"decoded_payload\":{\"bytes\":{\"air_temp_c\":\"9.1\",\"battery_v\":2927,\"humidity\":88,\"indoor_humidity\":77,\"indoor_temp_c\":\"9.9\",\"rain_day\":\"0.8\",\"rain_hr\":\"0.0\",\"rain_mm\":\"56.0\",\"rain_mon\":\"0.8\",\"rain_week\":\"0.8\",\"soil_moisture\":10,\"soil_temp_c\":\"9.6\",\"status\":{\"ble_ok\":true,\"res\":false,\"rtc_sync_req\":false,\"runtime_expired\":true,\"s1_batt_ok\":true,\"s1_dec_ok\":true,\"ws_batt_ok\":true,\"ws_dec_ok\":true},\"supply_v\":2944,\"water_temp_c\":\"7.8\",\"wind_avg_meter_sec\":\"0.8\",\"wind_direction_deg\":\"180.0\",\"wind_gust_meter_sec\":\"0.8\"}},\"rx_metadata\":[{\"gateway_ids\":{\"gateway_id\":\"lora-db0fc\",\"eui\":\"3135323538002400\"},\"time\":\"2022-11-04T06:51:44.027496Z\",\"timestamp\":1403655780,\"rssi\":-104,\"channel_rssi\":-104,\"snr\":8.25,\"location\":{\"latitude\":52.27640735,\"longitude\":10.54058183,\"altitude\":65,\"source\":\"SOURCE_REGISTRY\"},\"uplink_token\":\"ChgKFgoKbG9yYS1kYjBmYxIIMTUyNTgAJAAQ5KyonQUaCwiA7ZKbBhCw6tpgIKDtnYPt67cC\",\"channel_index\":4,\"received_at\":\"2022-11-04T06:51:44.182146570Z\"}],\"settings\":{\"data_rate\":{\"lora\":{\"bandwidth\":125000,\"spreading_factor\":8,\"coding_rate\":\"4/5\"}},\"frequency\":\"867300000\",\"timestamp\":1403655780,\"time\":\"2022-11-04T06:51:44.027496Z\"},\"received_at\":\"2022-11-04T06:51:44.203702153Z\",\"confirmed\":true,\"consumed_airtime\":\"0.215552s\",\"locations\":{\"user\":{\"latitude\":52.24619,\"longitude\":10.50106,\"source\":\"SOURCE_REGISTRY\"}},\"network_ids\":{\"net_id\":\"000013\",\"tenant_id\":\"ttn\",\"cluster_id\":\"eu1\",\"cluster_address\":\"eu1.cloud.thethings.network\"}}}";
+#else
+char        MqttBuf[MQTT_PAYLOAD_SIZE+1];
+#endif
+
 
 #ifdef MITHERMOMETER_EN
     // BLE scan time in seconds
@@ -176,6 +185,7 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 // u8g2_font_helvB14_tf
 // u8g2_font_helvB18_tf
 // u8g2_font_helvB24_tf
+// u8g2_font_helvR24_tf
 
 //################  VERSION  ###########################################
 String version = "16.11";    // Programme version, see change log at end
@@ -207,6 +217,7 @@ Forecast_record_type  WxForecast[max_readings];
 #define ScreenMQTT  2
 #define ScreenTest  3
 
+String Locations[] = {"Braunschweig", "Wohnung", "Garten"};
 float pressure_readings[max_readings]    = {0};
 float temperature_readings[max_readings] = {0};
 float humidity_readings[max_readings]    = {0};
@@ -230,10 +241,9 @@ void setup() {
   StartTime = millis();
   Serial.begin(115200);
   if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
-    ScreenNo = (ScreenNo == 3) ? 0 : ScreenNo + 1;
+    ScreenNo = (ScreenNo == LAST_SCREEN) ? 0 : ScreenNo + 1;
   } else if (esp_sleep_get_wakeup_cause() == 0xC /* SW_CPU_RESET */) {
-    ScreenNo = ScreenMQTT;
-    swResetCaught = true;
+    ;
   }
   Serial.printf("Screen No: %d\n", ScreenNo);
   if (StartWiFi() == WL_CONNECTED && SetupTime() == true) {
@@ -314,20 +324,24 @@ void BeginSleep() {
 void mqttMessageCb(String &topic, String &payload) {
   mqttMessageReceived = true;
   Serial.printf("Payload size: %d\n", payload.length());
+  #ifndef SIMULATE_MQTT
   strncpy(MqttBuf, payload.c_str(), payload.length());
+  #endif
   
 }
 void mqttMessageAdvancedCb(MQTTClient *client, char topic[], char bytes[], int length) {
   mqttMessageReceived = true;
   Serial.printf("Payload size: %d\n", length);
-  strncpy(MqttBuf, bytes, length); 
+  #ifndef SIMULATE_MQTT
+  strncpy(MqttBuf, bytes, length);
+  #endif 
 }
 
 //#########################################################################################
 void DisplayOWMWeather() {                        // 7.5" e-paper display is 800x480 resolution
-  DisplayGeneralInfoSection(City);                 // Top line of the display
+  DisplayGeneralInfoSection();                 // Top line of the display
   DisplayDateTime(487, 194);
-  DisplayDisplayWindSection(108, 146, WxConditions[0].Winddir, WxConditions[0].Windspeed, 81, TXT_WIND_SPEED_DIRECTION);
+  DisplayDisplayWindSection(108, 146, WxConditions[0].Winddir, WxConditions[0].Windspeed, 81, true, TXT_WIND_SPEED_DIRECTION);
   DisplayMainWeatherSection(300, 100);          // Centre section of display for Location, temperature, Weather report, current Wx Symbol and wind direction
   DisplayForecastSection(217, 245);            // 3hr forecast boxes
   DisplayAstronomySection(0, 245);             // Astronomy section Sun rise/set, Moon phase and Moon icon
@@ -358,7 +372,7 @@ void mqtt_connect(MQTTClient mqtt_client) {
 
 //#########################################################################################
 void DisplayMQTTWeather(WiFiClient wifi_client) {
-  #if 0
+  
   MQTTClient mqtt_client(MQTT_PAYLOAD_SIZE);
   mqtt_client.begin(MQTT_HOST, MQTT_PORT, wifi_client);
   Serial.println(F("MQTT connecting... "));
@@ -377,33 +391,37 @@ void DisplayMQTTWeather(WiFiClient wifi_client) {
     Serial.println("Subscription failed!");
   }
 
-  DisplayGeneralInfoSection("Garten");                 // Top line of the display
+  DisplayGeneralInfoSection();                 // Top line of the display
   Serial.println(F("Waiting for MQTT message..."));
-  while (!mqttMessageReceived) {
-    mqtt_client.loop();
-    delay(10);
-    if (mqttMessageReceived)
-      break;
-    if (!mqtt_client.connected()) {
-      // BEGIN connect()
-      Serial.print("\nMQTT reconnecting...");
-      while (!mqtt_client.connect(Hostname, MQTT_USER, MQTT_PASS)) {
-        Serial.print(".");
-        delay(1000);
+  #ifndef SIMULATE_MQTT
+    while (!mqttMessageReceived) {
+      mqtt_client.loop();
+      delay(10);
+      if (mqttMessageReceived)
+        break;
+      if (!mqtt_client.connected()) {
+        // BEGIN connect()
+        Serial.print("\nMQTT reconnecting...");
+        while (!mqtt_client.connect(Hostname, MQTT_USER, MQTT_PASS)) {
+          Serial.print(".");
+          delay(1000);
+        }
+        Serial.println("\nMQTT reconnected.");
+        if (!mqtt_client.subscribe(MQTT_SUB_IN)) {
+          Serial.println("Subscription failed!");
+        }
+        // END connect()
       }
-      Serial.println("\nMQTT reconnected.");
-      if (!mqtt_client.subscribe(MQTT_SUB_IN)) {
-        Serial.println("Subscription failed!");
-      }
-      // END connect()
+      Serial.print(".");
+      delay(1000);
     }
-    Serial.print(".");
-    delay(1000);
-  }
+  #else
+    Serial.println("(Simulated MQTT incoming message)");
+  #endif
   Serial.println("done!");
   mqtt_client.disconnect();
   Serial.printf(MqttBuf);
-  #endif
+  
   /*
    *     uint8_t  status;
     float    air_temp_c;           //!< temperature in degC
@@ -424,46 +442,69 @@ void DisplayMQTTWeather(WiFiClient wifi_client) {
     float    rain_week;
     float    rain_month;
   */
-  #if 0  
-    Serial.print(F("\nCreating JSON object..."));
-    // allocate the JsonDocument
-    //DynamicJsonDocument doc(MQTT_PAYLOAD_SIZE);
-    StaticJsonDocument<MQTT_PAYLOAD_SIZE> doc;
-    // Deserialize the JSON document
-    DeserializationError error = deserializeJson(doc, MqttBuf, MQTT_PAYLOAD_SIZE);
-    // Test if parsing succeeds.
-    if (error) {
-      Serial.print(F("deserializeJson() failed: "));
-      Serial.println(error.c_str());
-      return;
-    }
-    // convert it to a JsonObject
-    //JsonObject root = doc.as<JsonObject>();
-    //float outdoor_temp_c = root["temp_c"].as<float>();
-    float outdoor_temp_c = doc["temp_c"];
-    wsensor.air_temp_c          = doc["air_temp_c"];
-    wsensor.humidity            = doc["humidity"];
-    wsensor.wind_direction_deg  = doc["wind_direction_deg"];
-    wsensor.wind_gust_meter_sec = doc["wind_gust_meter_sec"];
-    wsensor.wind_avg_meter_sec  = doc["wind_avg_meter_sec"];
-    wsensor.rain_mm             = doc["rain_mm"];
-    wsensor.supply_v            = doc["supply_v"];
-    wsensor.battery_v           = doc["battery_v"];
-    wsensor.water_temp_c        = doc["water_temp_c"];
-    wsensor.indoor_temp_c       = doc["indoor_temp_c"];
-    wsensor.indoor_humidity     = doc["indoor_humidity"];
-    wsensor.soil_temp_c         = doc["soil_temp_c"];
-    wsensor.soil_moisture       = doc["soil_moisture"];
-    wsensor.rain_hr             = doc["rain_hr"];
-    wsensor.rain_day            = doc["rain_day"];
-    wsensor.rain_week           = doc["rain_week"];
-    wsensor.rain_month          = doc["rain_month"];
-  #endif  
+  Serial.print(F("\nCreating JSON object..."));
+  // allocate the JsonDocument
+  //DynamicJsonDocument doc(MQTT_PAYLOAD_SIZE);
+  StaticJsonDocument<MQTT_PAYLOAD_SIZE> doc;
+  // Deserialize the JSON document
+  DeserializationError error = deserializeJson(doc, MqttBuf, MQTT_PAYLOAD_SIZE);
+  // Test if parsing succeeds.
+  if (error) {
+    Serial.print(F("deserializeJson() failed: "));
+    Serial.println(error.c_str());
+    return;
+  }
+  /*
+  MqttSensors.air_temp_c          = doc["air_temp_c"];
+  MqttSensors.humidity            = doc["humidity"];
+  MqttSensors.wind_direction_deg  = doc["wind_direction_deg"];
+  MqttSensors.wind_gust_meter_sec = doc["wind_gust_meter_sec"];
+  MqttSensors.wind_avg_meter_sec  = doc["wind_avg_meter_sec"];
+  MqttSensors.rain_mm             = doc["rain_mm"];
+  MqttSensors.supply_v            = doc["supply_v"];
+  MqttSensors.battery_v           = doc["battery_v"];
+  MqttSensors.water_temp_c        = doc["water_temp_c"];
+  MqttSensors.indoor_temp_c       = doc["indoor_temp_c"];
+  MqttSensors.indoor_humidity     = doc["indoor_humidity"];
+  MqttSensors.soil_temp_c         = doc["soil_temp_c"];
+  MqttSensors.soil_moisture       = doc["soil_moisture"];
+  MqttSensors.rain_hr             = doc["rain_hr"];
+  MqttSensors.rain_day            = doc["rain_day"];
+  MqttSensors.rain_week           = doc["rain_week"];
+  MqttSensors.rain_month          = doc["rain_month"];
+  */
+  JsonObject uplink_message = doc["uplink_message"];
+  // uplink_message_decoded_payload_bytes -> payload
+  JsonObject payload = uplink_message["decoded_payload"]["bytes"];
+  
+  MqttSensors.air_temp_c          = payload["air_temp_c"];
+  MqttSensors.humidity            = payload["humidity"];
+  MqttSensors.indoor_temp_c       = payload["indoor_temp_c"];
+  MqttSensors.indoor_humidity     = payload["indoor_humidity"];
+  MqttSensors.battery_v           = payload["battery_v"];
+  MqttSensors.rain_day            = payload["rain_day"];
+  MqttSensors.rain_hr             = payload["rain_hr"];
+  MqttSensors.rain_mm             = payload["rain_mm"];
+  MqttSensors.rain_month          = payload["rain_mon"];
+  MqttSensors.rain_week           = payload["rain_week"];
+  MqttSensors.soil_moisture       = payload["soil_moisture"];
+  MqttSensors.soil_temp_c         = payload["soil_temp_c"];
+  MqttSensors.water_temp_c        = payload["water_temp_c"];
+  MqttSensors.wind_avg_meter_sec  = payload["wind_avg_meter_sec"];
+  MqttSensors.wind_direction_deg  = payload["wind_direction_deg"];
+  MqttSensors.wind_gust_meter_sec = payload["wind_gust_meter_sec"];
+
+  JsonObject status = payload["status"];
+  MqttSensors.status.ble_ok     = status["ble_ok"];
+  MqttSensors.status.s1_batt_ok = status["s1_batt_ok"];
+  MqttSensors.status.s1_dec_ok  = status["s1_dec_ok"];
+  MqttSensors.status.ws_batt_ok = status["ws_batt_ok"];
+  MqttSensors.status.ws_dec_ok  = status["ws_dec_ok"];  
   
   //float outdoor_temp_c = 9.9;
   //Serial.println("Temperature: "+String(outdoor_temp_c));
   //  Serial.println("Air Temperature: "+String(wsensor.air_temp_c));
-  DisplayGeneralInfoSection("Garten");                 // Top line of the display
+  DisplayGeneralInfoSection();                 // Top line of the display
   DisplayDateTime(90, 225);
   display.drawBitmap(  5,  25, epd_bitmap_garten_sw, 220, 165, GxEPD_BLACK);
   display.drawRect(    4,  24, 222, 167, GxEPD_BLACK);
@@ -476,12 +517,72 @@ void DisplayMQTTWeather(WiFiClient wifi_client) {
   display.drawBitmap(240, 210, epd_bitmap_wasser_temperatur, 48, 48, GxEPD_BLACK);
   //display.drawBitmap(650,  20, epd_bitmap_barometer, 80, 64, GxEPD_BLACK);
   // y=240
-  DisplayDisplayWindSection(690, 120, wsensor.wind_direction_deg, wsensor.wind_avg_meter_sec, 81, "");
-  
+
+  // Weather Sensor
+  #ifdef FORCE_NO_SIGNAL
+  MqttSensors.status.ws_dec_ok = false;
+  #endif
+  if (MqttSensors.status.ws_dec_ok) {
+    DisplayLocalTemperatureSection(358,  22, 137, 100, "", true, MqttSensors.air_temp_c, false, OutdoorTmin, OutdoorTmax);
+    DisplayLocalTemperatureSection(358,  77, 137, 100, "", true, MqttSensors.indoor_temp_c, false, OutdoorTmin, OutdoorTmax);
+
+    //u8g2Fonts.setFont(u8g2_font_helvB24_tf);
+    //u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+    u8g2Fonts.setFont(u8g2_font_helvR24_tf);
+    drawString(524,  75, String(MqttSensors.humidity) + "%", CENTER);
+    drawString(524, 130, String(MqttSensors.indoor_humidity) + "%", CENTER);
+
+    #ifdef FORCE_LOW_BATTERY
+    MqttSensors.status.ws_batt_ok = false;
+    #endif
+    if (!MqttSensors.status.ws_batt_ok) {
+      display.drawBitmap(577,  60, epd_bitmap_battery_alert, 24, 24, GxEPD_BLACK);
+      display.drawBitmap(577, 115, epd_bitmap_battery_alert, 24, 24, GxEPD_BLACK);
+    }
+  }
+  else {
+    // No outdoor temperature
+    display.drawBitmap(320,  47, epd_bitmap_signal_disconnected, 40, 40, GxEPD_BLACK);
+    // No outdoor humidity
+    display.drawBitmap(518,  47, epd_bitmap_signal_disconnected, 40, 40, GxEPD_BLACK);
+    // No indoor temperature
+    display.drawBitmap(320, 102, epd_bitmap_signal_disconnected, 40, 40, GxEPD_BLACK);
+    // No outdor humidity
+    display.drawBitmap(518, 102, epd_bitmap_signal_disconnected, 40, 40, GxEPD_BLACK);
+  }
+
+  // Soil Sensor
+  #ifdef FORCE_NO_SIGNAL
+  MqttSensors.status.s1_dec_ok = false;
+  #endif
+  if (MqttSensors.status.s1_dec_ok) {
+    DisplayLocalTemperatureSection(358,  132, 137, 100, "", true, MqttSensors.soil_temp_c, false, OutdoorTmin, OutdoorTmax);
+    u8g2Fonts.setFont(u8g2_font_helvR24_tf);
+    drawString(524, 185, String(MqttSensors.soil_moisture) + "%", CENTER);
+    #ifdef FORCE_LOW_BATTERY
+    MqttSensors.status.s1_batt_ok = false;
+    #endif
+    if (!MqttSensors.status.s1_batt_ok) {
+      display.drawBitmap(580, 167, epd_bitmap_battery_alert, 24, 24, GxEPD_BLACK);
+    }
+  }
+  else {
+    // No soil temperature
+    display.drawBitmap(320,  157, epd_bitmap_signal_disconnected, 40, 40, GxEPD_BLACK);
+    // No soil moisture
+    display.drawBitmap(518,  157, epd_bitmap_signal_disconnected, 40, 40, GxEPD_BLACK);
+  }
+
+  DisplayLocalTemperatureSection(358, 187, 137, 100, "", true, MqttSensors.water_temp_c, false, OutdoorTmin, OutdoorTmax);
   u8g2Fonts.setFont(u8g2_font_helvB18_tf);
-  //drawString(660, 110, "" /* FIXME */, 0) + "hPa", CENTER);
-    //DisplayLocalTemperatureSection(300 + 154, 100 - 81, 137, 100, TXT_TEMPERATURES_OUT, mithermometer_valid, outdoor_temp_c, true, OutdoorTmin, OutdoorTmax);
-    //DisplayLocalTemperatureSection(300 + 154, 100 - 81, 137, 100, TXT_TEMPERATURES_OUT, true, wsensor.air_temp_c, false, 0, 0);
+
+  #ifdef FORCE_NO_SIGNAL
+  MqttSensors.status.ws_dec_ok = false;
+  #endif
+  DisplayDisplayWindSection(700, 120, MqttSensors.wind_direction_deg, MqttSensors.wind_avg_meter_sec, 81, MqttSensors.status.ws_dec_ok, "");
+  if (!MqttSensors.status.ws_dec_ok) {
+    display.drawBitmap(680, 100, epd_bitmap_signal_disconnected, 40, 40, GxEPD_BLACK);
+  }
   DisplayHistory();
   DrawRSSI(695, 15, wifi_signal); // Wi-Fi signal strength
   
@@ -555,7 +656,7 @@ void DisplayLocalWeather() {                        // 7.5" e-paper display is 8
     OutdoorTmax = (LocalSensors.ble_thsensor[0].temperature > OutdoorTmax) ? LocalSensors.ble_thsensor[0].temperature : OutdoorTmax;
   }
   
-  DisplayGeneralInfoSection("Wohnung");
+  DisplayGeneralInfoSection();
   DisplayDateTime(90, 225);
   display.drawBitmap(  5,  25, epd_bitmap_wohnung_sw, 220, 165, GxEPD_BLACK);
   display.drawRect(    4,  24, 222, 167, GxEPD_BLACK);
@@ -563,32 +664,38 @@ void DisplayLocalWeather() {                        // 7.5" e-paper display is 8
   display.drawBitmap(438,  45, epd_bitmap_feuchte_aussen, 64, 48, GxEPD_BLACK);
   display.drawBitmap(240, 178, epd_bitmap_temperatur_innen, 64, 48, GxEPD_BLACK);
   display.drawBitmap(438, 178, epd_bitmap_feuchte_innen, 64, 48, GxEPD_BLACK);
-  display.drawBitmap(650,  20, epd_bitmap_barometer, 80, 64, GxEPD_BLACK);
+  display.drawBitmap(660,  20, epd_bitmap_barometer, 80, 64, GxEPD_BLACK);
 
   // Outdoor sensor
+  #ifdef FORCE_NO_SIGNAL
+    LocalSensors.ble_thsensor[0].valid = false;
+  #endif
   if (LocalSensors.ble_thsensor[0].valid) {
     DisplayLocalTemperatureSection(358,  22, 137, 100, "", true, LocalSensors.ble_thsensor[0].temperature, true, OutdoorTmin, OutdoorTmax);
     //u8g2Fonts.setFont(u8g2_font_helvB24_tf);
-    u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+    //u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+    u8g2Fonts.setFont(u8g2_font_helvR24_tf);
     drawString(524,  75, String(LocalSensors.ble_thsensor[0].humidity, 0) + "%", CENTER);
-    // For testing:
-    // LocalSensors.ble_thsensor[0].batt_level = 1;
+    #ifdef FORCE_LOW_BATTERY
+      LocalSensors.ble_thsensor[0].batt_level = MITHERMOMETER_BATTALERT;
+    #endif
     if (LocalSensors.ble_thsensor[0].batt_level <= MITHERMOMETER_BATTALERT) {
-      display.drawBitmap(590,  50, epd_bitmap_battery_alert, 40, 40, GxEPD_BLACK);
+      display.drawBitmap(577,  60, epd_bitmap_battery_alert, 24, 24, GxEPD_BLACK);
     }
   }
   else {
     // No outdoor temperature
-    display.drawBitmap(320,  47, epd_bitmap_bluetooth_disabled_FILL0_wght300_GRAD0_opsz40, 40, 40, GxEPD_BLACK);
+    display.drawBitmap(320,  47, epd_bitmap_bluetooth_disabled, 40, 40, GxEPD_BLACK);
     // No outdor humidity
-    display.drawBitmap(528,  47, epd_bitmap_bluetooth_disabled_FILL0_wght300_GRAD0_opsz40, 40, 40, GxEPD_BLACK);
+    display.drawBitmap(528,  47, epd_bitmap_bluetooth_disabled, 40, 40, GxEPD_BLACK);
   }
 
   // Indoor sensor
   if (LocalSensors.i2c_thpsensor[0].valid) {
-    DisplayLocalTemperatureSection(368, 156, 137, 100, "", true, LocalSensors.i2c_thpsensor[0].temperature, false, 0, 0);
+    DisplayLocalTemperatureSection(358, 156, 137, 100, "", true, LocalSensors.i2c_thpsensor[0].temperature, false, 0, 0);
     //u8g2Fonts.setFont(u8g2_font_helvB24_tf);
-    u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+    //u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+    u8g2Fonts.setFont(u8g2_font_helvR24_tf);
     drawString(524, 208, String(LocalSensors.i2c_thpsensor[0].humidity, 0) + "%", CENTER);
     drawString(660, 110, String(LocalSensors.i2c_thpsensor[0].pressure, 0) + "hPa", CENTER);
   }
@@ -600,14 +707,14 @@ void DisplayLocalWeather() {                        // 7.5" e-paper display is 8
      // No pressure
      display.drawBitmap(670,   90, epd_bitmap_bolt, 40, 40, GxEPD_BLACK);
   }
-  
+  DisplayHistory();
   DrawRSSI(695, 15, wifi_signal); // Wi-Fi signal strength
 }
 //#########################################################################################
 void DisplayTestScreen(void) {
     float outdoor_temp_c = 9.9;
     //Serial.println("Temperature: "+String(outdoor_temp_c));
-    Serial.println("Air Temperature: "+String(wsensor.air_temp_c));
+    Serial.println("Air Temperature: "+String(MqttSensors.air_temp_c));
     display.drawRect(159, 239, 222, 167, GxEPD_BLACK);
     display.drawBitmap(160, 240, epd_bitmap_garten_sw, 220, 165, GxEPD_BLACK);
     display.drawRect(419, 239, 222, 167, GxEPD_BLACK);
@@ -621,10 +728,10 @@ void DisplayTestScreen(void) {
     display.drawBitmap(410, 420, epd_bitmap_wasser_temperatur, 48, 48, GxEPD_BLACK);
     display.drawBitmap(480, 404, epd_bitmap_barometer, 80, 64, GxEPD_BLACK);
     
-    DisplayGeneralInfoSection("Test");                 // Top line of the display
+    DisplayGeneralInfoSection();                 // Top line of the display
     //DisplayLocalTemperatureSection(300 + 154, 100 - 81, 137, 100, TXT_TEMPERATURES_OUT, mithermometer_valid, outdoor_temp_c, true, OutdoorTmin, OutdoorTmax);
-    DisplayLocalTemperatureSection(300 + 154, 100 - 81, 137, 100, TXT_TEMPERATURES_OUT, true, wsensor.air_temp_c, false, 0, 0);
-    DisplayDisplayWindSection(108, 146, wsensor.wind_direction_deg, wsensor.wind_avg_meter_sec, 81, "");
+    DisplayLocalTemperatureSection(300 + 154, 100 - 81, 137, 100, TXT_TEMPERATURES_OUT, true, MqttSensors.air_temp_c, false, 0, 0);
+    DisplayDisplayWindSection(108, 146, MqttSensors.wind_direction_deg, MqttSensors.wind_avg_meter_sec, 81, true, "");
     //DisplayMainWeatherSection(300, 100);          // Centre section of display for Location, temperature, Weather report, current Wx Symbol and wind direction
     //DisplayForecastSection(217, 245);            // 3hr forecast boxes
     //DisplayAstronomySection(0, 245);             // Astronomy section Sun rise/set, Moon phase and Moon icon
@@ -632,12 +739,50 @@ void DisplayTestScreen(void) {
 }
 
 
-void DisplayGeneralInfoSection(String location) {
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(6, 2, "[Version: " + version + "]", LEFT); // Programme version
-  u8g2Fonts.setFont(u8g2_font_helvB14_tf);
-  drawString(SCREEN_WIDTH / 2, 6, location, CENTER);
-  display.drawLine(0, 18, SCREEN_WIDTH, 18, GxEPD_BLACK);
+void DisplayGeneralInfoSection(void) {
+  const int dist = 50;
+  const float corr1 = 1.9;
+  const float corr2 = 1.4;
+  int offs = 0;
+  int16_t x1;
+  int16_t y1;
+  uint16_t w;
+  uint16_t h;
+
+  display.setTextWrap(false);
+  for (int i = 0; i <= 2; i++) {   
+    if (i == 0) {
+      u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+      display.getTextBounds(Locations[ScreenNo], 0, 0, &x1, &y1, &w, &h);
+      drawString(SCREEN_WIDTH/2 - w/2 * corr1, 6, Locations[ScreenNo], LEFT);
+      offs = SCREEN_WIDTH/2 + w/2 * corr1 + dist;
+    }
+    else if (ScreenNo + i <= LAST_SCREEN) {
+      u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+      display.getTextBounds(Locations[ScreenNo + i], 0, 0, &x1, &y1, &w, &h);
+      offs = offs + w/2 * corr2;
+      drawString(offs, 6, Locations[ScreenNo + i], CENTER);
+      offs = offs + w/2 * corr2 + dist;
+    } 
+  }
+  for (int i = 0; i >= -2; i--) {   
+    if (i == 0) {
+      u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+      display.getTextBounds(Locations[ScreenNo], 0, 0, &x1, &y1, &w, &h);
+      offs = SCREEN_WIDTH/2 - w/2 * corr1 - dist;
+    }
+    else if (ScreenNo + i > -1) {
+      u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+      display.getTextBounds(Locations[ScreenNo + i], 0, 0, &x1, &y1, &w, &h);
+      offs = offs - w/2 * corr2;
+      drawString(offs, 6, Locations[ScreenNo + i], CENTER);
+      offs = offs - w/2 * corr2 - dist;
+    }
+  }
+  DrawRSSI(695, 15, wifi_signal); // Wi-Fi signal strength and Battery voltage
+
+  display.drawLine(0, 18, SCREEN_WIDTH-1, 18, GxEPD_BLACK);
+  display.drawLine(SCREEN_WIDTH/2, 0, SCREEN_WIDTH/2, 480, GxEPD_BLACK);
 }
 //#########################################################################################
 void DisplayDateTime(int x, int y) {
@@ -659,14 +804,12 @@ void DisplayMainWeatherSection(int x, int y) {
   DisplayForecastTextSection(x + 97, y + 20, 409, 65);
 }
 //#########################################################################################
-void DisplayDisplayWindSection(int x, int y, float angle, float windspeed, int Cradius, String label) {
+void DisplayDisplayWindSection(int x, int y, float angle, float windspeed, int Cradius, bool valid, String label) {
   arrow(x, y, Cradius - 22, angle, 18, 33); // Show wind direction on outer circle of width and length
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  if (label != "") {
-    drawString(x, y - Cradius - 41, label, CENTER);
-  }
+  drawString(x, y - Cradius - 41, label, CENTER);
   int dxo, dyo, dxi, dyi;
-  display.drawLine(0, 18, 0, y + Cradius + 37, GxEPD_BLACK);
+  //display.drawLine(0, 18, 0, y + Cradius + 37, GxEPD_BLACK);
   display.drawCircle(x, y, Cradius, GxEPD_BLACK);     // Draw compass circle
   display.drawCircle(x, y, Cradius + 1, GxEPD_BLACK); // Draw compass circle
   display.drawCircle(x, y, Cradius * 0.7, GxEPD_BLACK); // Draw compass inner circle
@@ -690,12 +833,14 @@ void DisplayDisplayWindSection(int x, int y, float angle, float windspeed, int C
   drawString(x, y + Cradius + 6,    TXT_S, CENTER);
   drawString(x - Cradius - 12, y - 3, TXT_W, CENTER);
   drawString(x + Cradius + 10,  y - 3, TXT_E, CENTER);
-  drawString(x - 2, y - 43, WindDegToDirection(angle), CENTER);
-  drawString(x + 6, y + 30, String(angle, 0) + "°", CENTER);
-  u8g2Fonts.setFont(u8g2_font_helvB18_tf);
-  drawString(x - 12, y - 3, String(windspeed, 1), CENTER);
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x, y + 12, (Units == "M" ? "m/s" : "mph"), CENTER);
+  if (valid) {
+    drawString(x - 2, y - 43, WindDegToDirection(angle), CENTER);
+    drawString(x + 6, y + 30, String(angle, 0) + "°", CENTER);
+    u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+    drawString(x - 12, y - 3, String(windspeed, 1), CENTER);
+    u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+    drawString(x, y + 12, (Units == "M" ? "m/s" : "mph"), CENTER);
+  }
 }
 //#########################################################################################
 String WindDegToDirection(float winddirection) {
@@ -1479,7 +1624,8 @@ void DisplayLocalTemperatureSection(int x, int y, int twidth, int tdepth, String
       drawString(x-5, y + 82, "? " + _unit + " | ? " + _unit, CENTER); // Show forecast high and Low
     }
     //u8g2Fonts.setFont(u8g2_font_helvB24_tf);
-    u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+    //u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+    u8g2Fonts.setFont(u8g2_font_helvR24_tf);
     drawString(x - 22, y + 53, "?.? " + _unit, CENTER); // Show current Temperature
     //u8g2Fonts.setFont(u8g2_font_helvB10_tf);
     //drawString(x + 43, y + 53, Units == "M" ? "C" : "F", LEFT);
@@ -1489,7 +1635,8 @@ void DisplayLocalTemperatureSection(int x, int y, int twidth, int tdepth, String
       drawString(x-5, y + 82, String(tmax, 0) + _unit + " | " + String(tmin, 0) + _unit, CENTER); // Show forecast high and Low
     }
     //u8g2Fonts.setFont(u8g2_font_helvB24_tf);
-    u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+    //u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+    u8g2Fonts.setFont(u8g2_font_helvR24_tf);
     drawString(x - 22, y + 53, String(tcurrent, 1) + _unit, CENTER); // Show current Temperature
   }
 
