@@ -56,7 +56,7 @@
 
 #define MQTT_HIST_SIZE      144
 #define RAIN_HR_HIST_SIZE    24
-#define RAIN_DAY_HIST_SIZE   30
+#define RAIN_DAY_HIST_SIZE   29
 #define LOCAL_HIST_SIZE     144
 #define HIST_UPDATE_RATE     30
 #define HIST_UPDATE_TOL       5
@@ -866,6 +866,14 @@ void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
   }
   MqttSensors.rain_hr_valid  = (MqttSensors.rain_hr  >= 0) && (MqttSensors.rain_hr  < 300);
   MqttSensors.rain_day_valid = (MqttSensors.rain_day >= 0) && (MqttSensors.rain_day < 1800);
+  
+  // If not valid, set value to zero to avoid any problems with auto-scale etc.
+  if (!MqttSensors.rain_hr_valid) {
+    MqttSensors.rain_hr = 0;
+  }
+  if (!MqttSensors.rain_day_valid) {
+    MqttSensors.rain_day = 0;
+  }
 
   log_i("MQTT data updated: %d", MqttSensors.valid ? 1 : 0);
 }
@@ -1549,7 +1557,7 @@ void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
     addraindrop(x + 58, y + 40, 7);
   }
   if (WxForecast[1].Snowfall >= 0.005)  // Ignore small amounts
-    drawString(x - 25, y + 71, String(WxForecast[1].Snowfall, 2) + (Units == "M" ? "mm" : "in") + " **", LEFT); // Only display snowfall total today if > 0
+    drawString(x - 25, y + 60, String(WxForecast[1].Snowfall, 2) + (Units == "M" ? "mm" : "in") + " **", LEFT); // Only display snowfall total today if > 0
   if (WxForecast[1].Pop >= 0.005)       // Ignore small amounts
     drawString(x + 2, y + 81, String(WxForecast[1].Pop*100, 0) + "%", LEFT); // Only display pop if > 0
 }
@@ -1690,10 +1698,11 @@ String MoonPhase(int d, int m, int y, String hemisphere) {
     auto_scale-a logical value (TRUE or FALSE) that switches the Y-axis autoscale On or Off
     barchart_on-a logical value (TRUE or FALSE) that switches the drawing mode between barhcart and line graph
     barchart_colour-a sets the title and graph plotting colour
-    If called with Y!_Max value of 500 and the data never goes above 500, then autoscale will retain a 0-500 Y scale, if on, the scale increases/decreases to match the data.
+    If called with Y1_Max value of 500 and the data never goes above 500, then autoscale will retain a 0-500 Y scale, if on, the scale increases/decreases to match the data.
     auto_scale_margin, e.g. if set to 1000 then autoscale increments the scale by 1000 steps.
 */
 
+// TODO: documentation
 void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], int readings, boolean auto_scale, boolean barchart_mode, int xmin, int xmax, int dx=1, 
                int data_offset=1, const String x_label=TXT_DAYS, bool ValidArray[] = NULL);
 void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], int readings, boolean auto_scale, boolean barchart_mode, int xmin, int xmax, int dx, 
@@ -1732,7 +1741,7 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
     }
     if (ValidArray == NULL || ValidArray[gx]) {
         if (ValidArray) {
-            log_i("reading #%d val: %d data: %f", gx, ValidArray[gx], DataArray[gx]);
+            log_i("reading #%d val: %d data: %f", gx, ValidArray[gx] ? 1 : 0, DataArray[gx]);
         }
         if (barchart_mode) {
             display.fillRect(x2, y2, (gwidth / readings) - 1, y_pos + gheight - y2 + 2, GxEPD_BLACK);
@@ -1871,35 +1880,18 @@ void DisplayLocalHistory() {
  * \brief Display MQTT sensor data history as graphs (pressure, temperature, humidity)
  */
 void DisplayMqttHistory() {
-  mqtt_hist_t mqtt_data;
-  rain_hr_hist_t rain_hr_data;
+  mqtt_hist_t     mqtt_data;
+  rain_hr_hist_t  rain_hr_data;
   rain_day_hist_t rain_day_data;
-  float temperature[MQTT_HIST_SIZE];
-  float humidity[MQTT_HIST_SIZE];
-  float rain[MQTT_HIST_SIZE];
-  bool  mqtt_valid[MQTT_HIST_SIZE];
-  float rain_hr[RAIN_HR_HIST_SIZE];
-  bool  rain_hr_valid[RAIN_HR_HIST_SIZE];
-  float rain_day[RAIN_DAY_HIST_SIZE];
-  bool  rain_day_valid[RAIN_DAY_HIST_SIZE];  
-  int offs;
-  /*
-  for (int i = 0; i<MQTT_HIST_SIZE; i++) {
-    temperature[i] = 0;
-    humidity[i]    = 0;
-    rain[i]        = 0;
-    mqtt_valid[i]  = false;
-  }
-  */
-  /*
-  for (int i=q_getCount(&MqttHistQCtrl)-1, j=MQTT_HIST_SIZE-1; i>=0; i--, j--) {
-    q_peekIdx(&MqttHistQCtrl, &mqtt_data, i);
-    temperature[j] = mqtt_data.temperature;
-    humidity[j]    = mqtt_data.humidity;
-    rain[j]        = mqtt_data.rain;
-    mqtt_valid[j]  = mqtt_data.valid;
-  }
-  */
+  float           temperature[MQTT_HIST_SIZE];
+  float           humidity[MQTT_HIST_SIZE];
+  bool            mqtt_valid[MQTT_HIST_SIZE];
+  float           rain_hr[RAIN_HR_HIST_SIZE];
+  bool            rain_hr_valid[RAIN_HR_HIST_SIZE];
+  float           rain_day[RAIN_DAY_HIST_SIZE+1];
+  bool            rain_day_valid[RAIN_DAY_HIST_SIZE+1];  
+  int             offs;
+  
   for (int i=0; i<MQTT_HIST_SIZE; i++) {
     temperature[i] = 0;
     humidity   [i] = 0;
@@ -1947,16 +1939,18 @@ void DisplayMqttHistory() {
     rain_day[i] = 0;
   }
 
-  // FIXME: check overflow!
-  offs = RAIN_DAY_HIST_SIZE - q_getCount(&RainDayHistQCtrl) - 1;
+  // Note: The queue size is RAIN_DAY_HIST_SIZE, but the array size is RAIN_DAY_HIST_SIZE + 1!!!
+  // Write queue entries to the end of the array, but leave out last array entry
+  offs = RAIN_DAY_HIST_SIZE - q_getCount(&RainDayHistQCtrl);
   for (int i=0; i<q_getCount(&RainDayHistQCtrl); i++) {
     q_peekIdx(&RainDayHistQCtrl, &rain_day_data, i);
     rain_day      [i + offs] = rain_day_data.rain;
     rain_day_valid[i + offs] = rain_day_data.valid;
   }
-  
-  rain_day        [RAIN_DAY_HIST_SIZE-1] = MqttSensors.rain_day_prev;
-  rain_day_valid  [RAIN_DAY_HIST_SIZE-1] = true;
+
+  // Write current value to the end of the array
+  rain_day        [RAIN_DAY_HIST_SIZE] = MqttSensors.rain_day_prev;
+  rain_day_valid  [RAIN_DAY_HIST_SIZE] = true;
 
 
   // (x, y, width, height, MinValue, MaxValue, Title, DataArray[], AutoScale, ChartMode, xmin, xmax, dx, data_offset, x_label, ValidArray[])
@@ -2082,6 +2076,7 @@ void StopWiFi() {
 }
 
 
+#if 0
 /**
  * \brief Display status section
  * 
@@ -2095,8 +2090,9 @@ void DisplayStatusSection(int x, int y, int rssi) {
   drawString(x, y - 29, TXT_WIFI, CENTER);
   drawString(x + 68, y - 30, TXT_POWER, CENTER);
   DrawRSSI(x - 10, y + 6, rssi);
-  DrawBattery(x + 58, y + 6);;
+  DrawBattery(x + 58, y + 6);
 }
+#endif
 
 /**
  * \brief Draw WiFi RSSI as sequence of bars and numeric value
@@ -2193,11 +2189,14 @@ boolean UpdateLocalTime() {
   return true;
 }
 
-
+#if 0
 /**
  * \brief Draw battery status
  * 
- * FIXME: Not used, to be removed!
+ * FIXME: Not used, to be removed! 
+ * Or to be made more generic...
+ * Or to be made optional...
+ * And with calibrated ADC read...
  */
 void DrawBattery(int x, int y) {
   uint8_t percentage = 100;
@@ -2214,273 +2213,7 @@ void DrawBattery(int x, int y) {
     drawString(x + 13, y + 5,  String(voltage, 2) + "v", CENTER);
   }
 }
-
-// FIXME: Remove, the drawing functions have been moved to WeatherSymbols.h/.cppS
-/*
-//#########################################################################################
-// Symbols are drawn on a relative 10x10grid and 1 scale unit = 1 drawing unit
-void addcloud(int x, int y, int scale, int linesize) {
-  //Draw cloud outer
-  display.fillCircle(x - scale * 3, y, scale, GxEPD_BLACK);                // Left most circle
-  display.fillCircle(x + scale * 3, y, scale, GxEPD_BLACK);                // Right most circle
-  display.fillCircle(x - scale, y - scale, scale * 1.4, GxEPD_BLACK);    // left middle upper circle
-  display.fillCircle(x + scale * 1.5, y - scale * 1.3, scale * 1.75, GxEPD_BLACK); // Right middle upper circle
-  display.fillRect(x - scale * 3 - 1, y - scale, scale * 6, scale * 2 + 1, GxEPD_BLACK); // Upper and lower lines
-  //Clear cloud inner
-  display.fillCircle(x - scale * 3, y, scale - linesize, GxEPD_WHITE);            // Clear left most circle
-  display.fillCircle(x + scale * 3, y, scale - linesize, GxEPD_WHITE);            // Clear right most circle
-  display.fillCircle(x - scale, y - scale, scale * 1.4 - linesize, GxEPD_WHITE);  // left middle upper circle
-  display.fillCircle(x + scale * 1.5, y - scale * 1.3, scale * 1.75 - linesize, GxEPD_WHITE); // Right middle upper circle
-  display.fillRect(x - scale * 3 + 2, y - scale + linesize - 1, scale * 5.9, scale * 2 - linesize * 2 + 2, GxEPD_WHITE); // Upper and lower lines
-}
-//#########################################################################################
-void addraindrop(int x, int y, int scale) {
-  display.fillCircle(x, y, scale / 2, GxEPD_BLACK);
-  display.fillTriangle(x - scale / 2, y, x, y - scale * 1.2, x + scale / 2, y , GxEPD_BLACK);
-  x = x + scale * 1.6; y = y + scale / 3;
-  display.fillCircle(x, y, scale / 2, GxEPD_BLACK);
-  display.fillTriangle(x - scale / 2, y, x, y - scale * 1.2, x + scale / 2, y , GxEPD_BLACK);
-}
-//#########################################################################################
-void addrain(int x, int y, int scale, bool IconSize) {
-  if (IconSize == SmallIcon) scale *= 1.34;
-  for (int d = 0; d < 4; d++) {
-    addraindrop(x + scale * (7.8 - d * 1.95) - scale * 5.2, y + scale * 2.1 - scale / 6, scale / 1.6);
-  }
-}
-//#########################################################################################
-void addsnow(int x, int y, int scale, bool IconSize) {
-  int dxo, dyo, dxi, dyi;
-  for (int flakes = 0; flakes < 5; flakes++) {
-    for (int i = 0; i < 360; i = i + 45) {
-      dxo = 0.5 * scale * cos((i - 90) * 3.14 / 180); dxi = dxo * 0.1;
-      dyo = 0.5 * scale * sin((i - 90) * 3.14 / 180); dyi = dyo * 0.1;
-      display.drawLine(dxo + x + flakes * 1.5 * scale - scale * 3, dyo + y + scale * 2, dxi + x + 0 + flakes * 1.5 * scale - scale * 3, dyi + y + scale * 2, GxEPD_BLACK);
-    }
-  }
-}
-//#########################################################################################
-void addtstorm(int x, int y, int scale) {
-  y = y + scale / 2;
-  for (int i = 0; i < 5; i++) {
-    display.drawLine(x - scale * 4 + scale * i * 1.5 + 0, y + scale * 1.5, x - scale * 3.5 + scale * i * 1.5 + 0, y + scale, GxEPD_BLACK);
-    if (scale != Small) {
-      display.drawLine(x - scale * 4 + scale * i * 1.5 + 1, y + scale * 1.5, x - scale * 3.5 + scale * i * 1.5 + 1, y + scale, GxEPD_BLACK);
-      display.drawLine(x - scale * 4 + scale * i * 1.5 + 2, y + scale * 1.5, x - scale * 3.5 + scale * i * 1.5 + 2, y + scale, GxEPD_BLACK);
-    }
-    display.drawLine(x - scale * 4 + scale * i * 1.5, y + scale * 1.5 + 0, x - scale * 3 + scale * i * 1.5 + 0, y + scale * 1.5 + 0, GxEPD_BLACK);
-    if (scale != Small) {
-      display.drawLine(x - scale * 4 + scale * i * 1.5, y + scale * 1.5 + 1, x - scale * 3 + scale * i * 1.5 + 0, y + scale * 1.5 + 1, GxEPD_BLACK);
-      display.drawLine(x - scale * 4 + scale * i * 1.5, y + scale * 1.5 + 2, x - scale * 3 + scale * i * 1.5 + 0, y + scale * 1.5 + 2, GxEPD_BLACK);
-    }
-    display.drawLine(x - scale * 3.5 + scale * i * 1.4 + 0, y + scale * 2.5, x - scale * 3 + scale * i * 1.5 + 0, y + scale * 1.5, GxEPD_BLACK);
-    if (scale != Small) {
-      display.drawLine(x - scale * 3.5 + scale * i * 1.4 + 1, y + scale * 2.5, x - scale * 3 + scale * i * 1.5 + 1, y + scale * 1.5, GxEPD_BLACK);
-      display.drawLine(x - scale * 3.5 + scale * i * 1.4 + 2, y + scale * 2.5, x - scale * 3 + scale * i * 1.5 + 2, y + scale * 1.5, GxEPD_BLACK);
-    }
-  }
-}
-//#########################################################################################
-void addsun(int x, int y, int scale, bool IconSize) {
-  int linesize = 3;
-  if (IconSize == SmallIcon) linesize = 1;
-  display.fillRect(x - scale * 2, y, scale * 4, linesize, GxEPD_BLACK);
-  display.fillRect(x, y - scale * 2, linesize, scale * 4, GxEPD_BLACK);
-  display.drawLine(x - scale * 1.3, y - scale * 1.3, x + scale * 1.3, y + scale * 1.3, GxEPD_BLACK);
-  display.drawLine(x - scale * 1.3, y + scale * 1.3, x + scale * 1.3, y - scale * 1.3, GxEPD_BLACK);
-  if (IconSize == LargeIcon) {
-    display.drawLine(1 + x - scale * 1.3, y - scale * 1.3, 1 + x + scale * 1.3, y + scale * 1.3, GxEPD_BLACK);
-    display.drawLine(2 + x - scale * 1.3, y - scale * 1.3, 2 + x + scale * 1.3, y + scale * 1.3, GxEPD_BLACK);
-    display.drawLine(3 + x - scale * 1.3, y - scale * 1.3, 3 + x + scale * 1.3, y + scale * 1.3, GxEPD_BLACK);
-    display.drawLine(1 + x - scale * 1.3, y + scale * 1.3, 1 + x + scale * 1.3, y - scale * 1.3, GxEPD_BLACK);
-    display.drawLine(2 + x - scale * 1.3, y + scale * 1.3, 2 + x + scale * 1.3, y - scale * 1.3, GxEPD_BLACK);
-    display.drawLine(3 + x - scale * 1.3, y + scale * 1.3, 3 + x + scale * 1.3, y - scale * 1.3, GxEPD_BLACK);
-  }
-  display.fillCircle(x, y, scale * 1.3, GxEPD_WHITE);
-  display.fillCircle(x, y, scale, GxEPD_BLACK);
-  display.fillCircle(x, y, scale - linesize, GxEPD_WHITE);
-}
-//#########################################################################################
-void addfog(int x, int y, int scale, int linesize, bool IconSize) {
-  if (IconSize == SmallIcon) {
-    y -= 10;
-    linesize = 1;
-  }
-  for (int i = 0; i < 6; i++) {
-    display.fillRect(x - scale * 3, y + scale * 1.5, scale * 6, linesize, GxEPD_BLACK);
-    display.fillRect(x - scale * 3, y + scale * 2.0, scale * 6, linesize, GxEPD_BLACK);
-    display.fillRect(x - scale * 3, y + scale * 2.5, scale * 6, linesize, GxEPD_BLACK);
-  }
-}
-//#########################################################################################
-void Sunny(int x, int y, bool IconSize, String IconName) {
-  int scale = Small;
-  if (IconSize == LargeIcon) scale = Large;
-  else y = y - 3; // Shift up small sun icon
-  if (IconName.endsWith("n")) addmoon(x, y + 3, scale, IconSize);
-  scale = scale * 1.6;
-  addsun(x, y, scale, IconSize);
-}
-//#########################################################################################
-void MostlySunny(int x, int y, bool IconSize, String IconName) {
-  int scale = Small, linesize = 3, offset = 5;
-  if (IconSize == LargeIcon) {
-    scale = Large;
-    offset = 10;
-  }
-  if (scale == Small) linesize = 1;
-  if (IconName.endsWith("n")) addmoon(x, y + offset, scale, IconSize);
-  addcloud(x, y + offset, scale, linesize);
-  addsun(x - scale * 1.8, y - scale * 1.8 + offset, scale, IconSize);
-}
-//#########################################################################################
-void MostlyCloudy(int x, int y, bool IconSize, String IconName) {
-  int scale = Small, linesize = 3;
-  if (IconSize == LargeIcon) {
-    scale = Large;
-    linesize = 1;
-  }
-  if (IconName.endsWith("n")) addmoon(x, y, scale, IconSize);
-  addcloud(x, y, scale, linesize);
-  addsun(x - scale * 1.8, y - scale * 1.8, scale, IconSize);
-  addcloud(x, y, scale, linesize);
-}
-//#########################################################################################
-void Cloudy(int x, int y, bool IconSize, String IconName) {
-  int scale = Large, linesize = 3;
-  if (IconSize == SmallIcon) {
-    scale = Small;
-    if (IconName.endsWith("n")) addmoon(x, y, scale, IconSize);
-    linesize = 1;
-    addcloud(x, y, scale, linesize);
-  }
-  else {
-    y += 10;
-    if (IconName.endsWith("n")) addmoon(x, y, scale, IconSize);
-    addcloud(x + 30, y - 45, 5, linesize); // Cloud top right
-    addcloud(x - 20, y - 30, 7, linesize); // Cloud top left
-    addcloud(x, y, scale, linesize);       // Main cloud
-  }
-}
-//#########################################################################################
-void Rain(int x, int y, bool IconSize, String IconName) {
-  int scale = Large, linesize = 3;
-  if (IconSize == SmallIcon) {
-    scale = Small;
-    linesize = 1;
-  }
-  if (IconName.endsWith("n")) addmoon(x, y, scale, IconSize);
-  addcloud(x, y, scale, linesize);
-  addrain(x, y, scale, IconSize);
-}
-//#########################################################################################
-void ExpectRain(int x, int y, bool IconSize, String IconName) {
-  int scale = Large, linesize = 3;
-  if (IconSize == SmallIcon) {
-    scale = Small;
-    linesize = 1;
-  }
-  if (IconName.endsWith("n")) addmoon(x, y, scale, IconSize);
-  addsun(x - scale * 1.8, y - scale * 1.8, scale, IconSize);
-  addcloud(x, y, scale, linesize);
-  addrain(x, y, scale, IconSize);
-}
-//#########################################################################################
-void ChanceRain(int x, int y, bool IconSize, String IconName) {
-  int scale = Large, linesize = 3;
-  if (IconSize == SmallIcon) {
-    scale = Small;
-    linesize = 1;
-  }
-  if (IconName.endsWith("n")) addmoon(x, y, scale, IconSize);
-  addsun(x - scale * 1.8, y - scale * 1.8, scale, IconSize);
-  addcloud(x, y, scale, linesize);
-  addrain(x, y, scale, IconSize);
-}
-//#########################################################################################
-void Tstorms(int x, int y, bool IconSize, String IconName) {
-  int scale = Large, linesize = 3;
-  if (IconSize == SmallIcon) {
-    scale = Small;
-    linesize = 1;
-  }
-  if (IconName.endsWith("n")) addmoon(x, y, scale, IconSize);
-  addcloud(x, y, scale, linesize);
-  addtstorm(x, y, scale);
-}
-//#########################################################################################
-void Snow(int x, int y, bool IconSize, String IconName) {
-  int scale = Large, linesize = 3;
-  if (IconSize == SmallIcon) {
-    scale = Small;
-    linesize = 1;
-  }
-  if (IconName.endsWith("n")) addmoon(x, y, scale, IconSize);
-  addcloud(x, y, scale, linesize);
-  addsnow(x, y, scale, IconSize);
-}
-//#########################################################################################
-void Fog(int x, int y, bool IconSize, String IconName) {
-  int linesize = 3, scale = Large;
-  if (IconSize == SmallIcon) {
-    scale = Small;
-    linesize = 1;
-  }
-  if (IconName.endsWith("n")) addmoon(x, y, scale, IconSize);
-  addcloud(x, y - 5, scale, linesize);
-  addfog(x, y - 5, scale, linesize, IconSize);
-}
-//#########################################################################################
-void Haze(int x, int y, bool IconSize, String IconName) {
-  int linesize = 3, scale = Large;
-  if (IconSize == SmallIcon) {
-    scale = Small;
-    linesize = 1;
-  }
-  if (IconName.endsWith("n")) addmoon(x, y, scale, IconSize);
-  addsun(x, y - 5, scale * 1.4, IconSize);
-  addfog(x, y - 5, scale * 1.4, linesize, IconSize);
-}
-//#########################################################################################
-void CloudCover(int x, int y, int CCover) {
-  addcloud(x - 9, y - 3, Small * 0.5, 2); // Cloud top left
-  addcloud(x + 3, y - 3, Small * 0.5, 2); // Cloud top right
-  addcloud(x, y,         Small * 0.5, 2); // Main cloud
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x + 15, y - 5, String(CCover) + "%", LEFT);
-}
-//#########################################################################################
-void Visibility(int x, int y, String Visi) {
-  y = y - 3; //
-  float start_angle = 0.52, end_angle = 2.61;
-  int r = 10;
-  for (float i = start_angle; i < end_angle; i = i + 0.05) {
-    display.drawPixel(x + r * cos(i), y - r / 2 + r * sin(i), GxEPD_BLACK);
-    display.drawPixel(x + r * cos(i), 1 + y - r / 2 + r * sin(i), GxEPD_BLACK);
-  }
-  start_angle = 3.61; end_angle = 5.78;
-  for (float i = start_angle; i < end_angle; i = i + 0.05) {
-    display.drawPixel(x + r * cos(i), y + r / 2 + r * sin(i), GxEPD_BLACK);
-    display.drawPixel(x + r * cos(i), 1 + y + r / 2 + r * sin(i), GxEPD_BLACK);
-  }
-  display.fillCircle(x, y, r / 4, GxEPD_BLACK);
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x + 12, y - 3, Visi, LEFT);
-}
-//#########################################################################################
-void addmoon(int x, int y, int scale, bool IconSize) {
-  if (IconSize == LargeIcon) {
-    display.fillCircle(x - 62, y - 68, scale, GxEPD_BLACK);
-    display.fillCircle(x - 43, y - 68, scale * 1.6, GxEPD_WHITE);
-  }
-  else
-  {
-    display.fillCircle(x - 25, y - 15, scale, GxEPD_BLACK);
-    display.fillCircle(x - 18, y - 15, scale * 1.6, GxEPD_WHITE);
-  }
-}
-*/
-
+#endif
 
 /**
  * \brief Display question mark if weather icon name is unknown
@@ -2547,7 +2280,28 @@ void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alig
     u8g2Fonts.println(secondLine);
   }
 }
-//#########################################################################################
+
+
+/**
+ * \brief Display temperature section
+ * 
+ * Variant of DisplayTemperatureSection() with more parameters/features
+ * - label
+ * - display of invalid data as "?"
+ * - current temperature
+ * - optional min/max temperature
+ * 
+ * \param x           x-coordinate
+ * \param y           y-coordinate
+ * \param twidth      section width
+ * \param tdepth      section depth
+ * \param label       label
+ * \param valid       true if data is valid, false otherwise
+ * \param tcurrent    current temperature
+ * \param minmax      true if min/max values shall be displayed, false otherwise
+ * \param tmin        min temperature
+ * \param tmax        max temperature
+ */
 void DisplayLocalTemperatureSection(int x, int y, int twidth, int tdepth, String label, bool valid, float tcurrent, bool minmax, float tmin, float tmax) {
   //display.drawRect(x - 63, y - 1, twidth, tdepth, GxEPD_BLACK); // temp outline
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
