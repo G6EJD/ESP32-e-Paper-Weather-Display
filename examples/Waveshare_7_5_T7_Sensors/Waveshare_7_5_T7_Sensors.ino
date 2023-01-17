@@ -27,9 +27,8 @@
 #include <SPI.h>                      // Built-in
 #include <vector>
 #include <string>
-//#include <Ticker.h>
-#include <MQTT.h>
-#include <cQueue.h>
+#include <MQTT.h>                     // https://github.com/256dpi/arduino-mqtt
+#include <cQueue.h>                   // https://github.com/SMFSW/cQueue
 #include "src/WeatherSymbols.h"
 #include "garten.h"
 #include "wohnung.h"
@@ -41,8 +40,8 @@
 #define ScreenMQTT  2
 #define ScreenTest  3
 
-#define START_SCREEN ScreenOWM
-#define LAST_SCREEN  ScreenTest
+#define START_SCREEN ScreenMQTT
+#define LAST_SCREEN  ScreenMQTT
 
 //#define SIMULATE_MQTT
 //#define FORCE_LOW_BATTERY
@@ -84,21 +83,21 @@
 #include <U8g2_for_Adafruit_GFX.h>
 #include "src/epaper_fonts.h"
 #include "src/forecast_record.h"
-//#include "src/lang.h"                     // Localisation (English)
-//#include "lang_cz.h"                  // Localisation (Czech)
-//#include "lang_fr.h"                  // Localisation (French)
-#include "src/lang_de.h"                  // Localisation (German)
-//#include "lang_it.h"                  // Localisation (Italian)
-//#include "lang_nl.h"
-//#include "lang_pl.h"                  // Localisation (Polish)
+//#include "src/lang.h"         // Localisation (English)
+//#include "src/lang_cz.h"      // Localisation (Czech)
+//#include "src/lang_fr.h"      // Localisation (French)
+#include "src/lang_de.h"        // Localisation (German)
+//#include "src/lang_it.h"      // Localisation (Italian)
+//#include "src/lang_nl.h"      // Localization (Dutch)
+//#include "src/lang_pl.h"      // Localisation (Polish)
 
 #ifdef MITHERMOMETER_EN
     // BLE Temperature/Humidity Sensor
-    #include <ATC_MiThermometer.h>
+    #include <ATC_MiThermometer.h>  // https://github.com/matthias-bs/ATC_MiThermometer
 #endif
 
 #ifdef BME280_EN
-  #include <pocketBME280.h>
+  #include <pocketBME280.h>         // https://github.com/angrest/pocketBME280
 #endif
 
 #define SCREEN_WIDTH  800             // Set for landscape mode
@@ -336,10 +335,6 @@ void setup() {
         //SaveLocalData();
     //}
 
-    // FIXME: calculate time to trigger
-    //int tmr = 0;
-    //HistoryUpdater.once(tmr, UpdateHistory);
-    
     Serial.printf("Screen No: %d\n", ScreenNo);
     
     pinMode(TOUCH_INT, INPUT);
@@ -473,6 +468,10 @@ void setup() {
         if (t_now - MqttHistTStamp >= (HIST_UPDATE_RATE - HIST_UPDATE_TOL) * 60) {
             MqttHistTStamp = t_now;
             SaveMqttData();
+        }
+        if (t_now - RainHrHistTStamp >= (60 - HIST_UPDATE_TOL) * 60) {
+            RainHrHistTStamp = t_now;
+            SaveRainHrData();
         }
     //}
     
@@ -697,28 +696,8 @@ void findMqttMinMaxTemp(float * t_min, float * t_max) {
  * \param MqttClient  MQTT client object
  */
 void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
-  /*
-  MQTTClient mqtt_client(MQTT_PAYLOAD_SIZE);
-  mqtt_client.begin(MQTT_HOST, MQTT_PORT, wifi_client);
-  Serial.println(F("MQTT connecting... "));
-  //mqtt_client.setCleanSession(false);
-  mqtt_client.setOptions(MQTT_KEEPALIVE, MQTT_CLEAN_SESSION, MQTT_TIMEOUT);
-  //mqtt_connect(mqtt_client);
-  //mqtt_client.onMessageAdvanced(mqttMessageAdvancedCb);
-  mqtt_client.onMessage(mqttMessageCb);
-  while (!mqtt_client.connect(Hostname, MQTT_USER, MQTT_PASS)) {
-    Serial.print(".");
-    delay(1000);
-  }
-  Serial.println("\nconnected!");
-
-  if (!mqtt_client.subscribe(MQTT_SUB_IN)) {
-    Serial.println("Subscription failed!");
-  }
-  */
-  //DisplayGeneralInfoSection();                 // Top line of the display
-  
   MqttSensors.valid = false;
+
   Serial.println(F("Waiting for MQTT message..."));
   #ifndef SIMULATE_MQTT
     unsigned long start = millis();
@@ -757,6 +736,7 @@ void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
     Serial.println("(Simulated MQTT incoming message)");
     MqttSensors.valid = true;
   #endif
+
   Serial.println(F("done!"));
   MqttClient.disconnect();
   Serial.printf(MqttBuf);
@@ -816,18 +796,17 @@ void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
  * \brief Save MQTT data to history FIFO
  */
 void SaveMqttData(void) {
-    Serial.println(F("Saving MQTT data."));
     if (!q_isInitialized(&MqttHistQCtrl)) {
       q_init_static(&MqttHistQCtrl, sizeof(MqttHist[0]), MQTT_HIST_SIZE, FIFO, true, (uint8_t *)MqttHist, sizeof(MqttHist));
     }
     mqtt_hist_t mqtt_data = {0, 0, 0, 0};
-    Serial.println("SaveMqttData(): MqttSensors.valid: " + String(MqttSensors.valid));
-    if (MqttSensors.valid) {
-      mqtt_data.temperature = MqttSensors.air_temp_c;
-      mqtt_data.humidity    = MqttSensors.humidity;
-      mqtt_data.rain        = MqttSensors.rain_mm;
-      mqtt_data.valid       = true;
-    }
+    bool valid = MqttSensors.valid && MqttSensors.status.ws_dec_ok;
+    Serial.println("SaveMqttData(): #" + String(q_getCount(&MqttHistQCtrl)) + " valid: " + String(valid) + "T: " + String(MqttSensors.air_temp_c, 1) + "H: " + String(MqttSensors.humidity, 1));
+    mqtt_data.temperature = MqttSensors.air_temp_c;
+    mqtt_data.humidity    = MqttSensors.humidity;
+    mqtt_data.rain        = MqttSensors.rain_mm;
+    mqtt_data.valid       = valid;
+    
     /*
     else {
       // Store previous data
@@ -846,14 +825,15 @@ void SaveMqttData(void) {
  * \brief Save Rain Hourly data to history FIFO
  */
 void SaveRainHrData(void) {
-    Serial.println(F("Saving rain hourly data."));
     if (!q_isInitialized(&RainHrHistQCtrl)) {
         q_init_static(&RainHrHistQCtrl, sizeof(RainHrHist[0]), RAIN_HR_HIST_SIZE, FIFO, true, (uint8_t *)RainHrHist, sizeof(RainHrHist));
     }
     rain_hr_hist_t rain_hr_data;
 
+    bool valid = MqttSensors.valid && MqttSensors.status.ws_dec_ok;
+    Serial.println("SaveRainHrData(): #" + String(q_getCount(&RainHrHistQCtrl)) + " valid: " + String(valid) + "R: " + String(MqttSensors.rain_hr, 1));
     rain_hr_data.rain  = MqttSensors.rain_hr;
-    rain_hr_data.valid = MqttSensors.valid;
+    rain_hr_data.valid = valid;
 
     q_push(&RainHrHistQCtrl, &rain_hr_data);   
 }
@@ -1509,8 +1489,10 @@ String MoonPhase(int d, int m, int y, String hemisphere) {
     auto_scale_margin, e.g. if set to 1000 then autoscale increments the scale by 1000 steps.
 */
 
-void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], int readings, boolean auto_scale, boolean barchart_mode, int xmin, int xmax, int dx=1, const String x_label=TXT_DAYS, bool ValidArray[] = NULL);
-void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], int readings, boolean auto_scale, boolean barchart_mode, int xmin, int xmax, int dx, const String x_label, bool ValidArray[]) {
+void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], int readings, boolean auto_scale, boolean barchart_mode, int xmin, int xmax, int dx=1, 
+               int data_offset=1, const String x_label=TXT_DAYS, bool ValidArray[] = NULL);
+void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], int readings, boolean auto_scale, boolean barchart_mode, int xmin, int xmax, int dx, 
+               int data_offset, const String x_label, bool ValidArray[]) {
 #define auto_scale_margin 0 // Sets the autoscale increment, so axis steps up in units of e.g. 3
 #define y_minor_axis 5      // 5 y-axis division markers
   float maxYscale = -10000;
@@ -1519,7 +1501,8 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
   float x2, y2;
   Serial.println("DrawGraph()");
   if (auto_scale == true) {
-    for (int i = 1; i < readings; i++ ) {
+    //for (int i = data_offset; i < readings; i++ ) {
+    for (int i = 0; i < readings; i++ ) {
       if (DataArray[i] >= maxYscale) maxYscale = DataArray[i];
       if (DataArray[i] <= minYscale) minYscale = DataArray[i];
     }
@@ -1529,12 +1512,13 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
     Y1Min = round(minYscale);
   }
   // Draw the graph
-  last_x = x_pos + 1;
+  //last_x = x_pos + 1;
+  last_x = -1;
   last_y = y_pos + (Y1Max - constrain(DataArray[1], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight;
   display.drawRect(x_pos, y_pos, gwidth + 3, gheight + 2, GxEPD_BLACK);
   drawString(x_pos + gwidth / 2 + 6, y_pos - 16, title, CENTER);
   // Draw the data
-  for (int gx = 1; gx < readings; gx++) {
+  for (int gx = data_offset; gx < readings; gx++) {
     x2 = x_pos + gx * gwidth / (readings - 1) - 1 ; // max_readings is the global variable that sets the maximum data that can be plotted
     y2 = y_pos + (Y1Max - constrain(DataArray[gx], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight + 1;
     if (ValidArray == NULL) {
@@ -1549,9 +1533,9 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
         } else {
             if (last_x > -1) {
                 display.drawLine(last_x, last_y, x2, y2, GxEPD_BLACK);
+                last_y = y2;
             }
         }
-        last_y = y2;
         last_x = x2;
     } 
     else {
@@ -1660,10 +1644,11 @@ void DisplayLocalHistory() {
   drawString(SCREEN_WIDTH / 2, gy - 40, TXT_LOCAL_HISTORY_VALUES, CENTER); // Based on a graph height of 60
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
 
+  int data_offset = LOCAL_HIST_SIZE - q_getCount(&LocalHistQCtrl);
   // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
-  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0);
-  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, LOCAL_HIST_SIZE, autoscale_on, barchart_off, -2, 0);
-  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,    TXT_HUMIDITY_PERCENT, humidity, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0);
+  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, data_offset);
+  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, LOCAL_HIST_SIZE, autoscale_on, barchart_off, -2, 0, 1, data_offset);
+  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,    TXT_HUMIDITY_PERCENT, humidity, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, data_offset);
 }
 //#########################################################################################
 void DisplayMqttHistory() {
@@ -1687,18 +1672,38 @@ void DisplayMqttHistory() {
   bool  mqtt_valid[MQTT_HIST_SIZE];
   float rain_hr[RAIN_HR_HIST_SIZE];
   bool  rain_hr_valid[RAIN_HR_HIST_SIZE];
+  int offs;
+  /*
   for (int i = 0; i<MQTT_HIST_SIZE; i++) {
     temperature[i] = 0;
     humidity[i]    = 0;
     rain[i]        = 0;
     mqtt_valid[i]  = false;
   }
+  */
+  /*
   for (int i=q_getCount(&MqttHistQCtrl)-1, j=MQTT_HIST_SIZE-1; i>=0; i--, j--) {
     q_peekIdx(&MqttHistQCtrl, &mqtt_data, i);
     temperature[j] = mqtt_data.temperature;
     humidity[j]    = mqtt_data.humidity;
     rain[j]        = mqtt_data.rain;
     mqtt_valid[j]  = mqtt_data.valid;
+  }
+  */
+  if (q_isInitialized(&MqttHistQCtrl)) {
+    offs = MQTT_HIST_SIZE - q_getCount(&MqttHistQCtrl);
+    for (int i=0; i<q_getCount(&MqttHistQCtrl); i++) {
+      q_peekIdx(&MqttHistQCtrl, &mqtt_data, i);
+      temperature[i + offs] = mqtt_data.temperature;
+      humidity   [i + offs] = mqtt_data.humidity;
+      rain       [i + offs] = mqtt_data.rain;
+      mqtt_valid [i + offs] = mqtt_data.valid;
+    }
+  } else {
+    offs = MQTT_HIST_SIZE;
+    for (int i=0; i<MQTT_HIST_SIZE; i++) {
+      temperature[i] = 0;
+    }
   }
   
   int gwidth = 150, gheight = 72;
@@ -1709,23 +1714,42 @@ void DisplayMqttHistory() {
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
   drawString(SCREEN_WIDTH / 2, gy - 40, TXT_MQTT_HISTORY_VALUES, CENTER); // Based on a graph height of 60
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-
+  
   // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
-  DrawGraph(gx,           gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, MQTT_HIST_SIZE, autoscale_on, barchart_off, -2, 0, 1, TXT_DAYS, mqtt_valid);
-  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 0, 100,   TXT_HUMIDITY_PERCENT, humidity, MQTT_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, TXT_DAYS, mqtt_valid);
+  DrawGraph(gx,           gy, gwidth, gheight, 10, 30, Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, MQTT_HIST_SIZE, autoscale_on,  barchart_off, -2, 0, 1, offs, TXT_DAYS, mqtt_valid);
+  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 0, 100, TXT_HUMIDITY_PERCENT,                                 humidity,    MQTT_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, offs, TXT_DAYS, mqtt_valid);
 
+  /*
   for (int i = 0; i<RAIN_HR_HIST_SIZE; i++) {
     rain_hr[i]       = 0;
     rain_hr_valid[i] = false;
   }
+  */
+  /*
   for (int i=q_getCount(&RainHrHistQCtrl)-1, j=RAIN_HR_HIST_SIZE-1; i>=0; i--, j--) {
     q_peekIdx(&RainHrHistQCtrl, &rain_hr_data, i);
     rain_hr[j]       = rain_hr_data.rain;
     rain_hr_valid[j] = rain_hr_data.valid;
   }
-
-  DrawGraph(gx + 2 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_hr, RAIN_HR_HIST_SIZE, autoscale_on, barchart_on, -20, -4,  8, TXT_HOURS, rain_hr_valid);
-  DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_hr, RAIN_HR_HIST_SIZE, autoscale_on, barchart_on, -25, -5, 10, TXT_DAYS,  rain_hr_valid);
+  */
+  if (q_isInitialized(&RainHrHistQCtrl)) {
+    offs = RAIN_HR_HIST_SIZE - q_getCount(&RainHrHistQCtrl);
+    for (int i=0; i<q_getCount(&RainHrHistQCtrl); i++) {
+      if (q_getCount(&RainHrHistQCtrl) == 0)
+        Serial.println("You are not supposed to be here!");
+      q_peekIdx(&RainHrHistQCtrl, &rain_hr_data, i);
+      rain_hr      [i + offs] = rain_hr_data.rain;
+      rain_hr_valid[i + offs] = rain_hr_data.valid;
+    }
+  } else {
+    offs = RAIN_HR_HIST_SIZE;
+    for (int i=0; i<RAIN_HR_HIST_SIZE; i++) {
+      rain_hr[i] = 0;
+    }
+  }
+  
+  DrawGraph(gx + 2 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_hr, RAIN_HR_HIST_SIZE, autoscale_on, barchart_on, -20, -4,  8, offs, TXT_HOURS, rain_hr_valid);
+  DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_hr, RAIN_HR_HIST_SIZE, autoscale_on, barchart_on, -25, -5, 10, offs, TXT_DAYS,  rain_hr_valid);
 }
 
 //#########################################################################################
