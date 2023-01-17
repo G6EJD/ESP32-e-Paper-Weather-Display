@@ -25,8 +25,8 @@
 //#include <WiFiClientSecure.h>
 #include <time.h>                     // Built-in
 #include <SPI.h>                      // Built-in
-#include <vector>
-#include <string>
+#include <vector>                     // Built-in
+#include <string>                     // Built-in
 #include <MQTT.h>                     // https://github.com/256dpi/arduino-mqtt
 #include <cQueue.h>                   // https://github.com/SMFSW/cQueue
 #include "src/WeatherSymbols.h"
@@ -54,11 +54,12 @@
 #define MQTT_TIMEOUT      1800
 #define MQTT_CLEAN_SESSION false
 
-#define MQTT_HIST_SIZE  144
-#define RAIN_HR_HIST_SIZE 24
-#define LOCAL_HIST_SIZE 144
-#define HIST_UPDATE_RATE 30
-#define HIST_UPDATE_TOL   5
+#define MQTT_HIST_SIZE      144
+#define RAIN_HR_HIST_SIZE    24
+#define RAIN_DAY_HIST_SIZE   30
+#define LOCAL_HIST_SIZE     144
+#define HIST_UPDATE_RATE     30
+#define HIST_UPDATE_TOL       5
 
 #ifdef FLORA
 #define MQTT_SUB_IN "ESPWeather-267B81/data/WeatherSensor"
@@ -78,9 +79,9 @@
 #define I2C_SCL 22
 
 #define  ENABLE_GxEPD2_display 1
-#include <GxEPD2_BW.h>
+#include <GxEPD2_BW.h>          // https://github.com/ZinggJM/GxEPD2
 //#include <GxEPD2_3C.h>
-#include <U8g2_for_Adafruit_GFX.h>
+#include <U8g2_for_Adafruit_GFX.h>  // https://github.com/olikraus/U8g2_for_Adafruit_GFX
 #include "src/epaper_fonts.h"
 #include "src/forecast_record.h"
 //#include "src/lang.h"         // Localisation (English)
@@ -165,13 +166,14 @@ String version = "16.11";    // Programme version, see change log at end
 boolean LargeIcon = true, SmallIcon = false;
 #define Large  17           // For icon drawing, needs to be odd number for best effect
 #define Small  6            // For icon drawing, needs to be odd number for best effect
-String  Time_str;                    //!< Curent time as string
-String  Date_str;                    //!< Current date as stringstrings to hold time and received weather data
-int     wifi_signal = 0;             //!< WiFi signal strength
-int     CurrentHour = 0;             //!< Current time - hour
-int     CurrentMin = 0;              //!< Current time - minutes
-int     CurrentSec = 0;              //!< Current time - seconds
-long    StartTime = 0;               //!< Start timestamp
+String  Time_str;           //!< Curent time as string
+String  Date_str;           //!< Current date as stringstrings to hold time and received weather data
+int     wifi_signal = 0;    //!< WiFi signal strength
+int     CurrentHour = 0;    //!< Current time - hour
+int     CurrentMin = 0;     //!< Current time - minutes
+int     CurrentSec = 0;     //!< Current time - seconds
+int     CurrentDay = 0;     //!< Current date - day of month
+long    StartTime = 0;      //!< Start timestamp
 RTC_DATA_ATTR bool    touchTrig = false;           //!< Flag: Touch sensor has been triggered
 RTC_DATA_ATTR bool    touchPrevTrig = false;
 RTC_DATA_ATTR bool    touchNextTrig = false;
@@ -226,6 +228,7 @@ struct MqttS {
     uint8_t  soil_moisture;        //!< soil moisture in %
     float    rain_hr;              //!< hourly precipitation in mm 
     float    rain_day;             //!< daily precipitation in mm
+    float    rain_day_prev;        //!< daily precipitation in mm, previous value
     float    rain_week;            //!< weekly precipitation in mm
     float    rain_month;           //!< monthly precipitatiion in mm
 };
@@ -248,17 +251,33 @@ RTC_DATA_ATTR mqtt_hist_t MqttHist[MQTT_HIST_SIZE]; //<! MQTT Sensor Data Histor
 RTC_DATA_ATTR time_t MqttHistTStamp = 0;  //!< Last MQTT History Update Timestamp 
 
 
-RTC_DATA_ATTR Queue_t RainHrHistQCtrl;      //!< MQTT Sensor Data History FIFO Control
+// Hourly Rainfall Data
+RTC_DATA_ATTR Queue_t RainHrHistQCtrl;      //!< Hourly Rain Data History FIFO Control
 
 struct RainHrHistQData {
   float rain;         //!< precipitation in mm
   bool  valid;        //!< data valid
 };
 
-typedef struct RainHrHistQData rain_hr_hist_t; //!< Shortcut for struct MqttHistQData
+typedef struct RainHrHistQData rain_hr_hist_t; //!< Shortcut for struct RainHrHistQData
 
-RTC_DATA_ATTR rain_hr_hist_t RainHrHist[RAIN_HR_HIST_SIZE]; //<! MQTT Sensor Data History
-RTC_DATA_ATTR time_t RainHrHistTStamp = 0;  //!< Last MQTT History Update Timestamp 
+RTC_DATA_ATTR rain_hr_hist_t RainHrHist[RAIN_HR_HIST_SIZE]; //<! Hourly Rain Data History
+RTC_DATA_ATTR time_t RainHrHistTStamp = 0;  //!< Last Hourly Rain Data History Update Timestamp 
+
+
+// Daily Rainfall Data
+RTC_DATA_ATTR Queue_t RainDayHistQCtrl;      //!< Daily Rain Data History FIFO Control
+
+struct RainDayHistQData {
+  float rain;         //!< precipitation in mm
+  bool  valid;        //!< data valid
+};
+
+typedef struct RainDayHistQData rain_day_hist_t; //!< Shortcut for struct RainDayHistQData
+
+RTC_DATA_ATTR rain_hr_hist_t RainDayHist[RAIN_DAY_HIST_SIZE]; //<! Daily Rain Data History
+RTC_DATA_ATTR uint8_t RainDayHistMDay = 0;  //!< Last Daily Rain Data History Update, Day of Month 
+
 
 // Local Sensor Data
 struct LocalS {
@@ -287,6 +306,8 @@ struct LocalHistQData {
   float temperature;  //!< temperature in degC
   float humidity;     //!< humidity in %
   float pressure;     //!< pressure in hPa
+  bool  th_valid;     //!< temperature/humidity valid
+  bool  p_valid;      //!< pressure valid
 };
 
 typedef struct LocalHistQData local_hist_t;            //!< Shortcut for struct LocalHistQData
@@ -363,7 +384,8 @@ void setup() {
 //    attachInterrupt(TOUCH_INT, touch_isr, RISING);
     attachInterrupt(TOUCH_PREV, touch_prev_isr, RISING);
     attachInterrupt(TOUCH_NEXT, touch_next_isr, RISING);
-    
+
+
     // Screen has changed -
     // clear screen, update title bar and show hourglass
     if (ScreenNo != PrevScreenNo) {
@@ -387,21 +409,35 @@ void setup() {
     Serial.println("Time o.k.: " + String(time_ok));
     Serial.println(Date_str + " " + Time_str);
 
+    // Initialize history data queues if required (time has to be set already)
+    if (!q_isInitialized(&MqttHistQCtrl)) {
+        q_init_static(&MqttHistQCtrl, sizeof(MqttHist[0]), MQTT_HIST_SIZE, FIFO, true, (uint8_t *)MqttHist, sizeof(MqttHist));
+    }
+    if (!q_isInitialized(&RainHrHistQCtrl)) {
+        q_init_static(&RainHrHistQCtrl, sizeof(RainHrHist[0]), RAIN_HR_HIST_SIZE, FIFO, true, (uint8_t *)RainHrHist, sizeof(RainHrHist));
+    }
+    if (!q_isInitialized(&RainDayHistQCtrl)) {
+        q_init_static(&RainDayHistQCtrl, sizeof(RainDayHist[0]), RAIN_DAY_HIST_SIZE, FIFO, true, (uint8_t *)RainDayHist, sizeof(RainDayHist));
+        RainDayHistMDay = CurrentDay;
+    }
+    if (!q_isInitialized(&LocalHistQCtrl)) {
+        q_init_static(&LocalHistQCtrl, sizeof(LocalHist[0]), LOCAL_HIST_SIZE, FIFO, true, (uint8_t *)LocalHist, sizeof(LocalHist));
+    }
+
+    
     // Screen: Open Weather Map
     if (ScreenNo == ScreenOWM && wifi_ok) {
         //WiFiClient client;
         if ((CurrentHour >= WakeupTime && CurrentHour <= SleepTime) || DebugDisplayUpdate) {
-            //InitialiseDisplay(); // Give screen time to initialise by getting weather data!
             byte Attempts = 1;
             bool RxWeather = false, RxForecast = false;
-            // WiFiClient client;   // wifi client object
+            
             while ((RxWeather == false || RxForecast == false) && Attempts <= 2) { // Try up-to 2 time for Weather and Forecast data
                 if (RxWeather  == false) RxWeather  = obtain_wx_data(net, "weather");
                 if (RxForecast == false) RxForecast = obtain_wx_data(net, "forecast");
                 Attempts++;
             }
             if (RxWeather && RxForecast) { // Only if received both Weather or Forecast proceed
-                //StopWiFi(); // Reduces power consumption
                 ClearHourglass();
                 DisplayOWMWeather();
                 display.display(false); // Full screen update mode
@@ -496,6 +532,8 @@ void setup() {
             RainHrHistTStamp = t_now;
             SaveRainHrData();
         }
+        SaveRainDayData();
+        
     //}
     
     // Update MQTT screen if active and data is available
@@ -822,9 +860,6 @@ void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
  * \brief Save MQTT data to history FIFO
  */
 void SaveMqttData(void) {
-    if (!q_isInitialized(&MqttHistQCtrl)) {
-      q_init_static(&MqttHistQCtrl, sizeof(MqttHist[0]), MQTT_HIST_SIZE, FIFO, true, (uint8_t *)MqttHist, sizeof(MqttHist));
-    }
     mqtt_hist_t mqtt_data = {0, 0, 0, 0};
     bool valid = MqttSensors.valid && MqttSensors.status.ws_dec_ok;
     Serial.println("SaveMqttData(): #" + String(q_getCount(&MqttHistQCtrl)) + " valid: " + String(valid) + " T: " + String(MqttSensors.air_temp_c, 1) + " H: " + String(MqttSensors.humidity));
@@ -847,16 +882,14 @@ void SaveMqttData(void) {
       }
     }
     */
+    
     q_push(&MqttHistQCtrl, &mqtt_data);   
 }
 
 /**
- * \brief Save Rain Hourly data to history FIFO
+ * \brief Save Hourly Rain data to history FIFO
  */
 void SaveRainHrData(void) {
-    if (!q_isInitialized(&RainHrHistQCtrl)) {
-        q_init_static(&RainHrHistQCtrl, sizeof(RainHrHist[0]), RAIN_HR_HIST_SIZE, FIFO, true, (uint8_t *)RainHrHist, sizeof(RainHrHist));
-    }
     rain_hr_hist_t rain_hr_data;
 
     bool valid = MqttSensors.valid && MqttSensors.status.ws_dec_ok;
@@ -871,6 +904,34 @@ void SaveRainHrData(void) {
     }
     q_push(&RainHrHistQCtrl, &rain_hr_data);   
 }
+
+
+/**
+ * \brief Save Daily Rain data to history FIFO
+ */
+void SaveRainDayData(void) {
+    rain_day_hist_t rain_day_data;
+
+    bool valid = MqttSensors.valid && MqttSensors.status.ws_dec_ok;
+    Serial.println("SaveRainDayData(): #" + String(q_getCount(&RainDayHistQCtrl)) + " valid: " + String(valid) + "R: " + String(MqttSensors.rain_day, 1));
+    if ((MqttSensors.rain_day) < 0 || (MqttSensors.rain_day > 1800)) {
+      rain_day_data.rain  = 0;
+      rain_day_data.valid = false;
+    }
+    else {
+      if (RainDayHistMDay == CurrentDay) {
+         MqttSensors.rain_day_prev = MqttSensors.rain_day;
+      }
+      rain_day_data.rain  = MqttSensors.rain_day_prev;
+      rain_day_data.valid = valid;
+      
+    }
+    if (RainDayHistMDay != CurrentDay) {
+      q_push(&RainDayHistQCtrl, &rain_day_data);
+    }
+    RainDayHistMDay = CurrentDay;
+}
+
 
 /**
  * \brief Display MQTT data
@@ -1061,14 +1122,14 @@ void GetLocalData(void) {
  * \brief Save local sensor data to history FIFO
  */
 void SaveLocalData(void) {
-    if (!q_isInitialized(&LocalHistQCtrl)) {
-      q_init_static(&LocalHistQCtrl, sizeof(LocalHist[0]), LOCAL_HIST_SIZE, FIFO, true, (uint8_t *)LocalHist, sizeof(LocalHist));
-    }
-    local_hist_t local_data;
+    local_hist_t local_data = {0, 0, 0, 0, 0};
+    
+    local_data.th_valid = LocalSensors.ble_thsensor[0].valid;
     if (LocalSensors.ble_thsensor[0].valid) {
       local_data.temperature = LocalSensors.ble_thsensor[0].temperature;
       local_data.humidity    = LocalSensors.ble_thsensor[0].humidity;
     }
+    /*
     else {
       // Store previous data
       local_hist_t prev_data;
@@ -1077,9 +1138,12 @@ void SaveLocalData(void) {
         local_data.humidity    = prev_data.humidity;
       }
     }
+    */
+    local_data.p_valid = LocalSensors.i2c_thpsensor[0].valid;
     if (LocalSensors.i2c_thpsensor[0].valid) {
       local_data.pressure = LocalSensors.i2c_thpsensor[0].pressure;
     }
+    /*
     else {
       // Store previous data
       local_hist_t prev_data;
@@ -1087,6 +1151,7 @@ void SaveLocalData(void) {
         local_data.pressure = prev_data.pressure;
       }      
     }
+    */
     q_push(&LocalHistQCtrl, &local_data);   
 }
 
@@ -1233,7 +1298,12 @@ void DisplayTestScreen(void) {
 }
 
 
-//#########################################################################################
+/**
+ * \brief Display general info
+ * 
+ * This shows the screen names at the top of the display. The name of the current screen
+ * is centered and printed in a larger font.
+ */
 void DisplayGeneralInfoSection(void) {
   const int dist = 40;
   uint16_t offs;
@@ -1277,7 +1347,14 @@ void DisplayGeneralInfoSection(void) {
   //DrawRSSI(695, 15, wifi_signal); // Wi-Fi signal strength and Battery voltage
   display.drawLine(0, 18, SCREEN_WIDTH-1, 18, GxEPD_BLACK);
 }
-//#########################################################################################
+
+
+/**
+ * \brief Print date and time as localized string at the given position
+ * 
+ * \param x   x-coordinate
+ * \param y   y-coordinate
+ */
 void DisplayDateTime(int x, int y) {
   u8g2Fonts.setFont(u8g2_font_helvB14_tf);
   drawString(x, y, Date_str, CENTER);
@@ -1285,7 +1362,12 @@ void DisplayDateTime(int x, int y) {
   drawString(x + 13, y+31, Time_str, CENTER);
 }
 
-//#########################################################################################
+/**
+ * \brief Prints the OWM screen's main weather section at the given position
+ * 
+ * \param x   x-coordinate
+ * \param y   y-coordinate
+ */
 void DisplayMainWeatherSection(int x, int y) {
   //  display.drawRect(x-67, y-65, 140, 182, GxEPD_BLACK);
   display.drawLine(0, 38, SCREEN_WIDTH - 3, 38,  GxEPD_BLACK);
@@ -1295,7 +1377,20 @@ void DisplayMainWeatherSection(int x, int y) {
   DisplayPrecipitationSection(x + 411, y - 81, 137, 100);
   DisplayForecastTextSection(x + 97, y + 20, 409, 65);
 }
-//#########################################################################################
+
+/**
+ * \brief Prints the wind section at the given position
+ * 
+ * The wind section consists of the wind rose with direction and speed.
+ * 
+ * \param x           x-coordinate
+ * \param y           y-coordinate
+ * \param angle       wind direction (angle in degrees)
+ * \param windspeed   wind speed (m/s or mph)
+ * \param Cradius     circle radius
+ * \param valid       directions/speed are printed only if valid is true
+ * \param label       widget label 
+ */
 void DisplayDisplayWindSection(int x, int y, float angle, float windspeed, int Cradius, bool valid, String label) {
   arrow(x, y, Cradius - 22, angle, 18, 33); // Show wind direction on outer circle of width and length
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
@@ -1334,7 +1429,15 @@ void DisplayDisplayWindSection(int x, int y, float angle, float windspeed, int C
     drawString(x, y + 12, (Units == "M" ? "m/s" : "mph"), CENTER);
   }
 }
-//#########################################################################################
+
+
+/**
+ * \brief Converts wind direction in degrees to cardinal direction as localized string
+ * 
+ * \param winddirection   wind direction in degrees
+ * 
+ * \return cardinal direction (localized, 1..3 letters)
+ */
 String WindDegToDirection(float winddirection) {
   if (winddirection >= 348.75 || winddirection < 11.25)  return TXT_N;
   if (winddirection >=  11.25 && winddirection < 33.75)  return TXT_NNE;
@@ -1354,7 +1457,19 @@ String WindDegToDirection(float winddirection) {
   if (winddirection >= 326.25 && winddirection < 348.75) return TXT_NNW;
   return "?";
 }
-//#########################################################################################
+
+
+/**
+ * \brief Prints the OWM forecast's current temperature section at the given position
+ * 
+ * The section consists of the current temperature and the min./max, temperatures
+ * in °C or °F.
+ * 
+ * \param x       x-coordinate
+ * \param y       y-coordinate
+ * \param twidth  section's width
+ * \param tdepth  section's depth
+ */
 void DisplayTemperatureSection(int x, int y, int twidth, int tdepth) {
   display.drawRect(x - 63, y - 1, twidth, tdepth, GxEPD_BLACK); // temp outline
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
@@ -1366,7 +1481,18 @@ void DisplayTemperatureSection(int x, int y, int twidth, int tdepth) {
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
   drawString(x + 43, y + 53, Units == "M" ? "C" : "F", LEFT);
 }
-//#########################################################################################
+
+
+/**
+ * \brief Prints the OWM forecast's text
+ * 
+ * The section prints the textual description of the current weather conditions
+ * 
+ * \param x       x-coordinate
+ * \param y       y-coordinate
+ * \param fwidth  section's width
+ * \param fdepth  section's depth
+ */
 void DisplayForecastTextSection(int x, int y , int fwidth, int fdepth) {
   display.drawRect(x - 6, y - 3, fwidth, fdepth, GxEPD_BLACK); // forecast text outline
   u8g2Fonts.setFont(u8g2_font_helvB14_tf);
@@ -1385,7 +1511,16 @@ void DisplayForecastTextSection(int x, int y , int fwidth, int fdepth) {
   else                  drawStringMaxWidth(x, y + 23, MsgWidth, TitleCase(Wx_Description), LEFT); // 28 character screen width at this font size
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
 }
-//#########################################################################################
+
+/**
+ * \brief Displays the OWM forecast with the specified index at the given position  
+ * 
+ * Each forecast item consist of local time, weather icon and min/max temperature.
+ * 
+ * \param x       x-coordinate
+ * \param y       y-coordinate
+ * \param index   forecast data index
+ */
 void DisplayForecastWeather(int x, int y, int index) {
   int fwidth = 73;
   x = x + fwidth * index;
@@ -1395,7 +1530,20 @@ void DisplayForecastWeather(int x, int y, int index) {
   drawString(x + fwidth / 2, y + 4, String(ConvertUnixTime(WxForecast[index].Dt + WxConditions[0].Timezone).substring(0,5)), CENTER);
   drawString(x + fwidth / 2 + 12, y + 66, String(WxForecast[index].High, 0) + "°/" + String(WxForecast[index].Low, 0) + "°", CENTER);
 }
-//#########################################################################################
+
+
+/**
+ * \brief Displays the barometric pressure at the given position  
+ * 
+ * The pressure is printed in hPa or in, the trend (rising/falling) is printed as localized string.
+ * 
+ * \param x         x-coordinate
+ * \param y         y-coordinate
+ * \param pressure  barometric pressure
+ * \param slope     barometric pressure trend
+ * \param pwith     section's width
+ * \param pdepth    section's depth
+ */
 void DisplayPressureSection(int x, int y, float pressure, String slope, int pwidth, int pdepth) {
   display.drawRect(x - 56, y - 1, pwidth, pdepth, GxEPD_BLACK); // pressure outline
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
@@ -1411,7 +1559,19 @@ void DisplayPressureSection(int x, int y, float pressure, String slope, int pwid
   drawString(x + 55, y + 53, (Units == "M" ? "hPa" : "in"), CENTER);
   drawString(x - 3, y + 78, slope_direction, CENTER);
 }
-//#########################################################################################
+
+
+/**
+ * \brief Displays the OWM precipitation forecast at the given position  
+ * 
+ * The precipitation forecast consists of the expected amount of rain/snow and
+ * the forecast's probability.
+ * 
+ * \param x         x-coordinate
+ * \param y         y-coordinate
+ * \param pwith     section's width
+ * \param pdepth    section's depth
+ */
 void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
   display.drawRect(x - 48, y - 1, pwidth, pdepth, GxEPD_BLACK); // precipitation outline
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
@@ -1422,11 +1582,21 @@ void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
     addraindrop(x + 58, y + 40, 7);
   }
   if (WxForecast[1].Snowfall >= 0.005)  // Ignore small amounts
-    drawString(x - 25, y + 71, String(WxForecast[1].Snowfall, 2) + (Units == "M" ? "mm" : "in") + " **", LEFT); // Only display snowfall total today if > 0
+    drawString(x - 25, y + 60, String(WxForecast[1].Snowfall, 2) + (Units == "M" ? "mm" : "in") + " **", LEFT); // Only display snowfall total today if > 0
   if (WxForecast[1].Pop >= 0.005)       // Ignore small amounts
     drawString(x + 2, y + 81, String(WxForecast[1].Pop*100, 0) + "%", LEFT); // Only display pop if > 0
 }
-//#########################################################################################
+
+
+/**
+ * \brief Displays the OWM astronomy section at the given position  
+ * 
+ * The astronony section consists of sunrise/sunset times and moon phase.
+ * The moon phase is shown as localized text and as symbol.
+ * 
+ * \param x         x-coordinate
+ * \param y         y-coordinate
+ */
 void DisplayAstronomySection(int x, int y) {
   display.drawRect(x, y + 16, 409 /* 216 */, 65, GxEPD_BLACK);
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
@@ -1441,12 +1611,30 @@ void DisplayAstronomySection(int x, int y) {
   //DrawMoon(x + 137, y, day_utc, month_utc, year_utc, Hemisphere);
   DrawMoon(x + 117, y, day_utc, month_utc, year_utc, Hemisphere);
 }
+
+/**
+ * \brief Displays the OWM attribution at the given position  
+ * 
+ * \param x         x-coordinate
+ * \param y         y-coordinate
+ */
 void DisplayOWMAttribution(int x, int y) {
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   drawString(x + 4, y + 24, "Weather data provided by OpenWeather", LEFT);
   drawString(x + 4, y + 44, "https://openweathermap.org/", LEFT);
 }
-//#########################################################################################
+
+
+/**
+ * \brief Draws the moon phase symbol at the given position  
+ * 
+ * \param x           x-postition
+ * \param y           y-position
+ * \param dd          day
+ * \param mm          month
+ * \param yy          year
+ * \param hemisphere  hemisphere (north/south)
+ */
 void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
   const int diameter = 47;
   double Phase = NormalizedMoonPhase(dd, mm, yy);
@@ -1482,7 +1670,16 @@ void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
   }
   display.drawCircle(x + diameter - 1, y + diameter, diameter / 2, GxEPD_BLACK);
 }
-//#########################################################################################
+
+
+/**
+ * \brief Calculate moon phase
+ * 
+ * \param d           day
+ * \param m           month
+ * \param y           year
+ * \param hemisphere  hemisphere (north/south)
+ */
 String MoonPhase(int d, int m, int y, String hemisphere) {
   int c, e;
   double jd;
@@ -1618,7 +1815,12 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
 }
 
 
-//#########################################################################################
+/**
+ * \brief Display OWM 3-day forecast as graphs (pressure, temperature, humidity and precipitation)
+ * 
+ * \param x   x-coordinate
+ * \param y   y-coordinate
+ */
 void DisplayForecastSection(int x, int y) {
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   int f = 0;
@@ -1651,23 +1853,25 @@ void DisplayForecastSection(int x, int y) {
     DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_readings, max_readings, autoscale_on, barchart_on, 0, 2);
   else DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_SNOWFALL_MM : TXT_SNOWFALL_IN, snow_readings, max_readings, autoscale_on, barchart_on, 0, 2);
 }
-//#########################################################################################
-void DisplayLocalHistory() {
-  /*
-  local_data.temperature = LocalSensors.ble_thsensor[0].temperature;
-  local_data.humidity    = LocalSensors.ble_thsensor[0].temperature;
-  local_data.pressure    = LocalSensors.i2c_thpsensor[0].pressure;
-  */
 
+
+/**
+ * \brief Display local sensor data history as graphs (pressure, temperature, humidity)
+ */
+void DisplayLocalHistory() {
   local_hist_t local_data;
   float temperature[LOCAL_HIST_SIZE];
   float humidity[LOCAL_HIST_SIZE];
   float pressure[LOCAL_HIST_SIZE];
+  bool  th_valid[LOCAL_HIST_SIZE];
+  bool  p_valid[LOCAL_HIST_SIZE];
   
   for (int i = 0; i<LOCAL_HIST_SIZE; i++) {
     temperature[i] = 0;
-    humidity[i] = 0;
-    pressure[i] = 0; 
+    humidity[i]    = 0;
+    pressure[i]    = 0;
+    th_valid[i]    = false;
+    p_valid[i]     = false;
   }
 
   for (int i=q_getCount(&LocalHistQCtrl)-1, j=LOCAL_HIST_SIZE-1; i>=0; i--, j--) {
@@ -1675,6 +1879,8 @@ void DisplayLocalHistory() {
     temperature[j] = local_data.temperature;
     humidity[j] = local_data.humidity;
     pressure[j] = local_data.pressure;
+    th_valid[j] = local_data.th_valid;
+    p_valid[j]  = local_data.p_valid;
   }
 
   int gwidth = 150, gheight = 72;
@@ -1687,11 +1893,15 @@ void DisplayLocalHistory() {
 
   int data_offset = LOCAL_HIST_SIZE - q_getCount(&LocalHistQCtrl);
   // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
-  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, data_offset);
-  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, LOCAL_HIST_SIZE, autoscale_on, barchart_off, -2, 0, 1, data_offset);
-  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,    TXT_HUMIDITY_PERCENT, humidity, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, data_offset);
+  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, data_offset, TXT_DAYS, p_valid);
+  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, LOCAL_HIST_SIZE, autoscale_on, barchart_off, -2, 0, 1, data_offset, TXT_DAYS, th_valid);
+  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,    TXT_HUMIDITY_PERCENT, humidity, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, data_offset, TXT_DAYS, th_valid);
 }
-//#########################################################################################
+
+
+/**
+ * \brief Display MQTT sensor data history as graphs (pressure, temperature, humidity)
+ */
 void DisplayMqttHistory() {
 /*
   int r = 1;
@@ -1707,12 +1917,15 @@ void DisplayMqttHistory() {
   
   mqtt_hist_t mqtt_data;
   rain_hr_hist_t rain_hr_data;
+  rain_day_hist_t rain_day_data;
   float temperature[MQTT_HIST_SIZE];
   float humidity[MQTT_HIST_SIZE];
   float rain[MQTT_HIST_SIZE];
   bool  mqtt_valid[MQTT_HIST_SIZE];
   float rain_hr[RAIN_HR_HIST_SIZE];
   bool  rain_hr_valid[RAIN_HR_HIST_SIZE];
+  float rain_day[RAIN_DAY_HIST_SIZE];
+  bool  rain_day_valid[RAIN_DAY_HIST_SIZE];  
   int offs;
   /*
   for (int i = 0; i<MQTT_HIST_SIZE; i++) {
@@ -1775,6 +1988,7 @@ void DisplayMqttHistory() {
     rain_hr_valid[j] = rain_hr_data.valid;
   }
   */
+  // Hourly Rain History
   for (int i=0; i<RAIN_HR_HIST_SIZE; i++) {
     rain_hr[i] = 0;
   }
@@ -1793,10 +2007,40 @@ void DisplayMqttHistory() {
   }
   
   DrawGraph(gx + 2 * gap + 5, gy, gwidth, gheight, 0, 300, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_hr, RAIN_HR_HIST_SIZE, autoscale_on, barchart_on, -20, -4,  8, offs, TXT_HOURS, rain_hr_valid);
-  DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 300, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_hr, RAIN_HR_HIST_SIZE, autoscale_on, barchart_on, -25, -5, 10, offs, TXT_DAYS,  rain_hr_valid);
+  
+  // Daily Rain History
+  for (int i=0; i<RAIN_DAY_HIST_SIZE; i++) {
+    rain_day[i] = 0;
+  }
+
+  if (q_isInitialized(&RainDayHistQCtrl)) {
+    offs = RAIN_DAY_HIST_SIZE - q_getCount(&RainDayHistQCtrl);
+    for (int i=0; i<q_getCount(&RainDayHistQCtrl); i++) {
+      if (q_getCount(&RainDayHistQCtrl) == 0)
+        Serial.println("You are not supposed to be here!");
+      q_peekIdx(&RainDayHistQCtrl, &rain_day_data, i);
+      rain_day      [i + offs] = rain_day_data.rain;
+      rain_day_valid[i + offs] = rain_day_data.valid;
+    }
+  } else {
+    offs = RAIN_DAY_HIST_SIZE;
+  }
+
+  DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 300, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_day, RAIN_DAY_HIST_SIZE, autoscale_on, barchart_on, -25, -5, 10, offs, TXT_DAYS,  rain_day_valid);
 }
 
-//#########################################################################################
+
+/**
+ * \brief Display current OWM forecast conditions at given position
+ * 
+ * The widget consists of the weather condition icon, visibility in m,
+ * cloud cover in % and rel. humidity in %.
+ * 
+ * \param x         x-coordinate
+ * \param y         y-coordinate
+ * \param IconName  weather icon name
+ * \param IconSize  icon size (SmallIcon/LargeIcon)
+ */
 void DisplayConditionsSection(int x, int y, String IconName, bool IconSize) {
   Serial.println("Icon name: " + IconName);
   if      (IconName == "01d" || IconName == "01n")  Sunny(x, y, IconSize, IconName);
@@ -1822,7 +2066,19 @@ void DisplayConditionsSection(int x, int y, String IconName, bool IconSize) {
     if (WxConditions[0].Cloudcover > 0) CloudCover(x + 35, y - 87, WxConditions[0].Cloudcover);
   }
 }
-//#########################################################################################
+
+
+
+/**
+ * \brief Display arrow (triangle) for wind direction in wind rose
+ * 
+ * \param x         x-coordinate
+ * \param y         y-coordinate
+ * \param aangle    direction (degrees)
+ * \param asize     arrow size
+ * \param pwidth    pointer(?) width
+ * \param plength   pointer(?) length
+ */
 void arrow(int x, int y, int asize, float aangle, int pwidth, int plength) {
   float dx = (asize + 28) * cos((aangle - 90) * PI / 180) + x; // calculate X position
   float dy = (asize + 28) * sin((aangle - 90) * PI / 180) + y; // calculate Y position
@@ -1838,7 +2094,15 @@ void arrow(int x, int y, int asize, float aangle, int pwidth, int plength) {
   float yy3 = y3 * cos(angle) + x3 * sin(angle) + dy;
   display.fillTriangle(xx1, yy1, xx3, yy3, xx2, yy2, GxEPD_BLACK);
 }
-//#########################################################################################
+
+/**
+ * \brief Start WiFi connection
+ * 
+ * Establishes a WiFi connection with global settings ssid and password-
+ * If succesful, the global variable wifi_signal is updated with the RSSI.
+ * 
+ * \return WiFi.status(); WL_CONNECTED if successful
+ */
 uint8_t StartWiFi() {
   if (WiFi.status() == WL_CONNECTED) {
     return WL_CONNECTED;
@@ -1871,12 +2135,24 @@ uint8_t StartWiFi() {
   else Serial.println("WiFi connection *** FAILED ***");
   return connectionStatus;
 }
-//#########################################################################################
+
+
+/**
+ * \brief Stop WiFi connection
+ * 
+ * Disconnects WiFi and switches off WiFi to save power.
+ */
 void StopWiFi() {
   WiFi.disconnect();
   WiFi.mode(WIFI_OFF);
 }
-//#########################################################################################
+
+
+/**
+ * \brief Display status section
+ * 
+ * FIXME: Not used, to be removed!
+ */
 void DisplayStatusSection(int x, int y, int rssi) {
   display.drawRect(x - 35, y - 32, 145, 61, GxEPD_BLACK);
   display.drawLine(x - 35, y - 17, x - 35 + 145, y - 17, GxEPD_BLACK);
@@ -1888,7 +2164,15 @@ void DisplayStatusSection(int x, int y, int rssi) {
   DrawBattery(x + 58, y + 6);;
 }
 
-//#########################################################################################
+/**
+ * \brief Draw WiFi RSSI as sequence of bars and numeric value
+ * 
+ * If WiFi is not connected, the localized text TXT_WIFI_OFF is printed instead.
+ * 
+ * \param x     x-position
+ * \param y     y-position
+ * \param rssi  RSSI (dBm)
+ */
 void DrawRSSI(int x, int y, int rssi) {
   int WIFIsignal = 0;
   int xpos = 1;
@@ -1911,7 +2195,15 @@ void DrawRSSI(int x, int y, int rssi) {
     drawString(x + 20, y - 10, TXT_WIFI_OFF, CENTER);
   }
 }
-//#########################################################################################
+
+
+/**
+ * \brief Get time from NTP server and initialize/update RTC
+ * 
+ * The global constants gmtOffset_sec, daylightOffset_sec and ntpServer are used.
+ * 
+ * \return true if RTC initialization was successfully, false otherwise
+ */
 boolean SetupTime() {
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer, "pool.ntp.org"); //(gmtOffset_sec, daylightOffset_sec, ntpServer)
   setenv("TZ", Timezone, 1);  //setenv()adds the "TZ" variable to the environment with a value TimeZone, only used if set to 1, 0 means no change
@@ -1920,7 +2212,18 @@ boolean SetupTime() {
   bool TimeStatus = UpdateLocalTime();
   return TimeStatus;
 }
-//#########################################################################################
+
+
+/**
+ * \brief Get local time (from RTC) and update global variables
+ * 
+ * The global variables CurrentHour, CurrentMin, CurrentSec, CurrentDay
+ * and day_output/time_output are updated.
+ * day_output contains the localized date string,
+ * time_output contains the localized text TXT_UPDATED with the time string.
+ * 
+ * \return true if RTC time was valid, false otherwise
+ */
 boolean UpdateLocalTime() {
   struct tm timeinfo;
   char   time_output[32], day_output[30], update_time[30];
@@ -1931,6 +2234,7 @@ boolean UpdateLocalTime() {
   CurrentHour = timeinfo.tm_hour;
   CurrentMin  = timeinfo.tm_min;
   CurrentSec  = timeinfo.tm_sec;
+  CurrentDay  = timeinfo.tm_mday;
   //See http://www.cplusplus.com/reference/ctime/strftime/
   //Serial.println(&timeinfo, "%a %b %d %Y   %H:%M:%S");      // Displays: Saturday, June 24 2017 14:05:49
   if (Units == "M") {
@@ -1954,7 +2258,13 @@ boolean UpdateLocalTime() {
   Time_str = time_output;
   return true;
 }
-//#########################################################################################
+
+
+/**
+ * \brief Draw battery status
+ * 
+ * FIXME: Not used, to be removed!
+ */
 void DrawBattery(int x, int y) {
   uint8_t percentage = 100;
   float voltage = analogRead(35) / 4096.0 * 7.46;
@@ -1970,6 +2280,8 @@ void DrawBattery(int x, int y) {
     drawString(x + 13, y + 5,  String(voltage, 2) + "v", CENTER);
   }
 }
+
+// FIXME: Remove, the drawing functions have been moved to WeatherSymbols.h/.cppS
 /*
 //#########################################################################################
 // Symbols are drawn on a relative 10x10grid and 1 scale unit = 1 drawing unit
@@ -2234,14 +2546,30 @@ void addmoon(int x, int y, int scale, bool IconSize) {
   }
 }
 */
-//#########################################################################################
+
+
+/**
+ * \brief Display question mark if weather icon name is unknown
+ * 
+ * \param x         x-coordinate
+ * \param y         y-coordinate
+ * \param IconSize  size of weather icon (SmallIcin/Largeicon)
+ * \param IconName  name of weather icon (not used)
+ */
 void Nodata(int x, int y, bool IconSize, String IconName) {
   if (IconSize == LargeIcon) u8g2Fonts.setFont(u8g2_font_helvB24_tf); else u8g2Fonts.setFont(u8g2_font_helvB10_tf);
   drawString(x - 3, y - 10, "?", CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
 }
 
-//#########################################################################################
+/**
+ * \brief Draw string at given position with specified alignment
+ * 
+ * \param x           x-coordinate
+ * \param y           y-coordinate
+ * \param text        text
+ * \param alignment   alignment (LEFT/RIGHT/CENTER)
+ */
 void drawString(int x, int y, String text, alignment align) {
   int16_t  x1, y1; //the bounds of x,y and w and h of the variable 'text' in pixels.
   uint16_t w, h;
@@ -2252,7 +2580,19 @@ void drawString(int x, int y, String text, alignment align) {
   u8g2Fonts.setCursor(x, y + h);
   u8g2Fonts.print(text);
 }
-//#########################################################################################
+
+
+/**
+ * \brief Draw string at given position with specified alignment and maximum width
+ * 
+ * If the actual text is longer than the maximum width, it is wrapped into a second line. 
+ * 
+ * \param x           x-coordinate
+ * \param y           y-coordinate
+ * \param text_width  maximum text width (characters)
+ * \param text        text
+ * \param alignment   alignment (LEFT/RIGHT/CENTER)
+ */
 void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alignment align) {
   int16_t  x1, y1; //the bounds of x,y and w and h of the variable 'text' in pixels.
   uint16_t w, h;
@@ -2307,7 +2647,11 @@ void DisplayLocalTemperatureSection(int x, int y, int twidth, int tdepth, String
   //drawString(x + 43, y + 53, Units == "M" ? "C" : "F", LEFT);
 }
 
-//#########################################################################################
+/**
+ * \brief Initialize SPI controller and ePaper display
+ * 
+ * Uses the global objects 'display' and 'u8g2Fonts' and the pin configuration values EPD_*
+ */
 void InitialiseDisplay() {
   display.init(115200, true, 2, false); // init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset_duration, bool pulldown_rst_mode)
   // display.init(); for older Waveshare HATs
