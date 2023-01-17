@@ -30,12 +30,20 @@
 //#include <Ticker.h>
 #include <MQTT.h>
 #include <cQueue.h>
+#include "src/WeatherSymbols.h"
 #include "garten.h"
 #include "wohnung.h"
 #include "bitmaps.h"
 
-#define START_SCREEN 2
-#define LAST_SCREEN  2
+// Screen definitions
+#define ScreenOWM   0
+#define ScreenLocal 1
+#define ScreenMQTT  2
+#define ScreenTest  3
+
+#define START_SCREEN ScreenOWM
+#define LAST_SCREEN  ScreenTest
+
 //#define SIMULATE_MQTT
 //#define FORCE_LOW_BATTERY
 //#define FORCE_NO_SIGNAL
@@ -48,6 +56,7 @@
 #define MQTT_CLEAN_SESSION false
 
 #define MQTT_HIST_SIZE  144
+#define RAIN_HR_HIST_SIZE 24
 #define LOCAL_HIST_SIZE 144
 #define HIST_UPDATE_RATE 30
 #define HIST_UPDATE_TOL   5
@@ -179,13 +188,7 @@ Forecast_record_type  WxForecast[max_readings];      //!< OWM Weather Forecast
 #define barchart_on   true
 #define barchart_off  false
 
-// Screen definitions
-#define ScreenOWM   0
-#define ScreenLocal 1
-#define ScreenMQTT  2
-#define ScreenTest  3
-
-String Locations[] = {"Braunschweig", "Wohnung", "Garten"}; //!< Locations/Screen Titles
+String Locations[] = {"Braunschweig", "Wohnung", "Garten", "Test"}; //!< Locations/Screen Titles
 
 // OWM Forecast Data
 float pressure_readings[max_readings]    = {0}; //!< OWM pressure readings
@@ -241,6 +244,18 @@ typedef struct MqttHistQData mqtt_hist_t; //!< Shortcut for struct MqttHistQData
 RTC_DATA_ATTR mqtt_hist_t MqttHist[MQTT_HIST_SIZE]; //<! MQTT Sensor Data History
 RTC_DATA_ATTR time_t MqttHistTStamp = 0;  //!< Last MQTT History Update Timestamp 
 
+
+RTC_DATA_ATTR Queue_t RainHrHistQCtrl;      //!< MQTT Sensor Data History FIFO Control
+
+struct RainHrHistQData {
+  float rain;         //!< precipitation in mm
+  bool  valid;        //!< data valid
+};
+
+typedef struct RainHrHistQData rain_hr_hist_t; //!< Shortcut for struct MqttHistQData
+
+RTC_DATA_ATTR rain_hr_hist_t RainHrHist[RAIN_HR_HIST_SIZE]; //<! MQTT Sensor Data History
+RTC_DATA_ATTR time_t RainHrHistTStamp = 0;  //!< Last MQTT History Update Timestamp 
 
 // Local Sensor Data
 struct LocalS {
@@ -402,6 +417,12 @@ void setup() {
         display.display(false);      
     }
 
+    if (ScreenNo == ScreenTest) {
+        display.fillScreen(GxEPD_WHITE);
+        DisplayTestScreen();
+        display.display(false);      
+    }
+
     // WiFi is disconnected - display WiFi-Off-Icon
     if (!wifi_ok) {
         // Screen not changed - show next to Date/Time of last update
@@ -462,7 +483,6 @@ void setup() {
         display.display(false);
     }
 
-  
     StopWiFi();
     BeginSleep();
 }
@@ -822,6 +842,21 @@ void SaveMqttData(void) {
     q_push(&MqttHistQCtrl, &mqtt_data);   
 }
 
+/**
+ * \brief Save Rain Hourly data to history FIFO
+ */
+void SaveRainHrData(void) {
+    Serial.println(F("Saving rain hourly data."));
+    if (!q_isInitialized(&RainHrHistQCtrl)) {
+        q_init_static(&RainHrHistQCtrl, sizeof(RainHrHist[0]), RAIN_HR_HIST_SIZE, FIFO, true, (uint8_t *)RainHrHist, sizeof(RainHrHist));
+    }
+    rain_hr_hist_t rain_hr_data;
+
+    rain_hr_data.rain  = MqttSensors.rain_hr;
+    rain_hr_data.valid = MqttSensors.valid;
+
+    q_push(&RainHrHistQCtrl, &rain_hr_data);   
+}
 
 /**
  * \brief Display MQTT data
@@ -1004,13 +1039,6 @@ void GetLocalData(void) {
         Serial.printf("Indoor Pressure:    --   hPa\n");
         Serial.printf("Indoor Humidity:    --  %%rH\n");      
     }
-  
-  /*
-  if (LocalSensors.ble_thsensor[0].valid) {
-    OutdoorTmin = (LocalSensors.ble_thsensor[0].temperature < OutdoorTmin) ? LocalSensors.ble_thsensor[0].temperature : OutdoorTmin;
-    OutdoorTmax = (LocalSensors.ble_thsensor[0].temperature > OutdoorTmax) ? LocalSensors.ble_thsensor[0].temperature : OutdoorTmax;
-  }
-  */
   #endif
 }
 
@@ -1096,7 +1124,7 @@ void findLocalMinMaxTemp(float * t_min, float * t_max) {
 /**
  * \brief Display local sensor data
  */
- void DisplayLocalWeather() {
+void DisplayLocalWeather() {
   
   DisplayGeneralInfoSection();
   DisplayDateTime(90, 225);
@@ -1159,35 +1187,37 @@ void findLocalMinMaxTemp(float * t_min, float * t_max) {
   DrawRSSI(705, 15, wifi_signal); // Wi-Fi signal strength
 }
 
-/*
-//#########################################################################################
+
+/**
+ * \brief Display local sensor data
+ * 
+ * Playground for testing without the need to wait for real data.
+ */
 void DisplayTestScreen(void) {
-    //float outdoor_temp_c = 9.9;
-    //Serial.println("Temperature: "+String(outdoor_temp_c));
-    Serial.println("Air Temperature: "+String(MqttSensors.air_temp_c));
-    display.drawRect(159, 239, 222, 167, GxEPD_BLACK);
-    display.drawBitmap(160, 240, epd_bitmap_garten_sw, 220, 165, GxEPD_BLACK);
-    display.drawRect(419, 239, 222, 167, GxEPD_BLACK);
-    display.drawBitmap(420, 240, epd_bitmap_wohnung_sw, 220, 165, GxEPD_BLACK);
-    display.drawBitmap(5, 420, epd_bitmap_temperatur_innen, 64, 48, GxEPD_BLACK);
-    display.drawBitmap(60, 420, epd_bitmap_temperatur_aussen, 64, 48, GxEPD_BLACK);
-    display.drawBitmap(130, 420, epd_bitmap_feuchte_innen, 64, 48, GxEPD_BLACK);
-    display.drawBitmap(200, 420, epd_bitmap_feuchte_aussen, 64, 48, GxEPD_BLACK);
-    display.drawBitmap(270, 420, epd_bitmap_boden_temperatur, 64, 48, GxEPD_BLACK);
-    display.drawBitmap(340, 420, epd_bitmap_boden_feuchte, 64, 48, GxEPD_BLACK);
-    display.drawBitmap(410, 420, epd_bitmap_wasser_temperatur, 48, 48, GxEPD_BLACK);
-    display.drawBitmap(480, 404, epd_bitmap_barometer, 80, 64, GxEPD_BLACK);
-    
-    DisplayGeneralInfoSection();                 // Top line of the display
-    //DisplayLocalTemperatureSection(300 + 154, 100 - 81, 137, 100, TXT_TEMPERATURES_OUT, mithermometer_valid, outdoor_temp_c, true, OutdoorTmin, OutdoorTmax);
-    DisplayLocalTemperatureSection(300 + 154, 100 - 81, 137, 100, TXT_TEMPERATURES_OUT, true, MqttSensors.air_temp_c, false, 0, 0);
-    DisplayDisplayWindSection(108, 146, MqttSensors.wind_direction_deg, MqttSensors.wind_avg_meter_sec, 81, true, "");
-    //DisplayMainWeatherSection(300, 100);          // Centre section of display for Location, temperature, Weather report, current Wx Symbol and wind direction
-    //DisplayForecastSection(217, 245);            // 3hr forecast boxes
-    //DisplayAstronomySection(0, 245);             // Astronomy section Sun rise/set, Moon phase and Moon icon
-    DisplayStatusSection(690, 215, wifi_signal); // Wi-Fi signal strength and Battery voltage
+    DisplayGeneralInfoSection();
+
+    float rain[]       = {0, 1, 2, 3, 4, 0, 2, 4, 8, 4, 2, 0, 1, 5,  7, 9,  5, 1, 3, 8, 6, 0, 7, 9};
+    bool  rain_valid[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  0, 0,  0, 0, 1, 1, 1, 1, 1, 1};    
+
+    for (int i=0; i < 24; i++) {
+        MqttSensors.rain_hr = rain[i];
+        MqttSensors.valid   = rain_valid[i];
+        SaveRainHrData();
+    }
+
+
+    float temp[]       = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 8, 8, 7, 17, 6, 15, 5, 5, 4, 4, 3, 3, 2};
+    bool  temp_valid[] = {0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  0, 0,  0, 0, 1, 1, 1, 1, 1, 1};
+
+    for (int i=0; i<24; i++) {
+        MqttSensors.air_temp_c = temp[i];
+        MqttSensors.valid      = temp_valid[i];
+        SaveMqttData();
+    }
+    DisplayMqttHistory();
+    DrawRSSI(705, 15, wifi_signal);
 }
-*/
+
 
 //#########################################################################################
 void DisplayGeneralInfoSection(void) {
@@ -1384,7 +1414,7 @@ void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
 }
 //#########################################################################################
 void DisplayAstronomySection(int x, int y) {
-  display.drawRect(x, y + 16, 216, 65, GxEPD_BLACK);
+  display.drawRect(x, y + 16, 409 /* 216 */, 65, GxEPD_BLACK);
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   drawString(x + 4, y + 24, ConvertUnixTime(WxConditions[0].Sunrise + WxConditions[0].Timezone).substring(0, 5) + " " + TXT_SUNRISE, LEFT);
   drawString(x + 4, y + 44, ConvertUnixTime(WxConditions[0].Sunset + WxConditions[0].Timezone).substring(0, 5) + " " + TXT_SUNSET, LEFT);
@@ -1461,6 +1491,108 @@ String MoonPhase(int d, int m, int y, String hemisphere) {
   if (b == 7) return TXT_MOON_WANING_CRESCENT;  // Waning crescent; 25%  illuminated
   return "";
 }
+
+//#########################################################################################
+/* (C) D L BIRD
+    This function will draw a graph on a ePaper/TFT/LCD display using data from an array containing data to be graphed.
+    The variable 'max_readings' determines the maximum number of data elements for each array. Call it with the following parametric data:
+    x_pos-the x axis top-left position of the graph
+    y_pos-the y-axis top-left position of the graph, e.g. 100, 200 would draw the graph 100 pixels along and 200 pixels down from the top-left of the screen
+    width-the width of the graph in pixels
+    height-height of the graph in pixels
+    Y1_Max-sets the scale of plotted data, for example 5000 would scale all data to a Y-axis of 5000 maximum
+    data_array1 is parsed by value, externally they can be called anything else, e.g. within the routine it is called data_array1, but externally could be temperature_readings
+    auto_scale-a logical value (TRUE or FALSE) that switches the Y-axis autoscale On or Off
+    barchart_on-a logical value (TRUE or FALSE) that switches the drawing mode between barhcart and line graph
+    barchart_colour-a sets the title and graph plotting colour
+    If called with Y!_Max value of 500 and the data never goes above 500, then autoscale will retain a 0-500 Y scale, if on, the scale increases/decreases to match the data.
+    auto_scale_margin, e.g. if set to 1000 then autoscale increments the scale by 1000 steps.
+*/
+
+void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], int readings, boolean auto_scale, boolean barchart_mode, int xmin, int xmax, int dx=1, const String x_label=TXT_DAYS, bool ValidArray[] = NULL);
+void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], int readings, boolean auto_scale, boolean barchart_mode, int xmin, int xmax, int dx, const String x_label, bool ValidArray[]) {
+#define auto_scale_margin 0 // Sets the autoscale increment, so axis steps up in units of e.g. 3
+#define y_minor_axis 5      // 5 y-axis division markers
+  float maxYscale = -10000;
+  float minYscale =  10000;
+  int last_x, last_y;
+  float x2, y2;
+  Serial.println("DrawGraph()");
+  if (auto_scale == true) {
+    for (int i = 1; i < readings; i++ ) {
+      if (DataArray[i] >= maxYscale) maxYscale = DataArray[i];
+      if (DataArray[i] <= minYscale) minYscale = DataArray[i];
+    }
+    maxYscale = round(maxYscale + auto_scale_margin); // Auto scale the graph and round to the nearest value defined, default was Y1Max
+    Y1Max = round(maxYscale + 0.5);
+    if (minYscale != 0) minYscale = round(minYscale - auto_scale_margin); // Auto scale the graph and round to the nearest value defined, default was Y1Min
+    Y1Min = round(minYscale);
+  }
+  // Draw the graph
+  last_x = x_pos + 1;
+  last_y = y_pos + (Y1Max - constrain(DataArray[1], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight;
+  display.drawRect(x_pos, y_pos, gwidth + 3, gheight + 2, GxEPD_BLACK);
+  drawString(x_pos + gwidth / 2 + 6, y_pos - 16, title, CENTER);
+  // Draw the data
+  for (int gx = 1; gx < readings; gx++) {
+    x2 = x_pos + gx * gwidth / (readings - 1) - 1 ; // max_readings is the global variable that sets the maximum data that can be plotted
+    y2 = y_pos + (Y1Max - constrain(DataArray[gx], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight + 1;
+    if (ValidArray == NULL) {
+         Serial.println("DrawGraph(): No array of valid-flags!");
+    }
+    if (ValidArray == NULL || ValidArray[gx]) {
+        if (ValidArray) {
+            Serial.println("DrawGraph(): reading #" + String(gx) + ": valid=" + String(ValidArray[gx]));
+        }
+        if (barchart_mode) {
+            display.fillRect(x2, y2, (gwidth / readings) - 1, y_pos + gheight - y2 + 2, GxEPD_BLACK);
+        } else {
+            if (last_x > -1) {
+                display.drawLine(last_x, last_y, x2, y2, GxEPD_BLACK);
+            }
+        }
+        last_y = y2;
+        last_x = x2;
+    } 
+    else {
+        if (barchart_mode) {
+          display.drawRect(x2, y_pos, (gwidth / readings) - 1, gheight + 2, GxEPD_BLACK);
+        } else {
+          last_x = -1;
+          //display.drawLine(last_x, y2, x2, y2, GxEPD_BLACK);
+        }
+    }
+  }
+  //Draw the Y-axis scale
+#define number_of_dashes 20
+  for (int spacing = 0; spacing <= y_minor_axis; spacing++) {
+    for (int j = 0; j < number_of_dashes; j++) { // Draw dashed graph grid lines
+      if (spacing < y_minor_axis) display.drawFastHLine((x_pos + 3 + j * gwidth / number_of_dashes), y_pos + (gheight * spacing / y_minor_axis), gwidth / (2 * number_of_dashes), GxEPD_BLACK);
+    }
+    if ((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing) < 5 || title == TXT_PRESSURE_IN) {
+      drawString(x_pos - 1, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1), RIGHT);
+    }
+    else
+    {
+      if (Y1Min < 1 && Y1Max < 10)
+        drawString(x_pos - 1, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1), RIGHT);
+      else
+        drawString(x_pos - 2, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 0), RIGHT);
+    }
+  }
+  //
+  float xdiv = xmax - xmin + 1;
+  xdiv = (xdiv < 0) ? -xdiv/dx : xdiv/dx;
+  
+  // FIXME adjust x-offset for other number of labels than 3
+  for (int n = xmin, i=0; n <= xmax; n = n + dx, i++) {
+    drawString(15 + x_pos + gwidth / 3 * i, y_pos + gheight + 3, String(n), LEFT);
+    //i++;
+  }
+  drawString(x_pos + gwidth / 2, y_pos + gheight + 14, x_label, CENTER);
+}
+
+
 //#########################################################################################
 void DisplayForecastSection(int x, int y) {
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
@@ -1487,12 +1619,12 @@ void DisplayForecastSection(int x, int y) {
   drawString(SCREEN_WIDTH / 2, gy - 40, TXT_FORECAST_VALUES, CENTER); // Based on a graph height of 60
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
-  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure_readings, max_readings, autoscale_on, barchart_off, 0, 2, 1, NULL);
-  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature_readings, max_readings, autoscale_on, barchart_off, 0, 2, 1, NULL);
-  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,   TXT_HUMIDITY_PERCENT, humidity_readings, max_readings, autoscale_off, barchart_off, 0, 2, 1, NULL);
+  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure_readings, max_readings, autoscale_on, barchart_off, 0, 2);
+  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature_readings, max_readings, autoscale_on, barchart_off, 0, 2);
+  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,   TXT_HUMIDITY_PERCENT, humidity_readings, max_readings, autoscale_off, barchart_off, 0, 2, 1);
   if (SumOfPrecip(rain_readings, max_readings) >= SumOfPrecip(snow_readings, max_readings))
-    DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_readings, max_readings, autoscale_on, barchart_on, 0, 2, 1, NULL);
-  else DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_SNOWFALL_MM : TXT_SNOWFALL_IN, snow_readings, max_readings, autoscale_on, barchart_on, 0, 2, 1, NULL);
+    DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_readings, max_readings, autoscale_on, barchart_on, 0, 2);
+  else DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_SNOWFALL_MM : TXT_SNOWFALL_IN, snow_readings, max_readings, autoscale_on, barchart_on, 0, 2);
 }
 //#########################################################################################
 void DisplayLocalHistory() {
@@ -1529,9 +1661,9 @@ void DisplayLocalHistory() {
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
 
   // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
-  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, NULL);
-  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, LOCAL_HIST_SIZE, autoscale_on, barchart_off, -2, 0, 1, NULL);
-  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,    TXT_HUMIDITY_PERCENT, humidity, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, NULL);
+  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0);
+  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, LOCAL_HIST_SIZE, autoscale_on, barchart_off, -2, 0);
+  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,    TXT_HUMIDITY_PERCENT, humidity, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0);
 }
 //#########################################################################################
 void DisplayMqttHistory() {
@@ -1548,36 +1680,52 @@ void DisplayMqttHistory() {
   */
   
   mqtt_hist_t mqtt_data;
+  rain_hr_hist_t rain_hr_data;
   float temperature[MQTT_HIST_SIZE];
   float humidity[MQTT_HIST_SIZE];
   float rain[MQTT_HIST_SIZE];
-  bool  valid[MQTT_HIST_SIZE];
+  bool  mqtt_valid[MQTT_HIST_SIZE];
+  float rain_hr[RAIN_HR_HIST_SIZE];
+  bool  rain_hr_valid[RAIN_HR_HIST_SIZE];
   for (int i = 0; i<MQTT_HIST_SIZE; i++) {
     temperature[i] = 0;
     humidity[i]    = 0;
     rain[i]        = 0;
-    valid[i]       = false;
+    mqtt_valid[i]  = false;
   }
   for (int i=q_getCount(&MqttHistQCtrl)-1, j=MQTT_HIST_SIZE-1; i>=0; i--, j--) {
     q_peekIdx(&MqttHistQCtrl, &mqtt_data, i);
     temperature[j] = mqtt_data.temperature;
     humidity[j]    = mqtt_data.humidity;
     rain[j]        = mqtt_data.rain;
-    valid[j]       = mqtt_data.valid;
+    mqtt_valid[j]  = mqtt_data.valid;
   }
-
+  
   int gwidth = 150, gheight = 72;
   int gx = (SCREEN_WIDTH - gwidth * 4) / 5 + 5;
   int gy = 375;
   int gap = gwidth + gx;
+  
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
   drawString(SCREEN_WIDTH / 2, gy - 40, TXT_MQTT_HISTORY_VALUES, CENTER); // Based on a graph height of 60
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
 
   // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
-  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, MQTT_HIST_SIZE, autoscale_on, barchart_off, -2, 0, 1, valid);
-  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,   TXT_HUMIDITY_PERCENT, humidity, MQTT_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, valid);
-  DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain, MQTT_HIST_SIZE, autoscale_on, barchart_on, -2, 0, 1, valid);
+  DrawGraph(gx,           gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, MQTT_HIST_SIZE, autoscale_on, barchart_off, -2, 0, 1, TXT_DAYS, mqtt_valid);
+  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 0, 100,   TXT_HUMIDITY_PERCENT, humidity, MQTT_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, TXT_DAYS, mqtt_valid);
+
+  for (int i = 0; i<RAIN_HR_HIST_SIZE; i++) {
+    rain_hr[i]       = 0;
+    rain_hr_valid[i] = false;
+  }
+  for (int i=q_getCount(&RainHrHistQCtrl)-1, j=RAIN_HR_HIST_SIZE-1; i>=0; i--, j--) {
+    q_peekIdx(&RainHrHistQCtrl, &rain_hr_data, i);
+    rain_hr[j]       = rain_hr_data.rain;
+    rain_hr_valid[j] = rain_hr_data.valid;
+  }
+
+  DrawGraph(gx + 2 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_hr, RAIN_HR_HIST_SIZE, autoscale_on, barchart_on, -20, -4,  8, TXT_HOURS, rain_hr_valid);
+  DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_hr, RAIN_HR_HIST_SIZE, autoscale_on, barchart_on, -25, -5, 10, TXT_DAYS,  rain_hr_valid);
 }
 
 //#########################################################################################
@@ -1754,6 +1902,7 @@ void DrawBattery(int x, int y) {
     drawString(x + 13, y + 5,  String(voltage, 2) + "v", CENTER);
   }
 }
+/*
 //#########################################################################################
 // Symbols are drawn on a relative 10x10grid and 1 scale unit = 1 drawing unit
 void addcloud(int x, int y, int scale, int linesize) {
@@ -2016,98 +2165,12 @@ void addmoon(int x, int y, int scale, bool IconSize) {
     display.fillCircle(x - 18, y - 15, scale * 1.6, GxEPD_WHITE);
   }
 }
+*/
 //#########################################################################################
 void Nodata(int x, int y, bool IconSize, String IconName) {
   if (IconSize == LargeIcon) u8g2Fonts.setFont(u8g2_font_helvB24_tf); else u8g2Fonts.setFont(u8g2_font_helvB10_tf);
   drawString(x - 3, y - 10, "?", CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-}
-//#########################################################################################
-/* (C) D L BIRD
-    This function will draw a graph on a ePaper/TFT/LCD display using data from an array containing data to be graphed.
-    The variable 'max_readings' determines the maximum number of data elements for each array. Call it with the following parametric data:
-    x_pos-the x axis top-left position of the graph
-    y_pos-the y-axis top-left position of the graph, e.g. 100, 200 would draw the graph 100 pixels along and 200 pixels down from the top-left of the screen
-    width-the width of the graph in pixels
-    height-height of the graph in pixels
-    Y1_Max-sets the scale of plotted data, for example 5000 would scale all data to a Y-axis of 5000 maximum
-    data_array1 is parsed by value, externally they can be called anything else, e.g. within the routine it is called data_array1, but externally could be temperature_readings
-    auto_scale-a logical value (TRUE or FALSE) that switches the Y-axis autoscale On or Off
-    barchart_on-a logical value (TRUE or FALSE) that switches the drawing mode between barhcart and line graph
-    barchart_colour-a sets the title and graph plotting colour
-    If called with Y!_Max value of 500 and the data never goes above 500, then autoscale will retain a 0-500 Y scale, if on, the scale increases/decreases to match the data.
-    auto_scale_margin, e.g. if set to 1000 then autoscale increments the scale by 1000 steps.
-*/
-void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], int readings, boolean auto_scale, boolean barchart_mode, int xmin, int xmax, int dx, bool ValidArray[]) {
-#define auto_scale_margin 0 // Sets the autoscale increment, so axis steps up in units of e.g. 3
-#define y_minor_axis 5      // 5 y-axis division markers
-  float maxYscale = -10000;
-  float minYscale =  10000;
-  int last_x, last_y;
-  float x2, y2;
-  Serial.println("DrawGraph()");
-  if (auto_scale == true) {
-    for (int i = 1; i < readings; i++ ) {
-      if (DataArray[i] >= maxYscale) maxYscale = DataArray[i];
-      if (DataArray[i] <= minYscale) minYscale = DataArray[i];
-    }
-    maxYscale = round(maxYscale + auto_scale_margin); // Auto scale the graph and round to the nearest value defined, default was Y1Max
-    Y1Max = round(maxYscale + 0.5);
-    if (minYscale != 0) minYscale = round(minYscale - auto_scale_margin); // Auto scale the graph and round to the nearest value defined, default was Y1Min
-    Y1Min = round(minYscale);
-  }
-  // Draw the graph
-  last_x = x_pos + 1;
-  last_y = y_pos + (Y1Max - constrain(DataArray[1], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight;
-  display.drawRect(x_pos, y_pos, gwidth + 3, gheight + 2, GxEPD_BLACK);
-  drawString(x_pos + gwidth / 2 + 6, y_pos - 16, title, CENTER);
-  // Draw the data
-  for (int gx = 1; gx < readings; gx++) {
-    x2 = x_pos + gx * gwidth / (readings - 1) - 1 ; // max_readings is the global variable that sets the maximum data that can be plotted
-    y2 = y_pos + (Y1Max - constrain(DataArray[gx], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight + 1;
-    if (ValidArray == NULL) {
-         Serial.println("DrawGraph(): No array of valid-flags!");
-    }
-    if (ValidArray == NULL || ValidArray[gx] == true) {
-        if (ValidArray) {
-            Serial.println("DrawGraph(): reading #" + String(gx) + ": valid=" + String(ValidArray[gx]));
-        }
-        if (barchart_mode) {
-        display.fillRect(x2, y2, (gwidth / readings) - 1, y_pos + gheight - y2 + 2, GxEPD_BLACK);
-        } else {
-        display.drawLine(last_x, last_y, x2, y2, GxEPD_BLACK);
-        }
-        last_y = y2;
-    }
-    last_x = x2;
-  }
-  //Draw the Y-axis scale
-#define number_of_dashes 20
-  for (int spacing = 0; spacing <= y_minor_axis; spacing++) {
-    for (int j = 0; j < number_of_dashes; j++) { // Draw dashed graph grid lines
-      if (spacing < y_minor_axis) display.drawFastHLine((x_pos + 3 + j * gwidth / number_of_dashes), y_pos + (gheight * spacing / y_minor_axis), gwidth / (2 * number_of_dashes), GxEPD_BLACK);
-    }
-    if ((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing) < 5 || title == TXT_PRESSURE_IN) {
-      drawString(x_pos - 1, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1), RIGHT);
-    }
-    else
-    {
-      if (Y1Min < 1 && Y1Max < 10)
-        drawString(x_pos - 1, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1), RIGHT);
-      else
-        drawString(x_pos - 2, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 0), RIGHT);
-    }
-  }
-  //
-  float xdiv = xmax - xmin + 1;
-  xdiv = (xdiv < 0) ? -xdiv/dx : xdiv/dx;
-  
-  // FIXME adjust x-offset for other number of labels than 3
-  for (int n = xmin, i=0; n <= xmax; n = n + dx, i++) {
-    drawString(15 + x_pos + gwidth / xdiv * i, y_pos + gheight + 3, String(n), LEFT);
-    //i++;
-  }
-  drawString(x_pos + gwidth / 2, y_pos + gheight + 14, TXT_DAYS, CENTER);
 }
 
 //#########################################################################################
