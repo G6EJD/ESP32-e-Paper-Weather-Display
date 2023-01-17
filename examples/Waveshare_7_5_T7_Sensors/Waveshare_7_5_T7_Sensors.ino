@@ -20,47 +20,152 @@
 #include "owm_credentials.h"          // See 'owm_credentials' tab and enter your OWM API key and set the Wifi SSID and PASSWORD
 #include <ArduinoJson.h>              // https://github.com/bblanchon/ArduinoJson needs version v6 or above
 #include <WiFi.h>                     // Built-in
+//#include <WiFiClientSecure.h>
 #include "time.h"                     // Built-in
-#include <SPI.h>                      // Built-in 
+#include <SPI.h>                      // Built-in
+#include <MQTT.h>
+#include <vector>
+#include <string>
+#include "garten.h"
+#include "wohnung.h"
+#include "bluetooth.h"
+#include "bitmaps.h"
+
+#define START_SCREEN 2
+#define MQTT_PAYLOAD_SIZE 4096
+#ifdef FLORA
+#define MQTT_SUB_IN "ESPWeather-267B81/data/WeatherSensor"
+#endif
+#ifdef TTN
+#define MQTT_SUB_IN "v3/flora-lora@ttn/devices/eui-9876b6000011c87b/up"
+//                   v3/flora-lora@ttn/devices/eui-9876b6000011c87b/up
+#endif
+
+#define MITHERMOMETER_EN
+#define MITHERMOMETER_BATTALERT 6 // Low battery alert threshold 
+#define BME280_EN
+#define I2C_SDA 21
+#define I2C_SCL 22
+
 #define  ENABLE_GxEPD2_display 1
 #include <GxEPD2_BW.h>
 //#include <GxEPD2_3C.h>
 #include <U8g2_for_Adafruit_GFX.h>
-#include "epaper_fonts.h"
-#include "forecast_record.h"
-#include "lang.h"                     // Localisation (English)
+#include "src/epaper_fonts.h"
+#include "src/forecast_record.h"
+//#include "src/lang.h"                     // Localisation (English)
 //#include "lang_cz.h"                  // Localisation (Czech)
 //#include "lang_fr.h"                  // Localisation (French)
-//#include "lang_gr.h"                  // Localisation (German)
+#include "src/lang_gr.h"                  // Localisation (German)
 //#include "lang_it.h"                  // Localisation (Italian)
 //#include "lang_nl.h"
 //#include "lang_pl.h"                  // Localisation (Polish)
 
+#ifdef MITHERMOMETER_EN
+    // BLE Temperature/Humidity Sensor
+    #include <ATC_MiThermometer.h>
+#endif
+
+#ifdef BME280_EN
+  #include <pocketBME280.h>
+#endif
+
 #define SCREEN_WIDTH  800             // Set for landscape mode
 #define SCREEN_HEIGHT 480
+bool DebugDisplayUpdate = false;
 
 enum alignment {LEFT, RIGHT, CENTER};
+/*
+      ['status',      'air_temp_c',    'humidity',  'wind_gust_meter_sec', 'wind_avg_meter_sec', 'wind_direction_deg',
+       'rain_mm',     'supply_v',      'battery_v', 'water_temp_c',        'indoor_temp_c',      'indoor_humidity', 
+       'soil_temp_c', 'soil_moisture', 'rain_hr',   'rain_day',            'rain_week',          'rain_mon'
+      ]
+*/
+struct LoraWanWS {
+    //uint8_t  status;
+    struct {
+        unsigned int ws_batt_ok:1;
+        unsigned int ws_dec_ok:1;
+        unsigned int s1_batt_ok:1;
+        unsigned int s1_dec_ok:1;
+        unsigned int ble_ok:1;
+        
+    } status;
+    float    air_temp_c;           //!< temperature in degC
+    uint8_t  humidity;             //!< humidity in %
+    float    wind_direction_deg;   //!< wind direction in deg
+    float    wind_gust_meter_sec;  //!< wind speed (gusts) in m/s
+    float    wind_avg_meter_sec;   //!< wind speed (avg)   in m/s
+    float    rain_mm;              //!< rain gauge level in mm
+    uint16_t supply_v;
+    uint16_t battery_v;
+    float    water_temp_c;
+    float    indoor_temp_c;
+    uint8_t  indoor_humidity;
+    float    soil_temp_c;
+    uint8_t  spol_moisture;             //!< moisture in % (only 6-in-1)
+    float    rain_hr;
+    float    rain_day;
+    float    rain_week;
+    float    rain_month;
+};
+
+typedef struct LoraWanWS sensor_t;    //!< Shortcut for struct Sensor
+sensor_t wsensor;      //!< sensor data array
+
+struct LocalS {
+  struct {
+      bool    valid;
+      float   temperature;
+      float   humidity;
+      float   batt_voltage;
+      uint8_t batt_level;
+      int     rssi;
+  } ble_thsensor[1];
+  struct {
+      bool    valid;
+      float   temperature;
+      float   humidity;
+      float   pressure;
+  } i2c_thpsensor[1];
+};
+
+typedef struct LocalS local_sensors_t;
+local_sensors_t LocalSensors;
 
 // Connections for e.g. LOLIN D32
-static const uint8_t EPD_BUSY = 4;  // to EPD BUSY
-static const uint8_t EPD_CS   = 5;  // to EPD CS
-static const uint8_t EPD_RST  = 16; // to EPD RST
-static const uint8_t EPD_DC   = 17; // to EPD DC
-static const uint8_t EPD_SCK  = 18; // to EPD CLK
-static const uint8_t EPD_MISO = 19; // Master-In Slave-Out not used, as no data from display
-static const uint8_t EPD_MOSI = 23; // to EPD DIN
+//static const uint8_t EPD_BUSY = 4;  // to EPD BUSY
+//static const uint8_t EPD_CS   = 5;  // to EPD CS
+//static const uint8_t EPD_RST  = 16; // to EPD RST
+//static const uint8_t EPD_DC   = 17; // to EPD DC
+//static const uint8_t EPD_SCK  = 18; // to EPD CLK
+//static const uint8_t EPD_MISO = 19; // Master-In Slave-Out not used, as no data from display
+//static const uint8_t EPD_MOSI = 23; // to EPD DIN
 
 // Connections for e.g. Waveshare ESP32 e-Paper Driver Board
-//static const uint8_t EPD_BUSY = 25;
-//static const uint8_t EPD_CS   = 15;
-//static const uint8_t EPD_RST  = 26; 
-//static const uint8_t EPD_DC   = 27; 
-//static const uint8_t EPD_SCK  = 13;
-//static const uint8_t EPD_MISO = 12; // Master-In Slave-Out not used, as no data from display
-//static const uint8_t EPD_MOSI = 14;
+static const uint8_t    EPD_BUSY = 25;
+static const uint8_t    EPD_CS   = 15;
+static const uint8_t    EPD_RST  = 26; 
+static const uint8_t    EPD_DC   = 27; 
+static const uint8_t    EPD_SCK  = 13;
+static const uint8_t    EPD_MISO = 12; // Master-In Slave-Out not used, as no data from display
+static const uint8_t    EPD_MOSI = 14;
+static const gpio_num_t TOUCH    = GPIO_NUM_32;
+
+char MqttBuf[MQTT_PAYLOAD_SIZE+1];
+
+#ifdef MITHERMOMETER_EN
+    // BLE scan time in seconds
+    const int bleScanTime = 10;
+
+    // List of known sensors' BLE addresses
+    std::vector<std::string> knownBLEAddresses = {"a4:c1:38:b8:1f:7f"};
+#endif
+
 
 GxEPD2_BW<GxEPD2_750_T7, GxEPD2_750_T7::HEIGHT> display(GxEPD2_750_T7(/*CS=*/ EPD_CS, /*DC=*/ EPD_DC, /*RST=*/ EPD_RST, /*BUSY=*/ EPD_BUSY));   // B/W display
-//GxEPD2_3C<GxEPD2_750c, GxEPD2_750c::HEIGHT> display(GxEPD2_750(/*CS=*/ EPD_CS, /*DC=*/ EPD_DC, /*RST=*/ EPD_RST, /*BUSY=*/ EPD_BUSY)); // 3-colour displays
+//GxEPD2_3C<GxEPD2_750c, GxEPD2_750c::HEIGHT / 4> display(GxEPD2_750c(/*CS=*/ EPD_CS, /*DC=*/ EPD_DC, /*RST=*/ EPD_RST, /*BUSY=*/ EPD_BUSY)); // 3-colour displays
+//GxEPD2_3C<GxEPD2_750c_Z90, GxEPD2_750c_Z90::HEIGHT / 4> display(GxEPD2_750c_Z90(/*CS=*/ EPD_CS, /*DC=*/ EPD_DC, /*RST=*/ EPD_RST, /*BUSY=*/ EPD_BUSY)); // 3-colour displays
 // use GxEPD_BLACK or GxEPD_WHITE or GxEPD_RED or GxEPD_YELLOW depending on display type
 
 U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
@@ -90,12 +195,17 @@ long    StartTime = 0;
 Forecast_record_type  WxConditions[1];
 Forecast_record_type  WxForecast[max_readings];
 
-#include "common.h"
+#include "src/common.h"
 
 #define autoscale_on  true
 #define autoscale_off false
 #define barchart_on   true
 #define barchart_off  false
+
+#define ScreenOWM   0
+#define ScreenLocal 1
+#define ScreenMQTT  2
+#define ScreenTest  3
 
 float pressure_readings[max_readings]    = {0};
 float temperature_readings[max_readings] = {0};
@@ -107,26 +217,77 @@ long SleepDuration = 30; // Sleep time in minutes, aligned to the nearest minute
 int  WakeupTime    = 7;  // Don't wakeup until after 07:00 to save battery power
 int  SleepTime     = 23; // Sleep after (23+1) 00:00 to save battery power
 
+RTC_DATA_ATTR int   ScreenNo = START_SCREEN;
+RTC_DATA_ATTR float OutdoorTmin = 200;
+RTC_DATA_ATTR float OutdoorTmax = -200;
+RTC_DATA_ATTR float mqtt_outdoor_temp_c;
+
+bool mqttMessageReceived = false;
+bool swResetCaught = false;
+
 //#########################################################################################
 void setup() {
   StartTime = millis();
   Serial.begin(115200);
+  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
+    ScreenNo = (ScreenNo == 3) ? 0 : ScreenNo + 1;
+  } else if (esp_sleep_get_wakeup_cause() == 0xC /* SW_CPU_RESET */) {
+    ScreenNo = ScreenMQTT;
+    swResetCaught = true;
+  }
+  Serial.printf("Screen No: %d\n", ScreenNo);
   if (StartWiFi() == WL_CONNECTED && SetupTime() == true) {
-    if ((CurrentHour >= WakeupTime && CurrentHour <= SleepTime) || DebugDisplayUpdate) {
-      InitialiseDisplay(); // Give screen time to initialise by getting weather data!
-      byte Attempts = 1;
-      bool RxWeather = false, RxForecast = false;
-      WiFiClient client;   // wifi client object
-      while ((RxWeather == false || RxForecast == false) && Attempts <= 2) { // Try up-to 2 time for Weather and Forecast data
-        if (RxWeather  == false) RxWeather  = obtain_wx_data(client, "weather");
-        if (RxForecast == false) RxForecast = obtain_wx_data(client, "forecast");
-        Attempts++;
-      }
-      if (RxWeather && RxForecast) { // Only if received both Weather or Forecast proceed
-        StopWiFi(); // Reduces power consumption
-        DisplayWeather();
-        display.display(false); // Full screen update mode
-      }
+    //WiFiClient client;   // wifi client object
+    //client.setInsecure();
+    //WiFiClientSecure sec_client;   // wifi client object
+    //sec_client.setInsecure();
+    //delay(100);
+    
+    switch (ScreenNo) {
+      case ScreenOWM:
+        {
+          WiFiClient client;   // wifi client object
+          if ((CurrentHour >= WakeupTime && CurrentHour <= SleepTime) || DebugDisplayUpdate) {
+            InitialiseDisplay(); // Give screen time to initialise by getting weather data!
+            byte Attempts = 1;
+            bool RxWeather = false, RxForecast = false;
+           // WiFiClient client;   // wifi client object
+            while ((RxWeather == false || RxForecast == false) && Attempts <= 2) { // Try up-to 2 time for Weather and Forecast data
+              if (RxWeather  == false) RxWeather  = obtain_wx_data(client, "weather");
+              if (RxForecast == false) RxForecast = obtain_wx_data(client, "forecast");
+              Attempts++;
+            }
+            if (RxWeather && RxForecast) { // Only if received both Weather or Forecast proceed
+              StopWiFi(); // Reduces power consumption
+              DisplayOWMWeather();
+              display.display(false); // Full screen update mode
+            }
+          }
+        }
+        break;
+      case ScreenMQTT:
+        {
+          //WiFiClientSecure sec_client;   // wifi client object
+          //sec_client.setInsecure();
+          WiFiClient client;
+          InitialiseDisplay();
+          DisplayMQTTWeather(client);
+          StopWiFi();
+          display.display(false);
+        }
+        break;
+      case ScreenLocal:
+        InitialiseDisplay();
+        StopWiFi();
+        DisplayLocalWeather();
+        display.display(false);
+        break;
+      case ScreenTest:
+        InitialiseDisplay();
+        StopWiFi();
+        DisplayTestScreen();
+        display.display(false);
+        break;          
     }
   }
   BeginSleep();
@@ -139,6 +300,7 @@ void BeginSleep() {
   display.powerOff();
   long SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)); //Some ESP32 are too fast to maintain accurate time
   esp_sleep_enable_timer_wakeup((SleepTimer+20) * 1000000LL); // Added extra 20-secs of sleep to allow for slow ESP32 RTC timers
+  esp_sleep_enable_ext0_wakeup(TOUCH, 1); // Wake up from touch sensor
 #ifdef BUILTIN_LED
   pinMode(BUILTIN_LED, INPUT); // If it's On, turn it off and some boards use GPIO-5 for SPI-SS, which remains low after screen use
   digitalWrite(BUILTIN_LED, HIGH);
@@ -149,25 +311,343 @@ void BeginSleep() {
   esp_deep_sleep_start();      // Sleep for e.g. 30 minutes
 }
 //#########################################################################################
-void DisplayWeather() {                        // 7.5" e-paper display is 800x480 resolution
-  DisplayGeneralInfoSection();                 // Top line of the display
-  DisplayDisplayWindSection(108, 146, WxConditions[0].Winddir, WxConditions[0].Windspeed, 81);
+void mqttMessageCb(String &topic, String &payload) {
+  mqttMessageReceived = true;
+  Serial.printf("Payload size: %d\n", payload.length());
+  strncpy(MqttBuf, payload.c_str(), payload.length());
+  
+}
+void mqttMessageAdvancedCb(MQTTClient *client, char topic[], char bytes[], int length) {
+  mqttMessageReceived = true;
+  Serial.printf("Payload size: %d\n", length);
+  strncpy(MqttBuf, bytes, length); 
+}
+
+//#########################################################################################
+void DisplayOWMWeather() {                        // 7.5" e-paper display is 800x480 resolution
+  DisplayGeneralInfoSection(City);                 // Top line of the display
+  DisplayDateTime(487, 194);
+  DisplayDisplayWindSection(108, 146, WxConditions[0].Winddir, WxConditions[0].Windspeed, 81, TXT_WIND_SPEED_DIRECTION);
   DisplayMainWeatherSection(300, 100);          // Centre section of display for Location, temperature, Weather report, current Wx Symbol and wind direction
   DisplayForecastSection(217, 245);            // 3hr forecast boxes
   DisplayAstronomySection(0, 245);             // Astronomy section Sun rise/set, Moon phase and Moon icon
   DisplayStatusSection(690, 215, wifi_signal); // Wi-Fi signal strength and Battery voltage
 }
+
+void mqtt_connect(MQTTClient mqtt_client) {
+  //Serial.print("checking wifi...");
+  //while (StartWiFi() != WL_CONNECTED) {
+  //  Serial.print(".");
+  //  delay(1000);
+  //}
+
+  Serial.print("\nconnecting...");
+  while (!mqtt_client.connect(Hostname, MQTT_USER, MQTT_PASS)) {
+    Serial.print(".");
+    delay(1000);
+  }
+
+  Serial.println("\nconnected!");
+
+  if (!mqtt_client.subscribe(MQTT_SUB_IN)) {
+    Serial.println("Subscription failed!");
+  }
+
+  // client.unsubscribe("/hello");
+}
+
 //#########################################################################################
-void DisplayGeneralInfoSection() {
+void DisplayMQTTWeather(WiFiClient wifi_client) {
+  #if 0
+  MQTTClient mqtt_client(MQTT_PAYLOAD_SIZE);
+  mqtt_client.begin(MQTT_HOST, MQTT_PORT, wifi_client);
+  Serial.println(F("MQTT connecting... "));
+  //mqtt_client.setCleanSession(false);
+  mqtt_client.setOptions(60 /* keepAlive [s] */, true /* cleanSession */, 30000 /* timeout [ms] */);
+  //mqtt_connect(mqtt_client);
+  //mqtt_client.onMessageAdvanced(mqttMessageAdvancedCb);
+  mqtt_client.onMessage(mqttMessageCb);
+  while (!mqtt_client.connect(Hostname, MQTT_USER, MQTT_PASS)) {
+    Serial.print(".");
+    delay(1000);
+  }
+  Serial.println("\nconnected!");
+
+  if (!mqtt_client.subscribe(MQTT_SUB_IN)) {
+    Serial.println("Subscription failed!");
+  }
+
+  DisplayGeneralInfoSection("Garten");                 // Top line of the display
+  Serial.println(F("Waiting for MQTT message..."));
+  while (!mqttMessageReceived) {
+    mqtt_client.loop();
+    delay(10);
+    if (mqttMessageReceived)
+      break;
+    if (!mqtt_client.connected()) {
+      // BEGIN connect()
+      Serial.print("\nMQTT reconnecting...");
+      while (!mqtt_client.connect(Hostname, MQTT_USER, MQTT_PASS)) {
+        Serial.print(".");
+        delay(1000);
+      }
+      Serial.println("\nMQTT reconnected.");
+      if (!mqtt_client.subscribe(MQTT_SUB_IN)) {
+        Serial.println("Subscription failed!");
+      }
+      // END connect()
+    }
+    Serial.print(".");
+    delay(1000);
+  }
+  Serial.println("done!");
+  mqtt_client.disconnect();
+  Serial.printf(MqttBuf);
+  #endif
+  /*
+   *     uint8_t  status;
+    float    air_temp_c;           //!< temperature in degC
+    uint8_t  humidity;             //!< humidity in %
+    float    wind_direction_deg;   //!< wind direction in deg
+    float    wind_gust_meter_sec;  //!< wind speed (gusts) in m/s
+    float    wind_avg_meter_sec;   //!< wind speed (avg)   in m/s
+    float    rain_mm;              //!< rain gauge level in mm
+    uint16_t supply_v;
+    uint16_t battery_v;
+    float    water_temp_c;
+    float    indoor_temp_c;
+    uint8_t  indoor_humidity;
+    float    soil_temp_c;
+    uint8_t  soil_moisture;             //!< moisture in % (only 6-in-1)
+    float    rain_hr;
+    float    rain_day;
+    float    rain_week;
+    float    rain_month;
+  */
+  #if 0  
+    Serial.print(F("\nCreating JSON object..."));
+    // allocate the JsonDocument
+    //DynamicJsonDocument doc(MQTT_PAYLOAD_SIZE);
+    StaticJsonDocument<MQTT_PAYLOAD_SIZE> doc;
+    // Deserialize the JSON document
+    DeserializationError error = deserializeJson(doc, MqttBuf, MQTT_PAYLOAD_SIZE);
+    // Test if parsing succeeds.
+    if (error) {
+      Serial.print(F("deserializeJson() failed: "));
+      Serial.println(error.c_str());
+      return;
+    }
+    // convert it to a JsonObject
+    //JsonObject root = doc.as<JsonObject>();
+    //float outdoor_temp_c = root["temp_c"].as<float>();
+    float outdoor_temp_c = doc["temp_c"];
+    wsensor.air_temp_c          = doc["air_temp_c"];
+    wsensor.humidity            = doc["humidity"];
+    wsensor.wind_direction_deg  = doc["wind_direction_deg"];
+    wsensor.wind_gust_meter_sec = doc["wind_gust_meter_sec"];
+    wsensor.wind_avg_meter_sec  = doc["wind_avg_meter_sec"];
+    wsensor.rain_mm             = doc["rain_mm"];
+    wsensor.supply_v            = doc["supply_v"];
+    wsensor.battery_v           = doc["battery_v"];
+    wsensor.water_temp_c        = doc["water_temp_c"];
+    wsensor.indoor_temp_c       = doc["indoor_temp_c"];
+    wsensor.indoor_humidity     = doc["indoor_humidity"];
+    wsensor.soil_temp_c         = doc["soil_temp_c"];
+    wsensor.soil_moisture       = doc["soil_moisture"];
+    wsensor.rain_hr             = doc["rain_hr"];
+    wsensor.rain_day            = doc["rain_day"];
+    wsensor.rain_week           = doc["rain_week"];
+    wsensor.rain_month          = doc["rain_month"];
+  #endif  
+  
+  //float outdoor_temp_c = 9.9;
+  //Serial.println("Temperature: "+String(outdoor_temp_c));
+  //  Serial.println("Air Temperature: "+String(wsensor.air_temp_c));
+  DisplayGeneralInfoSection("Garten");                 // Top line of the display
+  DisplayDateTime(90, 225);
+  display.drawBitmap(  5,  25, epd_bitmap_garten_sw, 220, 165, GxEPD_BLACK);
+  display.drawRect(    4,  24, 222, 167, GxEPD_BLACK);
+  display.drawBitmap(240,  45, epd_bitmap_temperatur_aussen, 64, 48, GxEPD_BLACK);
+  display.drawBitmap(438,  45, epd_bitmap_feuchte_aussen, 64, 48, GxEPD_BLACK);
+  display.drawBitmap(240, 100, epd_bitmap_temperatur_innen, 64, 48, GxEPD_BLACK);
+  display.drawBitmap(438, 100, epd_bitmap_feuchte_innen, 64, 48, GxEPD_BLACK);
+  display.drawBitmap(240, 155, epd_bitmap_boden_temperatur, 64, 48, GxEPD_BLACK);
+  display.drawBitmap(438, 155, epd_bitmap_boden_feuchte, 64, 48, GxEPD_BLACK);
+  display.drawBitmap(240, 210, epd_bitmap_wasser_temperatur, 48, 48, GxEPD_BLACK);
+  //display.drawBitmap(650,  20, epd_bitmap_barometer, 80, 64, GxEPD_BLACK);
+  // y=240
+  DisplayDisplayWindSection(690, 120, wsensor.wind_direction_deg, wsensor.wind_avg_meter_sec, 81, "");
+  
+  u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+  //drawString(660, 110, "" /* FIXME */, 0) + "hPa", CENTER);
+    //DisplayLocalTemperatureSection(300 + 154, 100 - 81, 137, 100, TXT_TEMPERATURES_OUT, mithermometer_valid, outdoor_temp_c, true, OutdoorTmin, OutdoorTmax);
+    //DisplayLocalTemperatureSection(300 + 154, 100 - 81, 137, 100, TXT_TEMPERATURES_OUT, true, wsensor.air_temp_c, false, 0, 0);
+  DisplayHistory();
+  DrawRSSI(695, 15, wifi_signal); // Wi-Fi signal strength
+  
+}
+//#########################################################################################
+void DisplayLocalWeather() {                        // 7.5" e-paper display is 800x480 resolution
+  LocalSensors.ble_thsensor[0].valid  = false;
+  LocalSensors.i2c_thpsensor[0].valid = false; 
+
+  #ifdef MITHERMOMETER_EN
+    // Setup BLE Temperature/Humidity Sensors
+    ATC_MiThermometer miThermometer(knownBLEAddresses); //!< Mijia Bluetooth Low Energy Thermo-/Hygrometer
+    miThermometer.begin();
+    
+    // Set sensor data invalid
+    miThermometer.resetData();
+        
+    // Get sensor data - run BLE scan for <bleScanTime>
+    miThermometer.getData(bleScanTime);
+    
+    if (miThermometer.data[0].valid) {
+        LocalSensors.ble_thsensor[0].valid       = true;
+        LocalSensors.ble_thsensor[0].temperature = miThermometer.data[0].temperature/100.0;
+        LocalSensors.ble_thsensor[0].humidity    = miThermometer.data[0].humidity/100.0;
+        LocalSensors.ble_thsensor[0].batt_level  = miThermometer.data[0].batt_level;
+        Serial.printf("Outdoor Air Temp.:   % 3.1f °C\n", LocalSensors.ble_thsensor[0].temperature);
+        Serial.printf("Outdoor Humidity:     %3.1f %%\n", LocalSensors.ble_thsensor[0].humidity);
+        Serial.printf("Outdoor Sensor Batt:    %2f %%\n", LocalSensors.ble_thsensor[0].batt_level);
+    } else {
+        Serial.printf("Outdoor Air Temp.:    --.- °C\n");
+        Serial.printf("Outdoor Humidity:     --   %%\n");
+        Serial.printf("Outdoor Sensor Batt:  --   %%\n");
+    }
+  #endif
+
+  #ifdef BME280_EN
+    TwoWire myWire = TwoWire(0);
+    myWire.begin(I2C_SDA, I2C_SCL, 100000);
+
+    pocketBME280 bme280;
+    bme280.setAddress(0x76);
+    Serial.println("BME280: start");
+    if (bme280.begin(myWire)) {
+        LocalSensors.i2c_thpsensor[0].valid = true;
+        bme280.startMeasurement();
+        while (!bme280.isMeasuring()) {
+          Serial.println("BME280: Waiting for Measurement to start");
+          delay(1);
+        }
+        while (bme280.isMeasuring()) {
+          Serial.println("BME280: Measurement in progress");
+          delay(1);
+        }
+        LocalSensors.i2c_thpsensor[0].temperature = bme280.getTemperature() / 100.0;
+        LocalSensors.i2c_thpsensor[0].pressure    = bme280.getPressure() / 100.0;
+        LocalSensors.i2c_thpsensor[0].humidity    = bme280.getHumidity() / 1024.0;
+        Serial.printf("Indoor Temperature: %.1f °C\n", LocalSensors.i2c_thpsensor[0].temperature);
+        Serial.printf("Indoor Pressure: %.0f hPa\n",   LocalSensors.i2c_thpsensor[0].pressure);
+        Serial.printf("Indoor Humidity: %.0f %%rH\n",  LocalSensors.i2c_thpsensor[0].humidity);
+    }
+    else {
+        Serial.printf("Indoor Temperature: --.- °C\n");
+        Serial.printf("Indoor Pressure:    --   hPa\n");
+        Serial.printf("Indoor Humidity:    --  %%rH\n");      
+    }
+  #endif
+  
+  // FIXME Reset
+  if (LocalSensors.ble_thsensor[0].valid) {
+    OutdoorTmin = (LocalSensors.ble_thsensor[0].temperature < OutdoorTmin) ? LocalSensors.ble_thsensor[0].temperature : OutdoorTmin;
+    OutdoorTmax = (LocalSensors.ble_thsensor[0].temperature > OutdoorTmax) ? LocalSensors.ble_thsensor[0].temperature : OutdoorTmax;
+  }
+  
+  DisplayGeneralInfoSection("Wohnung");
+  DisplayDateTime(90, 225);
+  display.drawBitmap(  5,  25, epd_bitmap_wohnung_sw, 220, 165, GxEPD_BLACK);
+  display.drawRect(    4,  24, 222, 167, GxEPD_BLACK);
+  display.drawBitmap(240,  45, epd_bitmap_temperatur_aussen, 64, 48, GxEPD_BLACK);
+  display.drawBitmap(438,  45, epd_bitmap_feuchte_aussen, 64, 48, GxEPD_BLACK);
+  display.drawBitmap(240, 178, epd_bitmap_temperatur_innen, 64, 48, GxEPD_BLACK);
+  display.drawBitmap(438, 178, epd_bitmap_feuchte_innen, 64, 48, GxEPD_BLACK);
+  display.drawBitmap(650,  20, epd_bitmap_barometer, 80, 64, GxEPD_BLACK);
+
+  // Outdoor sensor
+  if (LocalSensors.ble_thsensor[0].valid) {
+    DisplayLocalTemperatureSection(358,  22, 137, 100, "", true, LocalSensors.ble_thsensor[0].temperature, true, OutdoorTmin, OutdoorTmax);
+    //u8g2Fonts.setFont(u8g2_font_helvB24_tf);
+    u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+    drawString(524,  75, String(LocalSensors.ble_thsensor[0].humidity, 0) + "%", CENTER);
+    // For testing:
+    // LocalSensors.ble_thsensor[0].batt_level = 1;
+    if (LocalSensors.ble_thsensor[0].batt_level <= MITHERMOMETER_BATTALERT) {
+      display.drawBitmap(590,  50, epd_bitmap_battery_alert, 40, 40, GxEPD_BLACK);
+    }
+  }
+  else {
+    // No outdoor temperature
+    display.drawBitmap(320,  47, epd_bitmap_bluetooth_disabled_FILL0_wght300_GRAD0_opsz40, 40, 40, GxEPD_BLACK);
+    // No outdor humidity
+    display.drawBitmap(528,  47, epd_bitmap_bluetooth_disabled_FILL0_wght300_GRAD0_opsz40, 40, 40, GxEPD_BLACK);
+  }
+
+  // Indoor sensor
+  if (LocalSensors.i2c_thpsensor[0].valid) {
+    DisplayLocalTemperatureSection(368, 156, 137, 100, "", true, LocalSensors.i2c_thpsensor[0].temperature, false, 0, 0);
+    //u8g2Fonts.setFont(u8g2_font_helvB24_tf);
+    u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+    drawString(524, 208, String(LocalSensors.i2c_thpsensor[0].humidity, 0) + "%", CENTER);
+    drawString(660, 110, String(LocalSensors.i2c_thpsensor[0].pressure, 0) + "hPa", CENTER);
+  }
+  else {
+     // No indoor temperature 
+     display.drawBitmap(315,  180, epd_bitmap_bolt, 40, 40, GxEPD_BLACK);
+     // No indoor humidity
+     display.drawBitmap(523,  180, epd_bitmap_bolt, 40, 40, GxEPD_BLACK);
+     // No pressure
+     display.drawBitmap(670,   90, epd_bitmap_bolt, 40, 40, GxEPD_BLACK);
+  }
+  
+  DrawRSSI(695, 15, wifi_signal); // Wi-Fi signal strength
+}
+//#########################################################################################
+void DisplayTestScreen(void) {
+    float outdoor_temp_c = 9.9;
+    //Serial.println("Temperature: "+String(outdoor_temp_c));
+    Serial.println("Air Temperature: "+String(wsensor.air_temp_c));
+    display.drawRect(159, 239, 222, 167, GxEPD_BLACK);
+    display.drawBitmap(160, 240, epd_bitmap_garten_sw, 220, 165, GxEPD_BLACK);
+    display.drawRect(419, 239, 222, 167, GxEPD_BLACK);
+    display.drawBitmap(420, 240, epd_bitmap_wohnung_sw, 220, 165, GxEPD_BLACK);
+    display.drawBitmap(5, 420, epd_bitmap_temperatur_innen, 64, 48, GxEPD_BLACK);
+    display.drawBitmap(60, 420, epd_bitmap_temperatur_aussen, 64, 48, GxEPD_BLACK);
+    display.drawBitmap(130, 420, epd_bitmap_feuchte_innen, 64, 48, GxEPD_BLACK);
+    display.drawBitmap(200, 420, epd_bitmap_feuchte_aussen, 64, 48, GxEPD_BLACK);
+    display.drawBitmap(270, 420, epd_bitmap_boden_temperatur, 64, 48, GxEPD_BLACK);
+    display.drawBitmap(340, 420, epd_bitmap_boden_feuchte, 64, 48, GxEPD_BLACK);
+    display.drawBitmap(410, 420, epd_bitmap_wasser_temperatur, 48, 48, GxEPD_BLACK);
+    display.drawBitmap(480, 404, epd_bitmap_barometer, 80, 64, GxEPD_BLACK);
+    
+    DisplayGeneralInfoSection("Test");                 // Top line of the display
+    //DisplayLocalTemperatureSection(300 + 154, 100 - 81, 137, 100, TXT_TEMPERATURES_OUT, mithermometer_valid, outdoor_temp_c, true, OutdoorTmin, OutdoorTmax);
+    DisplayLocalTemperatureSection(300 + 154, 100 - 81, 137, 100, TXT_TEMPERATURES_OUT, true, wsensor.air_temp_c, false, 0, 0);
+    DisplayDisplayWindSection(108, 146, wsensor.wind_direction_deg, wsensor.wind_avg_meter_sec, 81, "");
+    //DisplayMainWeatherSection(300, 100);          // Centre section of display for Location, temperature, Weather report, current Wx Symbol and wind direction
+    //DisplayForecastSection(217, 245);            // 3hr forecast boxes
+    //DisplayAstronomySection(0, 245);             // Astronomy section Sun rise/set, Moon phase and Moon icon
+    DisplayStatusSection(690, 215, wifi_signal); // Wi-Fi signal strength and Battery voltage
+}
+
+
+void DisplayGeneralInfoSection(String location) {
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   drawString(6, 2, "[Version: " + version + "]", LEFT); // Programme version
-  drawString(SCREEN_WIDTH / 2, 3, City, CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB14_tf);
-  drawString(487, 194, Date_str, CENTER);
-  u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-  drawString(500, 225, Time_str, CENTER);
-  display.drawLine(0, 18, SCREEN_WIDTH - 3, 18, GxEPD_BLACK);
+  drawString(SCREEN_WIDTH / 2, 6, location, CENTER);
+  display.drawLine(0, 18, SCREEN_WIDTH, 18, GxEPD_BLACK);
 }
+//#########################################################################################
+void DisplayDateTime(int x, int y) {
+  u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+  drawString(x, y, Date_str, CENTER);
+  u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  drawString(x + 13, y+31, Time_str, CENTER);
+  //display.drawLine(0, 18, SCREEN_WIDTH - 3, 18, GxEPD_BLACK);
+}
+
 //#########################################################################################
 void DisplayMainWeatherSection(int x, int y) {
   //  display.drawRect(x-67, y-65, 140, 182, GxEPD_BLACK);
@@ -179,10 +659,12 @@ void DisplayMainWeatherSection(int x, int y) {
   DisplayForecastTextSection(x + 97, y + 20, 409, 65);
 }
 //#########################################################################################
-void DisplayDisplayWindSection(int x, int y, float angle, float windspeed, int Cradius) {
+void DisplayDisplayWindSection(int x, int y, float angle, float windspeed, int Cradius, String label) {
   arrow(x, y, Cradius - 22, angle, 18, 33); // Show wind direction on outer circle of width and length
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x, y - Cradius - 41, TXT_WIND_SPEED_DIRECTION, CENTER);
+  if (label != "") {
+    drawString(x, y - Cradius - 41, label, CENTER);
+  }
   int dxo, dyo, dxi, dyi;
   display.drawLine(0, 18, 0, y + Cradius + 37, GxEPD_BLACK);
   display.drawCircle(x, y, Cradius, GxEPD_BLACK);     // Draw compass circle
@@ -251,11 +733,16 @@ void DisplayTemperatureSection(int x, int y, int twidth, int tdepth) {
 void DisplayForecastTextSection(int x, int y , int fwidth, int fdepth) {
   display.drawRect(x - 6, y - 3, fwidth, fdepth, GxEPD_BLACK); // forecast text outline
   u8g2Fonts.setFont(u8g2_font_helvB14_tf);
-  String Wx_Description = WxConditions[0].Main0;
-  if (WxConditions[0].Forecast0 != "") Wx_Description += " (" + WxConditions[0].Forecast0;
+  // MPr:
+  // Main0 ist der Originaltext (englisch)
+  // Forecast0, Forecast1 und Forcast2 ist der lokalisierte Text
+  //String Wx_Description = WxConditions[0].Main0;
+  String Wx_Description;
+  if (WxConditions[0].Forecast0 != "") Wx_Description += WxConditions[0].Forecast0;
+  //if (WxConditions[0].Forecast0 != "") Wx_Description += " (" + WxConditions[0].Forecast0;
   if (WxConditions[0].Forecast1 != "") Wx_Description += ", " + WxConditions[0].Forecast1;
   if (WxConditions[0].Forecast2 != "") Wx_Description += ", " + WxConditions[0].Forecast2;
-  if (Wx_Description.indexOf("(") > 0) Wx_Description += ")";
+  //if (Wx_Description.indexOf("(") > 0) Wx_Description += ")";
   int MsgWidth = 43; // Using proportional fonts, so be aware of making it too wide!
   if (Language == "DE") drawStringMaxWidth(x, y + 23, MsgWidth, Wx_Description, LEFT); // Leave German text in original format, 28 character screen width at this font size
   else                  drawStringMaxWidth(x, y + 23, MsgWidth, TitleCase(Wx_Description), LEFT); // 28 character screen width at this font size
@@ -415,6 +902,33 @@ void DisplayForecastSection(int x, int y) {
   else DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_SNOWFALL_MM : TXT_SNOWFALL_IN, snow_readings, max_readings, autoscale_on, barchart_on);
 }
 //#########################################################################################
+void DisplayHistory() {
+  int r = 1;
+  do {
+    if (Units == "I") pressure_readings[r] = WxForecast[r].Pressure * 0.02953;   else pressure_readings[r] = WxForecast[r].Pressure;
+    if (Units == "I") rain_readings[r]     = WxForecast[r].Rainfall * 0.0393701; else rain_readings[r]     = WxForecast[r].Rainfall;
+    if (Units == "I") snow_readings[r]     = WxForecast[r].Snowfall * 0.0393701; else snow_readings[r]     = WxForecast[r].Snowfall;
+    temperature_readings[r] = WxForecast[r].Temperature;
+    humidity_readings[r]    = WxForecast[r].Humidity;
+    r++;
+  } while (r <= max_readings);
+  int gwidth = 150, gheight = 72;
+  int gx = (SCREEN_WIDTH - gwidth * 4) / 5 + 5;
+  int gy = 375;
+  int gap = gwidth + gx;
+  u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  drawString(SCREEN_WIDTH / 2, gy - 40, TXT_FORECAST_VALUES, CENTER); // Based on a graph height of 60
+  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
+  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure_readings, max_readings, autoscale_on, barchart_off);
+  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature_readings, max_readings, autoscale_on, barchart_off);
+  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,   TXT_HUMIDITY_PERCENT, humidity_readings, max_readings, autoscale_off, barchart_off);
+  if (SumOfPrecip(rain_readings, max_readings) >= SumOfPrecip(snow_readings, max_readings))
+    DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_readings, max_readings, autoscale_on, barchart_on);
+  else DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_SNOWFALL_MM : TXT_SNOWFALL_IN, snow_readings, max_readings, autoscale_on, barchart_on);
+}
+
+//#########################################################################################
 void DisplayConditionsSection(int x, int y, String IconName, bool IconSize) {
   Serial.println("Icon name: " + IconName);
   if      (IconName == "01d" || IconName == "01n")  Sunny(x, y, IconSize, IconName);
@@ -501,6 +1015,7 @@ void DisplayStatusSection(int x, int y, int rssi) {
   DrawRSSI(x - 10, y + 6, rssi);
   DrawBattery(x + 58, y + 6);;
 }
+
 //#########################################################################################
 void DrawRSSI(int x, int y, int rssi) {
   int WIFIsignal = 0;
@@ -514,8 +1029,9 @@ void DrawRSSI(int x, int y, int rssi) {
     display.fillRect(x + xpos * 6, y - WIFIsignal, 5, WIFIsignal, GxEPD_BLACK);
     xpos++;
   }
-  display.fillRect(x, y - 1, 5, 1, GxEPD_BLACK);
-  drawString(x + 6,  y + 6, String(rssi) + "dBm", CENTER);
+  //display.fillRect(x, y - 1, 5, 1, GxEPD_BLACK);
+  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  drawString(x + 70, y - 10, String(rssi) + "dBm", CENTER);
 }
 //#########################################################################################
 boolean SetupTime() {
@@ -949,6 +1465,38 @@ void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alig
     u8g2Fonts.println(secondLine);
   }
 }
+//#########################################################################################
+void DisplayLocalTemperatureSection(int x, int y, int twidth, int tdepth, String label, bool valid, float tcurrent, bool minmax, float tmin, float tmax) {
+  //display.drawRect(x - 63, y - 1, twidth, tdepth, GxEPD_BLACK); // temp outline
+  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  if (label != ""){
+    drawString(x, y + 5, label, CENTER);
+  }
+  String _unit = (Units == "M") ? "°C" : "°F"; 
+  if (!valid) {
+    if (minmax) {
+      u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+      drawString(x-5, y + 82, "? " + _unit + " | ? " + _unit, CENTER); // Show forecast high and Low
+    }
+    //u8g2Fonts.setFont(u8g2_font_helvB24_tf);
+    u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+    drawString(x - 22, y + 53, "?.? " + _unit, CENTER); // Show current Temperature
+    //u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+    //drawString(x + 43, y + 53, Units == "M" ? "C" : "F", LEFT);
+  } else {
+    if (minmax) {
+      u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+      drawString(x-5, y + 82, String(tmax, 0) + _unit + " | " + String(tmin, 0) + _unit, CENTER); // Show forecast high and Low
+    }
+    //u8g2Fonts.setFont(u8g2_font_helvB24_tf);
+    u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+    drawString(x - 22, y + 53, String(tcurrent, 1) + _unit, CENTER); // Show current Temperature
+  }
+
+  //u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  //drawString(x + 43, y + 53, Units == "M" ? "C" : "F", LEFT);
+}
+
 //#########################################################################################
 void InitialiseDisplay() {
   display.init(115200, true, 2, false); // init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset_duration, bool pulldown_rst_mode)
