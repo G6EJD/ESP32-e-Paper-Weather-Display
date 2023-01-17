@@ -18,8 +18,8 @@ Download the software to your Arduino's library directory.
    - Waveshare_7_5_T7 (newer 800x480 version of the older 640x384)
    
    Code requires [GxEPD2 library](https://github.com/ZinggJM/GxEPD2)
-   - which needs [Adafruit_GFX](https://github.com/adafruit/Adafruit-GFX-Library
-   - an also requires U8g2_for_Adafruit_GFX
+   - which needs [Adafruit_GFX](https://github.com/adafruit/Adafruit-GFX-Library)
+   - an also requires [U8g2_for_Adafruit_GFX](https://github.com/olikraus/U8g2_for_Adafruit_GFX)
 
 2. Obtain your [OWM API key](https://openweathermap.org/appid) - it's free
 
