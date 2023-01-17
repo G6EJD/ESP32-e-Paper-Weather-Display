@@ -23,17 +23,18 @@
 #include <ArduinoJson.h>              // https://github.com/bblanchon/ArduinoJson needs version v6 or above
 #include <WiFi.h>                     // Built-in
 //#include <WiFiClientSecure.h>
-#include "time.h"                     // Built-in
+#include <time.h>                     // Built-in
 #include <SPI.h>                      // Built-in
-#include <MQTT.h>
-#include <cQueue.h>
 #include <vector>
 #include <string>
+#include <Ticker.h>
+#include <MQTT.h>
+#include <cQueue.h>
 #include "garten.h"
 #include "wohnung.h"
 #include "bitmaps.h"
 
-#define START_SCREEN 2
+#define START_SCREEN 0
 #define LAST_SCREEN  2
 //#define SIMULATE_MQTT
 //#define FORCE_LOW_BATTERY
@@ -170,7 +171,7 @@ bool    mqttMessageReceived = false; //!< Flag: MQTT message has been received
 
 #define max_readings 24
 
-Forecast_record_type  WxConditions[1];
+RTC_DATA_ATTR Forecast_record_type  WxConditions[1];
 Forecast_record_type  WxForecast[max_readings];
 
 #include "src/common.h"
@@ -234,6 +235,7 @@ struct MqttHistQData {
   float temperature;  //!< temperature in degC
   float humidity;     //!< humidity in %
   float rain;         //!< precipitation in mm
+  bool  valid;        //!< data valid
 };
 
 typedef struct MqttHistQData mqtt_hist_t; //!< Shortcut for struct MqttHistQData
@@ -282,6 +284,11 @@ int  SleepTime     = 23; // Sleep after (23+1) 00:00 to save battery power
 RTC_DATA_ATTR int   ScreenNo     = START_SCREEN; //!< Current Screen No.
 RTC_DATA_ATTR int   PrevScreenNo = -1;           //!< Previous Screen No.
 
+Ticker HistoryUpdater;
+
+void UpdateHistory() {
+  SaveMqttData();
+}
 
 //#########################################################################################
 // Touch Interrupt Service Routine
@@ -291,55 +298,64 @@ void ARDUINO_ISR_ATTR touch_isr() {
 
 //#########################################################################################
 void setup() {
-  WiFiClient net;
+    WiFiClient net;
 
-  StartTime = millis();
-  Serial.begin(115200);
-  bool mqtt_connected = false;
-  
-  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0 || touchTrig) {
-    PrevScreenNo = ScreenNo;
-    ScreenNo = (ScreenNo == LAST_SCREEN) ? 0 : ScreenNo + 1;
-    touchTrig = false;
-  } else if (esp_sleep_get_wakeup_cause() == 0xC /* SW_CPU_RESET */) {
-    ;
-  } 
-  //else if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER) {
-    // FIXME Check if touch wakeup occurs at the same time as timer wakeup
-    //SaveLocalData();
-  //}
-  
-  Serial.printf("Screen No: %d\n", ScreenNo);
-  
-  pinMode(TOUCH_INT, INPUT);
-  
-  attachInterrupt(TOUCH_INT, touch_isr, RISING);
-  
-  
-  if ((ScreenNo == ScreenMQTT) || (ScreenNo == ScreenLocal)) {
-    //mqtt_connected = MqttConnect(net, MqttClient); 
-  }
+    StartTime = millis();
+    Serial.begin(115200);
+    bool mqtt_connected = false;
+    bool wifi_ok = false;
+    bool time_ok = false;
+    
+    if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0 || touchTrig) {
+        PrevScreenNo = ScreenNo;
+        ScreenNo = (ScreenNo == LAST_SCREEN) ? 0 : ScreenNo + 1;
+        touchTrig = false;
+    } else if (esp_sleep_get_wakeup_cause() == 0xC /* SW_CPU_RESET */) {
+        ;
+    } 
+    //else if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER) {
+        // FIXME Check if touch wakeup occurs at the same time as timer wakeup
+        //SaveLocalData();
+    //}
+    Serial.println("sizeof(WxConditions): " +String(sizeof(WxConditions[1])));
+    Serial.println("sizeof(WxForecast):   " +String(sizeof(WxForecast[max_readings])));
 
-  InitialiseDisplay();
-  if (display.epd2.hasFastPartialUpdate)
-  {
-    Serial.println("Display has Fast Partial Update");
-  }
-  else if (display.epd2.hasPartialUpdate)
-  {
-    Serial.println("Display has Partial Update");
-  }
-  else
-  {
-    Serial.println("Display has No Partial Update");
-  }
+    // FIXME: calculate time to trigger
+    //int tmr = 0;
+    //HistoryUpdater.once(tmr, UpdateHistory);
+    
+    Serial.printf("Screen No: %d\n", ScreenNo);
+    
+    pinMode(TOUCH_INT, INPUT);
+    
+    attachInterrupt(TOUCH_INT, touch_isr, RISING);
+        
+    if (ScreenNo != PrevScreenNo) {
+        InitialiseDisplay();
+        //display.fillRect(0, 0, SCREEN_WIDTH, 18, GxEPD_WHITE);
+        DisplayGeneralInfoSection();
+        display.displayWindow(0, 0, SCREEN_WIDTH, 19);
+        int x = SCREEN_WIDTH/2 - 24;
+        int y = SCREEN_HEIGHT/2 -24;
+        display.fillRect(x, y, 48, 48, GxEPD_WHITE);
+        display.drawBitmap(x, y, epd_bitmap_hourglass_top, 48, 48, GxEPD_BLACK);
+        display.displayWindow(x, y, 48, 48);
+
+        display.setFullWindow();
+    }
+    
+    wifi_ok = (StartWiFi() == WL_CONNECTED);
+    time_ok = SetupTime();
+    
+    Serial.println("WiFi o.k.: " + String(wifi_ok));
+    Serial.println("Time o.k.: " + String(time_ok));
+    Serial.println(Date_str + " " + Time_str);
+
   
-  // FIXME
-  if (StartWiFi() == WL_CONNECTED && SetupTime() == true) {    
-    if (ScreenNo == ScreenOWM) {
+    if (ScreenNo == ScreenOWM && wifi_ok) {
         //WiFiClient client;
         if ((CurrentHour >= WakeupTime && CurrentHour <= SleepTime) || DebugDisplayUpdate) {
-            InitialiseDisplay(); // Give screen time to initialise by getting weather data!
+            //InitialiseDisplay(); // Give screen time to initialise by getting weather data!
             byte Attempts = 1;
             bool RxWeather = false, RxForecast = false;
             // WiFiClient client;   // wifi client object
@@ -350,37 +366,70 @@ void setup() {
             }
             if (RxWeather && RxForecast) { // Only if received both Weather or Forecast proceed
                 //StopWiFi(); // Reduces power consumption
+                ClearHourglass();
                 DisplayOWMWeather();
                 display.display(false); // Full screen update mode
             }
         }
     }
+    else {
 
+    }
+    
     GetLocalData();
     if (HistoryUpdateDue()) {
         SaveLocalData();
     }
     
     if (ScreenNo == ScreenLocal) {
-         InitialiseDisplay();
-         DisplayLocalWeather();
-         display.display(false);      
+        //InitialiseDisplay();
+        ClearHourglass();
+        DisplayLocalWeather();
+        display.display(false);      
     }
-
 
     // Screen has changed to MQTT - immediately update screen with saved data 
     if (ScreenNo == ScreenMQTT && ScreenNo != PrevScreenNo) {
-        InitialiseDisplay();
+        //InitialiseDisplay();
+        ClearHourglass();
         DisplayMQTTWeather();
         display.display(false);      
     }
 
+    // Display WiFi-Off-Icon
+    if (!wifi_ok) {
+        // Screen not changed - show next to Date/Time of last update
+        if (ScreenNo == PrevScreenNo) {
+            int x = (ScreenNo == ScreenOWM) ? 595 :  88;
+            int y = (ScreenNo == ScreenOWM) ? 190 : 272;
+            
+            display.drawBitmap(x, y, epd_bitmap_wifi_off, 48, 48, GxEPD_BLACK);
+            display.displayWindow(x, y, 48, 48);
+            display.setFullWindow();
+        }
+        else {
+            // Screen has changed to OWM (no previous data available)
+            // show on at the screen's center 
+            if (ScreenNo == ScreenOWM) {
+                int x = SCREEN_WIDTH/2 - 24;
+                int y = SCREEN_HEIGHT/2 -24;
+                display.fillRect(x, y, 48, 48, GxEPD_WHITE);
+                display.drawBitmap(x, y, epd_bitmap_wifi_off, 48, 48, GxEPD_BLACK);
+                display.displayWindow(x, y, 48, 48);
+                display.setFullWindow();
+            }
+        }
+    }
+
+    
     // Fetch MQTT data
     MQTTClient MqttClient(MQTT_PAYLOAD_SIZE);
     mqtt_connected = MqttConnect(net, MqttClient); 
     if (mqtt_connected) {
-        int x = (ScreenNo == ScreenOWM) ? 595 :  88;
-        int y = (ScreenNo == ScreenOWM) ? 190 : 272;
+//        int x = (ScreenNo == ScreenOWM) ? 595 :  88;
+  //      int y = (ScreenNo == ScreenOWM) ? 190 : 272;
+        int x = 88;
+        int y = (ScreenNo == ScreenOWM) ? 300 : 272;
         display.drawBitmap(x, y, epd_bitmap_downloading, 48, 48, GxEPD_BLACK);
         display.displayWindow(x, y, 48, 48);
         GetMqttData(net, MqttClient);
@@ -400,57 +449,10 @@ void setup() {
     }
 
   
-//        break;
-//      case ScreenMQTT:
-//        {
-//          MQTTClient MqttClient(MQTT_PAYLOAD_SIZE);
-//          mqtt_connected = MqttConnect(net, MqttClient); 
-//          InitialiseDisplay();
-//          //SubscribeMqttData();
-//          if (mqtt_connected) {
-//            GetMqttData(MqttClient);
-//          }
-//          SaveMqttData();
-//          DisplayMQTTWeather();
-//          display.display(false);
-//        }
-//        break;
-//      case ScreenLocal:
-//        {
-//          GetLocalData();
-//          SaveLocalData();
-//          InitialiseDisplay();
-//          DisplayLocalWeather();
-//          display.display(false);
-//        }
-//        break;
-//      case ScreenTest:
-//        InitialiseDisplay();
-//        StopWiFi();
-//        DisplayTestScreen();
-//        display.display(false);
-//        break;          
-//    }
-  } //  if (StartWiFi() == WL_CONNECTED && SetupTime() == true)
-  /*
-  if (!mqtt_connected) {
-    mqtt_connected = MqttConnect(net, MqttClient); 
-  }
-  if (mqtt_connected) {
-    GetMqttData(MqttClient);
-  }
-  SaveMqttData();
-  */
-  StopWiFi();
   
-  #if 0
-  if (ScreenNo == ScreenMQTT && MqttSensors.valid) {
-    display.fillScreen(GxEPD_WHITE);
-    DisplayMQTTWeather();
-    display.display(false);
-  }
-  #endif
-  BeginSleep();
+    StopWiFi();
+  
+    BeginSleep();
 }
 //#########################################################################################
 void loop() { // this will never run!
@@ -477,6 +479,16 @@ void BeginSleep() {
   Serial.println("Awake for : " + String((millis() - StartTime) / 1000.0, 3) + "-secs");
   Serial.println("Starting deep-sleep period...");
   esp_deep_sleep_start();      // Sleep for e.g. 30 minutes
+}
+//#########################################################################################
+void ClearHourglass() {
+
+    int x = SCREEN_WIDTH/2 - 24;
+    int y = SCREEN_HEIGHT/2 -24;
+    display.fillRect(x, y, 48, 48, GxEPD_WHITE);
+    display.displayWindow(x, y, 48, 48);
+
+    display.setFullWindow();
 }
 
 //#########################################################################################
@@ -508,14 +520,16 @@ void mqttMessageAdvancedCb(MQTTClient *client, char topic[], char bytes[], int l
 }
 
 //#########################################################################################
-void DisplayOWMWeather() {                        // 7.5" e-paper display is 800x480 resolution
-  DisplayGeneralInfoSection();                 // Top line of the display
-  DisplayDateTime(487, 194);
+void DisplayOWMWeather() {
+  DisplayGeneralInfoSection();                  // Top line of the display
+  //DisplayDateTime(487, 194);
+  DisplayDateTime(90, 255);
   DisplayDisplayWindSection(108, 146, WxConditions[0].Winddir, WxConditions[0].Windspeed, 81, true, TXT_WIND_SPEED_DIRECTION);
   DisplayMainWeatherSection(300, 100);          // Centre section of display for Location, temperature, Weather report, current Wx Symbol and wind direction
-  DisplayForecastSection(217, 245);            // 3hr forecast boxes
-  DisplayAstronomySection(0, 245);             // Astronomy section Sun rise/set, Moon phase and Moon icon
-  DisplayStatusSection(690, 215, wifi_signal); // Wi-Fi signal strength and Battery voltage
+  DisplayForecastSection(217, 245);             // 3hr forecast boxes
+  DisplayAstronomySection(391, 165);            // Astronomy section Sun rise/set, Moon phase and Moon icon
+  //DrawRSSI(695, 15, wifi_signal);
+  DrawRSSI(705, 15, wifi_signal);
 }
 
 bool MqttConnect(WiFiClient& net, MQTTClient& MqttClient) {
@@ -559,27 +573,32 @@ void findMqttMinMaxTemp(float * t_min, float * t_max) {
   if (!q_isInitialized(&MqttHistQCtrl)) {
     return;
   }
-  
-  // Initialize min/max with last entry 
-  if (q_peekPrevious(&MqttHistQCtrl, &mqtt_data)) {
-    outdoorTMin = mqtt_data.temperature;
-    outdoorTMax = mqtt_data.temperature;
-  }
 
   // Go back in FIFO at most 24 hrs
   int maxIdx = 24 * 60 / SleepDuration;
   if (q_getCount(&MqttHistQCtrl) < maxIdx) {
     maxIdx = q_getCount(&MqttHistQCtrl);
   }
+
+  // Initialize min/max with last valid entry
+  for (int i=1; i<maxIdx; i++) {
+    if (q_peekIdx(&MqttHistQCtrl, &mqtt_data, i) && mqtt_data.valid) {
+        outdoorTMin = mqtt_data.temperature;
+        outdoorTMax = mqtt_data.temperature;
+        break;
+    }
+  }
   
   // Peek into FIFO and get min/max
   for (int i=1; i<maxIdx; i++) {
     if (q_peekIdx(&MqttHistQCtrl, &mqtt_data, i)) {
-      if (mqtt_data.temperature < outdoorTMin) {
-        outdoorTMin = mqtt_data.temperature;
-      }
-      if (mqtt_data.temperature > outdoorTMax) {
-        outdoorTMax = mqtt_data.temperature;
+      if (mqtt_data.valid) {
+        if (mqtt_data.temperature < outdoorTMin) {
+            outdoorTMin = mqtt_data.temperature;
+        }
+        if (mqtt_data.temperature > outdoorTMax) {
+            outdoorTMax = mqtt_data.temperature;
+        }
       }
     }
   }
@@ -700,12 +719,14 @@ void SaveMqttData() {
     if (!q_isInitialized(&MqttHistQCtrl)) {
       q_init_static(&MqttHistQCtrl, sizeof(MqttHist[0]), MQTT_HIST_SIZE, FIFO, true, (uint8_t *)MqttHist, sizeof(MqttHist));
     }
-    mqtt_hist_t mqtt_data = {0, 0, 0};
+    mqtt_hist_t mqtt_data = {0, 0, 0, 0};
     if (MqttSensors.valid) {
       mqtt_data.temperature = MqttSensors.air_temp_c;
       mqtt_data.humidity    = MqttSensors.humidity;
       mqtt_data.rain        = MqttSensors.rain_mm;
+      mqtt_data.valid       = true;
     }
+    /*
     else {
       // Store previous data
       mqtt_hist_t prev_data = {0, 0, 0};
@@ -715,6 +736,7 @@ void SaveMqttData() {
         mqtt_data.rain        = prev_data.rain;
       }
     }
+    */
     q_push(&MqttHistQCtrl, &mqtt_data);   
 }
 
@@ -818,7 +840,8 @@ void DisplayMQTTWeather(void) {
     display.drawBitmap(680, 100, epd_bitmap_signal_disconnected, 40, 40, GxEPD_BLACK);
   }
   DisplayMqttHistory();
-  DrawRSSI(695, 15, wifi_signal); // Wi-Fi signal strength
+  //DrawRSSI(695, 15, wifi_signal); // Wi-Fi signal strength
+  DrawRSSI(705, 15, wifi_signal); // Wi-Fi signal strength
   
 }
 //#########################################################################################
@@ -1019,7 +1042,8 @@ void DisplayLocalWeather() {                        // 7.5" e-paper display is 8
      display.drawBitmap(670,   90, epd_bitmap_bolt, 40, 40, GxEPD_BLACK);
   }
   DisplayLocalHistory();
-  DrawRSSI(695, 15, wifi_signal); // Wi-Fi signal strength
+  //DrawRSSI(695, 15, wifi_signal); // Wi-Fi signal strength
+  DrawRSSI(705, 15, wifi_signal); // Wi-Fi signal strength
 }
 //#########################################################################################
 void DisplayTestScreen(void) {
@@ -1090,7 +1114,7 @@ void DisplayGeneralInfoSection(void) {
     }
   }
 
-  DrawRSSI(695, 15, wifi_signal); // Wi-Fi signal strength and Battery voltage
+  //DrawRSSI(695, 15, wifi_signal); // Wi-Fi signal strength and Battery voltage
   display.drawLine(0, 18, SCREEN_WIDTH-1, 18, GxEPD_BLACK);
 }
 //#########################################################################################
@@ -1219,13 +1243,13 @@ void DisplayPressureSection(int x, int y, float pressure, String slope, int pwid
   String slope_direction = TXT_PRESSURE_STEADY;
   if (slope == "+") slope_direction = TXT_PRESSURE_RISING;
   if (slope == "-") slope_direction = TXT_PRESSURE_FALLING;
-  display.drawRect(x + 40, y + 78, 41, 21, GxEPD_BLACK);
+  //display.drawRect(x + 40, y + 78, 41, 21, GxEPD_BLACK);
   u8g2Fonts.setFont(u8g2_font_helvB24_tf);
   if (Units == "I") drawString(x - 22, y + 55, String(pressure, 2), CENTER); // "Imperial"
   else              drawString(x - 22, y + 55, String(pressure, 0), CENTER); // "Metric"
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x + 59, y + 83, (Units == "M" ? "hPa" : "in"), CENTER);
-  drawString(x - 3, y + 83, slope_direction, CENTER);
+  u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  drawString(x + 55, y + 53, (Units == "M" ? "hPa" : "in"), CENTER);
+  drawString(x - 3, y + 78, slope_direction, CENTER);
 }
 //#########################################################################################
 void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
@@ -1347,12 +1371,12 @@ void DisplayForecastSection(int x, int y) {
   drawString(SCREEN_WIDTH / 2, gy - 40, TXT_FORECAST_VALUES, CENTER); // Based on a graph height of 60
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
-  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure_readings, max_readings, autoscale_on, barchart_off, 0, 2, 1);
-  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature_readings, max_readings, autoscale_on, barchart_off, 0, 2, 1);
-  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,   TXT_HUMIDITY_PERCENT, humidity_readings, max_readings, autoscale_off, barchart_off, 0, 2, 1);
+  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure_readings, max_readings, autoscale_on, barchart_off, 0, 2, 1, NULL);
+  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature_readings, max_readings, autoscale_on, barchart_off, 0, 2, 1, NULL);
+  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,   TXT_HUMIDITY_PERCENT, humidity_readings, max_readings, autoscale_off, barchart_off, 0, 2, 1, NULL);
   if (SumOfPrecip(rain_readings, max_readings) >= SumOfPrecip(snow_readings, max_readings))
-    DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_readings, max_readings, autoscale_on, barchart_on, 0, 2, 1);
-  else DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_SNOWFALL_MM : TXT_SNOWFALL_IN, snow_readings, max_readings, autoscale_on, barchart_on, 0, 2, 1);
+    DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_readings, max_readings, autoscale_on, barchart_on, 0, 2, 1, NULL);
+  else DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_SNOWFALL_MM : TXT_SNOWFALL_IN, snow_readings, max_readings, autoscale_on, barchart_on, 0, 2, 1, NULL);
 }
 //#########################################################################################
 void DisplayLocalHistory() {
@@ -1372,13 +1396,12 @@ void DisplayLocalHistory() {
     humidity[i] = 0;
     pressure[i] = 0; 
   }
-  //int j = LOCAL_HIST_SIZE-1;
+
   for (int i=q_getCount(&LocalHistQCtrl)-1, j=LOCAL_HIST_SIZE-1; i>=0; i--, j--) {
     q_peekIdx(&LocalHistQCtrl, &local_data, i);
     temperature[j] = local_data.temperature;
     humidity[j] = local_data.humidity;
     pressure[j] = local_data.pressure;
-    //j--;
   }
 
   int gwidth = 150, gheight = 72;
@@ -1390,9 +1413,9 @@ void DisplayLocalHistory() {
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
 
   // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
-  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1);
-  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, LOCAL_HIST_SIZE, autoscale_on, barchart_off, -2, 0, 1);
-  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,    TXT_HUMIDITY_PERCENT, humidity, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1);
+  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, NULL);
+  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, LOCAL_HIST_SIZE, autoscale_on, barchart_off, -2, 0, 1, NULL);
+  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,    TXT_HUMIDITY_PERCENT, humidity, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, NULL);
 }
 //#########################################################################################
 void DisplayMqttHistory() {
@@ -1412,16 +1435,19 @@ void DisplayMqttHistory() {
   float temperature[MQTT_HIST_SIZE];
   float humidity[MQTT_HIST_SIZE];
   float rain[MQTT_HIST_SIZE];
+  bool  valid[MQTT_HIST_SIZE];
   for (int i = 0; i<MQTT_HIST_SIZE; i++) {
     temperature[i] = 0;
-    humidity[i] = 0;
-    rain[i] = 0; 
+    humidity[i]    = 0;
+    rain[i]        = 0;
+    valid[i]       = false;
   }
   for (int i=q_getCount(&MqttHistQCtrl)-1, j=MQTT_HIST_SIZE-1; i>=0; i--, j--) {
     q_peekIdx(&MqttHistQCtrl, &mqtt_data, i);
     temperature[j] = mqtt_data.temperature;
     humidity[j]    = mqtt_data.humidity;
     rain[j]        = mqtt_data.rain;
+    valid[j]       = mqtt_data.valid;
   }
 
   int gwidth = 150, gheight = 72;
@@ -1433,9 +1459,9 @@ void DisplayMqttHistory() {
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
 
   // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
-  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, max_readings, autoscale_on, barchart_off, -2, 0, 1);
-  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,   TXT_HUMIDITY_PERCENT, humidity, max_readings, autoscale_off, barchart_off, -2, 0, 1);
-  DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain, max_readings, autoscale_on, barchart_on, -2, 0, 1);
+  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, max_readings, autoscale_on, barchart_off, -2, 0, 1, valid);
+  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,   TXT_HUMIDITY_PERCENT, humidity, max_readings, autoscale_off, barchart_off, -2, 0, 1, valid);
+  DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain, max_readings, autoscale_on, barchart_on, -2, 0, 1, valid);
 }
 
 //#########################################################################################
@@ -1459,7 +1485,7 @@ void DisplayConditionsSection(int x, int y, String IconName, bool IconSize) {
     u8g2Fonts.setFont(u8g2_font_helvB14_tf);
     drawString(x - 25, y + 70, String(WxConditions[0].Humidity, 0) + "%", CENTER);
     u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-    drawString(x + 35, y + 80, "RH", CENTER);
+    drawString(x + 35, y + 70, "RH", CENTER);
     if (WxConditions[0].Visibility > 0) Visibility(x - 62, y - 87, String(WxConditions[0].Visibility) + "M");
     if (WxConditions[0].Cloudcover > 0) CloudCover(x + 35, y - 87, WxConditions[0].Cloudcover);
   }
@@ -1534,18 +1560,24 @@ void DisplayStatusSection(int x, int y, int rssi) {
 void DrawRSSI(int x, int y, int rssi) {
   int WIFIsignal = 0;
   int xpos = 1;
-  for (int _rssi = -100; _rssi <= rssi; _rssi = _rssi + 20) {
-    if (_rssi <= -20)  WIFIsignal = 20; //            <-20dbm displays 5-bars
-    if (_rssi <= -40)  WIFIsignal = 16; //  -40dbm to  -21dbm displays 4-bars
-    if (_rssi <= -60)  WIFIsignal = 12; //  -60dbm to  -41dbm displays 3-bars
-    if (_rssi <= -80)  WIFIsignal = 8;  //  -80dbm to  -61dbm displays 2-bars
-    if (_rssi <= -100) WIFIsignal = 4;  // -100dbm to  -81dbm displays 1-bar
-    display.fillRect(x + xpos * 6, y - WIFIsignal, 5, WIFIsignal, GxEPD_BLACK);
-    xpos++;
+  if (WiFi.status() == WL_CONNECTED) {
+    for (int _rssi = -100; _rssi <= rssi; _rssi = _rssi + 20) {
+      if (_rssi <= -20)  WIFIsignal = 20; //            <-20dbm displays 5-bars
+      if (_rssi <= -40)  WIFIsignal = 16; //  -40dbm to  -21dbm displays 4-bars
+      if (_rssi <= -60)  WIFIsignal = 12; //  -60dbm to  -41dbm displays 3-bars
+      if (_rssi <= -80)  WIFIsignal = 8;  //  -80dbm to  -61dbm displays 2-bars
+      if (_rssi <= -100) WIFIsignal = 4;  // -100dbm to  -81dbm displays 1-bar
+      display.fillRect(x + xpos * 6, y - WIFIsignal, 5, WIFIsignal, GxEPD_BLACK);
+      xpos++;
+    }
+    //display.fillRect(x, y - 1, 5, 1, GxEPD_BLACK);
+    u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+    drawString(x + 60, y - 10, String(rssi) + "dBm", CENTER);
   }
-  //display.fillRect(x, y - 1, 5, 1, GxEPD_BLACK);
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x + 70, y - 10, String(rssi) + "dBm", CENTER);
+  else {
+    u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+    drawString(x + 20, y - 10, TXT_WIFI_OFF, CENTER);
+  }
 }
 //#########################################################################################
 boolean SetupTime() {
@@ -1890,7 +1922,7 @@ void Nodata(int x, int y, bool IconSize, String IconName) {
     If called with Y!_Max value of 500 and the data never goes above 500, then autoscale will retain a 0-500 Y scale, if on, the scale increases/decreases to match the data.
     auto_scale_margin, e.g. if set to 1000 then autoscale increments the scale by 1000 steps.
 */
-void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], int readings, boolean auto_scale, boolean barchart_mode, int xmin, int xmax, int dx) {
+void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], int readings, boolean auto_scale, boolean barchart_mode, int xmin, int xmax, int dx, bool ValidArray[]) {
 #define auto_scale_margin 0 // Sets the autoscale increment, so axis steps up in units of e.g. 3
 #define y_minor_axis 5      // 5 y-axis division markers
   float maxYscale = -10000;
@@ -1916,13 +1948,15 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
   for (int gx = 1; gx < readings; gx++) {
     x2 = x_pos + gx * gwidth / (readings - 1) - 1 ; // max_readings is the global variable that sets the maximum data that can be plotted
     y2 = y_pos + (Y1Max - constrain(DataArray[gx], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight + 1;
-    if (barchart_mode) {
-      display.fillRect(x2, y2, (gwidth / readings) - 1, y_pos + gheight - y2 + 2, GxEPD_BLACK);
-    } else {
-      display.drawLine(last_x, last_y, x2, y2, GxEPD_BLACK);
+    if (!ValidArray || ValidArray[gx]) {
+        if (barchart_mode) {
+        display.fillRect(x2, y2, (gwidth / readings) - 1, y_pos + gheight - y2 + 2, GxEPD_BLACK);
+        } else {
+        display.drawLine(last_x, last_y, x2, y2, GxEPD_BLACK);
+        }
+        last_x = x2;
+        last_y = y2;
     }
-    last_x = x2;
-    last_y = y2;
   }
   //Draw the Y-axis scale
 #define number_of_dashes 20
