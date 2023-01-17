@@ -27,14 +27,14 @@
 #include <SPI.h>                      // Built-in
 #include <vector>
 #include <string>
-#include <Ticker.h>
+//#include <Ticker.h>
 #include <MQTT.h>
 #include <cQueue.h>
 #include "garten.h"
 #include "wohnung.h"
 #include "bitmaps.h"
 
-#define START_SCREEN 0
+#define START_SCREEN 2
 #define LAST_SCREEN  2
 //#define SIMULATE_MQTT
 //#define FORCE_LOW_BATTERY
@@ -50,7 +50,7 @@
 #define MQTT_HIST_SIZE  144
 #define LOCAL_HIST_SIZE 144
 #define HIST_UPDATE_RATE 30
-#define HIST_UPDATE_TOL   6
+#define HIST_UPDATE_TOL   5
 
 #ifdef FLORA
 #define MQTT_SUB_IN "ESPWeather-267B81/data/WeatherSensor"
@@ -63,7 +63,8 @@
 #endif
 
 #define MITHERMOMETER_EN
-#define MITHERMOMETER_BATTALERT 6 // Low battery alert threshold 
+#define MITHERMOMETER_BATTALERT 6 //!< Low battery alert threshold [%]
+#define WATER_TEMP_INVALID -30.0 //!< Water temperature invalid marker [°C]
 #define BME280_EN
 #define I2C_SDA 21
 #define I2C_SCL 22
@@ -122,16 +123,13 @@ static const uint8_t    TOUCH_INT  = 32;
 #ifdef SIMULATE_MQTT
 const char * MqttBuf = "{\"end_device_ids\":{\"device_id\":\"eui-9876b6000011c87b\",\"application_ids\":{\"application_id\":\"flora-lora\"},\"dev_eui\":\"9876B6000011C87B\",\"join_eui\":\"0000000000000000\",\"dev_addr\":\"260BFFCA\"},\"correlation_ids\":[\"as:up:01GH0PHSCTGKZ51EB8XCBBGHQD\",\"gs:conn:01GFQX269DVXYK9W6XF8NNZWDD\",\"gs:up:host:01GFQX26AXQM4QHEAPW48E8EWH\",\"gs:uplink:01GH0PHS6A65GBAPZB92XNGYAP\",\"ns:uplink:01GH0PHS6BEPXS9Y7DMDRNK84Y\",\"rpc:/ttn.lorawan.v3.GsNs/HandleUplink:01GH0PHS6BY76SY2VPRSHNDDRH\",\"rpc:/ttn.lorawan.v3.NsAs/HandleUplink:01GH0PHSCS7D3V8ERSKF0DTJ8H\"],\"received_at\":\"2022-11-04T06:51:44.409936969Z\",\"uplink_message\":{\"session_key_id\":\"AYRBaM/qASfqUi+BQK75Gg==\",\"f_port\":1,\"frm_payload\":\"PwOOWAgACAAIBwAAYEKAC28LAw0D4U0DwAoAAAAAwMxMP8DMTD/AzEw/AAAAAAAAAAAA\",\"decoded_payload\":{\"bytes\":{\"air_temp_c\":\"9.1\",\"battery_v\":2927,\"humidity\":88,\"indoor_humidity\":77,\"indoor_temp_c\":\"9.9\",\"rain_day\":\"0.8\",\"rain_hr\":\"0.0\",\"rain_mm\":\"56.0\",\"rain_mon\":\"0.8\",\"rain_week\":\"0.8\",\"soil_moisture\":10,\"soil_temp_c\":\"9.6\",\"status\":{\"ble_ok\":true,\"res\":false,\"rtc_sync_req\":false,\"runtime_expired\":true,\"s1_batt_ok\":true,\"s1_dec_ok\":true,\"ws_batt_ok\":true,\"ws_dec_ok\":true},\"supply_v\":2944,\"water_temp_c\":\"7.8\",\"wind_avg_meter_sec\":\"0.8\",\"wind_direction_deg\":\"180.0\",\"wind_gust_meter_sec\":\"0.8\"}},\"rx_metadata\":[{\"gateway_ids\":{\"gateway_id\":\"lora-db0fc\",\"eui\":\"3135323538002400\"},\"time\":\"2022-11-04T06:51:44.027496Z\",\"timestamp\":1403655780,\"rssi\":-104,\"channel_rssi\":-104,\"snr\":8.25,\"location\":{\"latitude\":52.27640735,\"longitude\":10.54058183,\"altitude\":65,\"source\":\"SOURCE_REGISTRY\"},\"uplink_token\":\"ChgKFgoKbG9yYS1kYjBmYxIIMTUyNTgAJAAQ5KyonQUaCwiA7ZKbBhCw6tpgIKDtnYPt67cC\",\"channel_index\":4,\"received_at\":\"2022-11-04T06:51:44.182146570Z\"}],\"settings\":{\"data_rate\":{\"lora\":{\"bandwidth\":125000,\"spreading_factor\":8,\"coding_rate\":\"4/5\"}},\"frequency\":\"867300000\",\"timestamp\":1403655780,\"time\":\"2022-11-04T06:51:44.027496Z\"},\"received_at\":\"2022-11-04T06:51:44.203702153Z\",\"confirmed\":true,\"consumed_airtime\":\"0.215552s\",\"locations\":{\"user\":{\"latitude\":52.24619,\"longitude\":10.50106,\"source\":\"SOURCE_REGISTRY\"}},\"network_ids\":{\"net_id\":\"000013\",\"tenant_id\":\"ttn\",\"cluster_id\":\"eu1\",\"cluster_address\":\"eu1.cloud.thethings.network\"}}}";
 #else
-char        MqttBuf[MQTT_PAYLOAD_SIZE+1];
+char        MqttBuf[MQTT_PAYLOAD_SIZE+1]; //!< MQTT Payload Buffer
 #endif
 
 
 #ifdef MITHERMOMETER_EN
-    // BLE scan time in seconds
-    const int bleScanTime = 10;
-
-    // List of known sensors' BLE addresses
-    std::vector<std::string> knownBLEAddresses = {"a4:c1:38:b8:1f:7f"};
+    const int bleScanTime = 10; //!< BLE scan time in seconds
+    std::vector<std::string> knownBLEAddresses = {"a4:c1:38:b8:1f:7f"}; //!< List of known BLE sensors' MAC addresses
 #endif
 
 
@@ -157,8 +155,8 @@ String version = "16.11";    // Programme version, see change log at end
 boolean LargeIcon = true, SmallIcon = false;
 #define Large  17           // For icon drawing, needs to be odd number for best effect
 #define Small  6            // For icon drawing, needs to be odd number for best effect
-String  Time_str;                    // Curent time as string
-String  Date_str;                    // Current date as stringstrings to hold time and received weather data
+String  Time_str;                    //!< Curent time as string
+String  Date_str;                    //!< Current date as stringstrings to hold time and received weather data
 int     wifi_signal = 0;             //!< WiFi signal strength
 int     CurrentHour = 0;             //!< Current time - hour
 int     CurrentMin = 0;              //!< Current time - minutes
@@ -171,8 +169,8 @@ bool    mqttMessageReceived = false; //!< Flag: MQTT message has been received
 
 #define max_readings 24
 
-RTC_DATA_ATTR Forecast_record_type  WxConditions[1];
-Forecast_record_type  WxForecast[max_readings];
+RTC_DATA_ATTR Forecast_record_type  WxConditions[1]; //!< OWM Weather Conditions
+Forecast_record_type  WxForecast[max_readings];      //!< OWM Weather Forecast
 
 #include "src/common.h"
 
@@ -187,14 +185,14 @@ Forecast_record_type  WxForecast[max_readings];
 #define ScreenMQTT  2
 #define ScreenTest  3
 
-String Locations[] = {"Braunschweig", "Wohnung", "Garten"};
+String Locations[] = {"Braunschweig", "Wohnung", "Garten"}; //!< Locations/Screen Titles
 
 // OWM Forecast Data
-float pressure_readings[max_readings]    = {0};
-float temperature_readings[max_readings] = {0};
-float humidity_readings[max_readings]    = {0};
-float rain_readings[max_readings]        = {0};
-float snow_readings[max_readings]        = {0};
+float pressure_readings[max_readings]    = {0}; //!< OWM pressure readings
+float temperature_readings[max_readings] = {0}; //!< OWM temperature readings
+float humidity_readings[max_readings]    = {0}; //!< OWM humidity readings
+float rain_readings[max_readings]        = {0}; //!< OWM rain readings
+float snow_readings[max_readings]        = {0}; //!< OWM snow readings
 
 // MQTT Sensor Data
 struct MqttS {
@@ -241,6 +239,7 @@ struct MqttHistQData {
 typedef struct MqttHistQData mqtt_hist_t; //!< Shortcut for struct MqttHistQData
 
 RTC_DATA_ATTR mqtt_hist_t MqttHist[MQTT_HIST_SIZE]; //<! MQTT Sensor Data History
+RTC_DATA_ATTR time_t MqttHistTStamp = 0;  //!< Last MQTT History Update Timestamp 
 
 
 // Local Sensor Data
@@ -274,31 +273,35 @@ struct LocalHistQData {
 
 typedef struct LocalHistQData local_hist_t;            //!< Shortcut for struct LocalHistQData
 
-RTC_DATA_ATTR local_hist_t LocalHist[LOCAL_HIST_SIZE]; // Local Sensor Data History
+RTC_DATA_ATTR local_hist_t LocalHist[LOCAL_HIST_SIZE]; //!< Local Sensor Data History
+RTC_DATA_ATTR time_t       LocalHistTStamp = 0;        //!< Last Local History Update Timestamp
 
-
-long SleepDuration = 30; // Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
-int  WakeupTime    = 7;  // Don't wakeup until after 07:00 to save battery power
-int  SleepTime     = 23; // Sleep after (23+1) 00:00 to save battery power
+long SleepDuration = 30; //!< Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
+int  WakeupTime    = 7;  //!< Don't wakeup until after 07:00 to save battery power
+int  SleepTime     = 23; //!< Sleep after (23+1) 00:00 to save battery power
 
 RTC_DATA_ATTR int   ScreenNo     = START_SCREEN; //!< Current Screen No.
 RTC_DATA_ATTR int   PrevScreenNo = -1;           //!< Previous Screen No.
 
-Ticker HistoryUpdater;
+//Ticker HistoryUpdater;
 
-void UpdateHistory() {
-  SaveMqttData();
-}
+//void UpdateHistory() {
+//  SaveMqttData();
+//}
 
-//#########################################################################################
-// Touch Interrupt Service Routine
+/**
+ * \brief Touch Interrupt Service Routine
+ */
 void ARDUINO_ISR_ATTR touch_isr() {
     touchTrig = true;
 }
 
-//#########################################################################################
+
+/**
+ * \brief Arduino setup()
+ */
 void setup() {
-    WiFiClient net;
+    WiFiClient net;       //!< network object
 
     StartTime = millis();
     Serial.begin(115200);
@@ -317,8 +320,6 @@ void setup() {
         // FIXME Check if touch wakeup occurs at the same time as timer wakeup
         //SaveLocalData();
     //}
-    Serial.println("sizeof(WxConditions): " +String(sizeof(WxConditions[1])));
-    Serial.println("sizeof(WxForecast):   " +String(sizeof(WxForecast[max_readings])));
 
     // FIXME: calculate time to trigger
     //int tmr = 0;
@@ -329,7 +330,9 @@ void setup() {
     pinMode(TOUCH_INT, INPUT);
     
     attachInterrupt(TOUCH_INT, touch_isr, RISING);
-        
+    
+    // Screen has changed -
+    // clear screen, update title bar and show hourglass
     if (ScreenNo != PrevScreenNo) {
         InitialiseDisplay();
         //display.fillRect(0, 0, SCREEN_WIDTH, 18, GxEPD_WHITE);
@@ -351,7 +354,7 @@ void setup() {
     Serial.println("Time o.k.: " + String(time_ok));
     Serial.println(Date_str + " " + Time_str);
 
-  
+    // Screen: Open Weather Map
     if (ScreenNo == ScreenOWM && wifi_ok) {
         //WiFiClient client;
         if ((CurrentHour >= WakeupTime && CurrentHour <= SleepTime) || DebugDisplayUpdate) {
@@ -372,15 +375,18 @@ void setup() {
             }
         }
     }
-    else {
-
-    }
+    
     
     GetLocalData();
     if (HistoryUpdateDue()) {
-        SaveLocalData();
+        time_t now = time(NULL);
+        if (now - LocalHistTStamp >= (HIST_UPDATE_RATE - HIST_UPDATE_TOL) * 60) {
+            LocalHistTStamp = now;
+            SaveLocalData();
+        }
     }
     
+    // Screen: Local Sensors
     if (ScreenNo == ScreenLocal) {
         //InitialiseDisplay();
         ClearHourglass();
@@ -396,7 +402,7 @@ void setup() {
         display.display(false);      
     }
 
-    // Display WiFi-Off-Icon
+    // WiFi is disconnected - display WiFi-Off-Icon
     if (!wifi_ok) {
         // Screen not changed - show next to Date/Time of last update
         if (ScreenNo == PrevScreenNo) {
@@ -424,10 +430,9 @@ void setup() {
     
     // Fetch MQTT data
     MQTTClient MqttClient(MQTT_PAYLOAD_SIZE);
-    mqtt_connected = MqttConnect(net, MqttClient); 
+    mqtt_connected = MqttConnect(net, MqttClient);
     if (mqtt_connected) {
-//        int x = (ScreenNo == ScreenOWM) ? 595 :  88;
-  //      int y = (ScreenNo == ScreenOWM) ? 190 : 272;
+        // Show download icon
         int x = 88;
         int y = (ScreenNo == ScreenOWM) ? 300 : 272;
         display.drawBitmap(x, y, epd_bitmap_downloading, 48, 48, GxEPD_BLACK);
@@ -437,9 +442,18 @@ void setup() {
         display.displayWindow(x, y, 48, 48);
         display.setFullWindow();
     }
-    if (HistoryUpdateDue()) {
-        SaveMqttData();
+
+    if (SetupTime()) {
+        Serial.println("Calling HistoryUpdateDue() on " + Date_str + " " + Time_str);
     }
+    //if (HistoryUpdateDue()) {
+        time_t t_now = time(NULL);
+        Serial.println("Time since last MqttHist update: " + String((t_now - MqttHistTStamp)/60) + "min");
+        if (t_now - MqttHistTStamp >= (HIST_UPDATE_RATE - HIST_UPDATE_TOL) * 60) {
+            MqttHistTStamp = t_now;
+            SaveMqttData();
+        }
+    //}
     
     // Update MQTT screen if active and data is available
     if (ScreenNo == ScreenMQTT && MqttSensors.valid) {
@@ -449,18 +463,29 @@ void setup() {
     }
 
   
-  
     StopWiFi();
-  
     BeginSleep();
 }
-//#########################################################################################
+
+/**
+ * \brief Arduino loop()
+ * 
+ * This will never run!
+ */
 void loop() { // this will never run!
 }
-//#########################################################################################
+
+
+/**
+ * \brief Prepare deep sleep mode
+ * 
+ * The sleep time is adjusted dynamically to synchronize wake up to fixed integer multiple of
+ * <code>SleepDuration</code> past full hour. 
+ */
 void BeginSleep() {
   display.powerOff();
   long SleepTimer;
+  
   if (touchTrig) {
       // wake up immediately
       SleepTimer = 1000;
@@ -469,19 +494,24 @@ void BeginSleep() {
       SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)); //Some ESP32 are too fast to maintain accurate time
       SleepTimer = (SleepTimer + 20) * 1000000LL; // Added extra 20-secs of sleep to allow for slow ESP32 RTC timers
   }
-  esp_sleep_enable_timer_wakeup(SleepTimer); 
+  
+  esp_sleep_enable_timer_wakeup(SleepTimer);   // Wake up from timer
   esp_sleep_enable_ext0_wakeup(TOUCH_WAKE, 1); // Wake up from touch sensor
 #ifdef BUILTIN_LED
   pinMode(BUILTIN_LED, INPUT); // If it's On, turn it off and some boards use GPIO-5 for SPI-SS, which remains low after screen use
   digitalWrite(BUILTIN_LED, HIGH);
 #endif
-  Serial.println("Entering " + String(SleepTimer) + "-secs of sleep time");
+  Serial.println("Entering " + String(SleepTimer/1000000LL) + "-secs of sleep time");
   Serial.println("Awake for : " + String((millis() - StartTime) / 1000.0, 3) + "-secs");
   Serial.println("Starting deep-sleep period...");
   esp_deep_sleep_start();      // Sleep for e.g. 30 minutes
 }
-//#########################################################################################
-void ClearHourglass() {
+
+
+/**
+ * \brief Clear hourglass icon from screen's center 
+ */
+void ClearHourglass(void) {
 
     int x = SCREEN_WIDTH/2 - 24;
     int y = SCREEN_HEIGHT/2 -24;
@@ -491,18 +521,32 @@ void ClearHourglass() {
     display.setFullWindow();
 }
 
-//#########################################################################################
-bool HistoryUpdateDue(void) {
-    if (SetupTime()) {
-      Serial.println("HistoryUpdateDue(): " + Date_str + " " + Time_str);
-    }
+/**
+ * \brief Check if history update is due
+ * 
+ * History is updated at an interval of <code>HIST_UPDATE_RATE</code> synchronized
+ * to the past full hour with a tolerance of <code>HIST_UPDATE_TOL</code>.
+ * 
+ * \return true if update is due, otherwise false
+ */
+ bool HistoryUpdateDue(void) {
+    //if (SetupTime()) {
+    //  Serial.println("HistoryUpdateDue(): " + Date_str + " " + Time_str);
+    //}
     int mins = (CurrentHour * 60 + CurrentMin) % HIST_UPDATE_RATE;
     bool rv = (mins <= HIST_UPDATE_TOL) || (mins >= (HIST_UPDATE_RATE - HIST_UPDATE_TOL));
-    Serial.println("HistoryUpdateDue(): " + String(rv));
+    //Serial.println("HistoryUpdateDue(): " + String(rv));
     return rv;
     
 }
-//#########################################################################################
+
+
+/**
+ * \brief MQTT message reception callback function
+ * 
+ * Sets the flag <code>mqttMessageReceived</code> and copies the received message to
+ * <code>MqttBuf</code>.
+ */
 void mqttMessageCb(String &topic, String &payload) {
   mqttMessageReceived = true;
   Serial.printf("Payload size: %d\n", payload.length());
@@ -511,6 +555,8 @@ void mqttMessageCb(String &topic, String &payload) {
   #endif
   
 }
+
+#if 0
 void mqttMessageAdvancedCb(MQTTClient *client, char topic[], char bytes[], int length) {
   mqttMessageReceived = true;
   Serial.printf("Payload size: %d\n", length);
@@ -518,10 +564,13 @@ void mqttMessageAdvancedCb(MQTTClient *client, char topic[], char bytes[], int l
   strncpy(MqttBuf, bytes, length);
   #endif 
 }
+#endif
 
-//#########################################################################################
-void DisplayOWMWeather() {
-  DisplayGeneralInfoSection();                  // Top line of the display
+/**
+ * \brief Display Open Weather Map (OWM) data
+ */
+void DisplayOWMWeather(void) {
+  DisplayGeneralInfoSection(); 
   //DisplayDateTime(487, 194);
   DisplayDateTime(90, 255);
   DisplayDisplayWindSection(108, 146, WxConditions[0].Winddir, WxConditions[0].Windspeed, 81, true, TXT_WIND_SPEED_DIRECTION);
@@ -532,6 +581,15 @@ void DisplayOWMWeather() {
   DrawRSSI(705, 15, wifi_signal);
 }
 
+
+/**
+ * \brief Connect to MQTT broker
+ * 
+ * \param net         network connection
+ * \param MqttClient  MQTT client object
+ * 
+ * \return true if connection was succesful, otherwise false
+ */
 bool MqttConnect(WiFiClient& net, MQTTClient& MqttClient) {
   Serial.print("checking wifi...");
   if (StartWiFi() != WL_CONNECTED) {
@@ -563,9 +621,15 @@ bool MqttConnect(WiFiClient& net, MQTTClient& MqttClient) {
   }
   return true;
 }
-//#########################################################################################
+
+
+/**
+ * \brief Find min/max temperature in MQTT history data
+ * 
+ * \param t_min   minimum temperature return value
+ * \param t_max   maximum temperature return value
+ */
 void findMqttMinMaxTemp(float * t_min, float * t_max) {
-  // Find min/max temperature in local history data
   mqtt_hist_t mqtt_data;
   float outdoorTMin = 0;
   float outdoorTMax = 0;
@@ -606,7 +670,12 @@ void findMqttMinMaxTemp(float * t_min, float * t_max) {
   *t_max = outdoorTMax;
 }
 
-//#########################################################################################
+/**
+ * \brief Get MQTT data from broker
+ * 
+ * \param net         network connection
+ * \param MqttClient  MQTT client object
+ */
 void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
   /*
   MQTTClient mqtt_client(MQTT_PAYLOAD_SIZE);
@@ -654,6 +723,14 @@ void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
         Serial.println(F("Timeout!"));
         MqttClient.disconnect();
         return;
+      }
+      // During this time-consuming loop, updating local history could be due
+      if (HistoryUpdateDue()) {
+        time_t now = time(NULL);
+        if (now - LocalHistTStamp >= (HIST_UPDATE_RATE - HIST_UPDATE_TOL) * 60) {
+            LocalHistTStamp = now;
+            SaveLocalData();
+        }
       }
     }
   #else
@@ -713,13 +790,18 @@ void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
   MqttSensors.status.ws_batt_ok = status["ws_batt_ok"];
   MqttSensors.status.ws_dec_ok  = status["ws_dec_ok"];  
 }
-//#########################################################################################
-void SaveMqttData() {
+
+
+/**
+ * \brief Save MQTT data to history FIFO
+ */
+void SaveMqttData(void) {
     Serial.println(F("Saving MQTT data."));
     if (!q_isInitialized(&MqttHistQCtrl)) {
       q_init_static(&MqttHistQCtrl, sizeof(MqttHist[0]), MQTT_HIST_SIZE, FIFO, true, (uint8_t *)MqttHist, sizeof(MqttHist));
     }
     mqtt_hist_t mqtt_data = {0, 0, 0, 0};
+    Serial.println("SaveMqttData(): MqttSensors.valid: " + String(MqttSensors.valid));
     if (MqttSensors.valid) {
       mqtt_data.temperature = MqttSensors.air_temp_c;
       mqtt_data.humidity    = MqttSensors.humidity;
@@ -740,8 +822,12 @@ void SaveMqttData() {
     q_push(&MqttHistQCtrl, &mqtt_data);   
 }
 
-//#########################################################################################
-void DisplayMQTTWeather(void) { 
+
+/**
+ * \brief Display MQTT data
+ */
+void DisplayMQTTWeather(void) {
+  Serial.println("DispayMQTTWeather()");
   //Serial.println("DisplayMQTTWeather(): calling DisplayGeneralInfoSection()");
   DisplayGeneralInfoSection();
   //Serial.println("DisplayMQTTWeather(): DisplayGeneralInfoSection() o.k.");
@@ -829,9 +915,17 @@ void DisplayMQTTWeather(void) {
     // No soil moisture
     display.drawBitmap(518,  157, epd_bitmap_signal_disconnected, 40, 40, GxEPD_BLACK);
   }
-  DisplayLocalTemperatureSection(358, 187, 137, 100, "", true, MqttSensors.water_temp_c, false, 0, 0);
-  u8g2Fonts.setFont(u8g2_font_helvB18_tf);
 
+  // Water Temperature Sensor
+  if (MqttSensors.water_temp_c != WATER_TEMP_INVALID || MqttHistTStamp == 0) {
+      DisplayLocalTemperatureSection(358, 187, 137, 100, "", true, MqttSensors.water_temp_c, false, 0, 0);
+      u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+  }
+  else {
+    // No water temperature
+    display.drawBitmap(320,  217, epd_bitmap_signal_disconnected, 40, 40, GxEPD_BLACK);
+  }
+  
   #ifdef FORCE_NO_SIGNAL
   MqttSensors.status.ws_dec_ok = false;
   #endif
@@ -844,8 +938,12 @@ void DisplayMQTTWeather(void) {
   DrawRSSI(705, 15, wifi_signal); // Wi-Fi signal strength
   
 }
-//#########################################################################################
-void GetLocalData() {
+
+
+/**
+ * \brief Get local sensor data
+ */
+void GetLocalData(void) {
   LocalSensors.ble_thsensor[0].valid  = false;
   LocalSensors.i2c_thpsensor[0].valid = false; 
 
@@ -915,8 +1013,12 @@ void GetLocalData() {
   */
   #endif
 }
-//#########################################################################################
-void SaveLocalData() {
+
+
+/**
+ * \brief Save local sensor data to history FIFO
+ */
+void SaveLocalData(void) {
     if (!q_isInitialized(&LocalHistQCtrl)) {
       q_init_static(&LocalHistQCtrl, sizeof(LocalHist[0]), LOCAL_HIST_SIZE, FIFO, true, (uint8_t *)LocalHist, sizeof(LocalHist));
     }
@@ -945,14 +1047,21 @@ void SaveLocalData() {
     }
     q_push(&LocalHistQCtrl, &local_data);   
 }
-//#########################################################################################
+
+
+/**
+ * \brief Find min/max temperature in local history data
+ * 
+ * \param t_min   minimum temperature return value
+ * \param t_max   maximum temperature return value
+ */
 void findLocalMinMaxTemp(float * t_min, float * t_max) {
   // Find min/max temperature in local history data
   local_hist_t local_data;
   float outdoorTMin = 0;
   float outdoorTMax = 0;
 
-  if (!q_isInitialized(&MqttHistQCtrl)) {
+  if (!q_isInitialized(&LocalHistQCtrl)) {
     return;
   }
 
@@ -982,8 +1091,12 @@ void findLocalMinMaxTemp(float * t_min, float * t_max) {
   *t_min = outdoorTMin;
   *t_max = outdoorTMax;
 }
-//#########################################################################################
-void DisplayLocalWeather() {                        // 7.5" e-paper display is 800x480 resolution
+
+
+/**
+ * \brief Display local sensor data
+ */
+ void DisplayLocalWeather() {
   
   DisplayGeneralInfoSection();
   DisplayDateTime(90, 225);
@@ -1045,6 +1158,8 @@ void DisplayLocalWeather() {                        // 7.5" e-paper display is 8
   //DrawRSSI(695, 15, wifi_signal); // Wi-Fi signal strength
   DrawRSSI(705, 15, wifi_signal); // Wi-Fi signal strength
 }
+
+/*
 //#########################################################################################
 void DisplayTestScreen(void) {
     //float outdoor_temp_c = 9.9;
@@ -1072,6 +1187,7 @@ void DisplayTestScreen(void) {
     //DisplayAstronomySection(0, 245);             // Astronomy section Sun rise/set, Moon phase and Moon icon
     DisplayStatusSection(690, 215, wifi_signal); // Wi-Fi signal strength and Battery voltage
 }
+*/
 
 //#########################################################################################
 void DisplayGeneralInfoSection(void) {
@@ -1459,9 +1575,9 @@ void DisplayMqttHistory() {
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
 
   // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
-  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, max_readings, autoscale_on, barchart_off, -2, 0, 1, valid);
-  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,   TXT_HUMIDITY_PERCENT, humidity, max_readings, autoscale_off, barchart_off, -2, 0, 1, valid);
-  DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain, max_readings, autoscale_on, barchart_on, -2, 0, 1, valid);
+  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, MQTT_HIST_SIZE, autoscale_on, barchart_off, -2, 0, 1, valid);
+  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,   TXT_HUMIDITY_PERCENT, humidity, MQTT_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, valid);
+  DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain, MQTT_HIST_SIZE, autoscale_on, barchart_on, -2, 0, 1, valid);
 }
 
 //#########################################################################################
@@ -1929,6 +2045,7 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
   float minYscale =  10000;
   int last_x, last_y;
   float x2, y2;
+  Serial.println("DrawGraph()");
   if (auto_scale == true) {
     for (int i = 1; i < readings; i++ ) {
       if (DataArray[i] >= maxYscale) maxYscale = DataArray[i];
@@ -1948,15 +2065,21 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
   for (int gx = 1; gx < readings; gx++) {
     x2 = x_pos + gx * gwidth / (readings - 1) - 1 ; // max_readings is the global variable that sets the maximum data that can be plotted
     y2 = y_pos + (Y1Max - constrain(DataArray[gx], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight + 1;
-    if (!ValidArray || ValidArray[gx]) {
+    if (ValidArray == NULL) {
+         Serial.println("DrawGraph(): No array of valid-flags!");
+    }
+    if (ValidArray == NULL || ValidArray[gx] == true) {
+        if (ValidArray) {
+            Serial.println("DrawGraph(): reading #" + String(gx) + ": valid=" + String(ValidArray[gx]));
+        }
         if (barchart_mode) {
         display.fillRect(x2, y2, (gwidth / readings) - 1, y_pos + gheight - y2 + 2, GxEPD_BLACK);
         } else {
         display.drawLine(last_x, last_y, x2, y2, GxEPD_BLACK);
         }
-        last_x = x2;
         last_y = y2;
     }
+    last_x = x2;
   }
   //Draw the Y-axis scale
 #define number_of_dashes 20
