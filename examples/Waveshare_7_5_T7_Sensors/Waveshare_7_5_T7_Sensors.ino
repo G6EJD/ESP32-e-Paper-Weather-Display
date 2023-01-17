@@ -42,7 +42,7 @@
 #include "wohnung.h"
 #include "bitmaps.h"
 
-#define START_SCREEN 0
+#define START_SCREEN 2
 #define LAST_SCREEN  2
 #define SIMULATE_MQTT
 //#define FORCE_LOW_BATTERY
@@ -286,13 +286,13 @@ bool swResetCaught = false;
 //#########################################################################################
 void setup() {
   WiFiClient net;
-  MQTTClient MqttClient(MQTT_PAYLOAD_SIZE);
+  
   StartTime = millis();
   Serial.begin(115200);
   bool mqtt_connected = false;
   
   
-  GetLocalData();
+  //GetLocalData();
   
   if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
     ScreenNo = (ScreenNo == LAST_SCREEN) ? 0 : ScreenNo + 1;
@@ -300,13 +300,13 @@ void setup() {
     ;
   } else if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER) {
     // FIXME Check if touch wakeup occurs at the same time as timer wakeup
-    SaveLocalData();
+    //SaveLocalData();
   }
   
   Serial.printf("Screen No: %d\n", ScreenNo);
   
   if ((ScreenNo == ScreenMQTT) || (ScreenNo == ScreenLocal)) {
-    mqtt_connected = MqttConnect(net, MqttClient); 
+    //mqtt_connected = MqttConnect(net, MqttClient); 
   }
 
   
@@ -345,15 +345,27 @@ void setup() {
         }
         break;
       case ScreenMQTT:
+        {
+          MQTTClient MqttClient(MQTT_PAYLOAD_SIZE);
+          mqtt_connected = MqttConnect(net, MqttClient); 
           InitialiseDisplay();
           //SubscribeMqttData();
+          if (mqtt_connected) {
+            GetMqttData(MqttClient);
+          }
+          SaveMqttData();
           DisplayMQTTWeather();
           display.display(false);
+        }
         break;
       case ScreenLocal:
-        InitialiseDisplay();
-        DisplayLocalWeather();
-        display.display(false);
+        {
+          GetLocalData();
+          SaveLocalData();
+          InitialiseDisplay();
+          DisplayLocalWeather();
+          display.display(false);
+        }
         break;
       case ScreenTest:
         InitialiseDisplay();
@@ -363,7 +375,7 @@ void setup() {
         break;          
     }
   } //  if (StartWiFi() == WL_CONNECTED && SetupTime() == true)
-
+  /*
   if (!mqtt_connected) {
     mqtt_connected = MqttConnect(net, MqttClient); 
   }
@@ -371,13 +383,16 @@ void setup() {
     GetMqttData(MqttClient);
   }
   SaveMqttData();
+  */
   StopWiFi();
+  
+  #if 0
   if (ScreenNo == ScreenMQTT && MqttSensors.valid) {
     display.fillScreen(GxEPD_WHITE);
     DisplayMQTTWeather();
     display.display(false);
   }
-
+  #endif
   BeginSleep();
 }
 //#########################################################################################
@@ -573,7 +588,8 @@ void GetMqttData(MQTTClient MqttClient) {
   Serial.print(F("\nCreating JSON object..."));
 
   // allocate the JsonDocument
-  StaticJsonDocument<MQTT_PAYLOAD_SIZE> doc;
+  //StaticJsonDocument<MQTT_PAYLOAD_SIZE> doc;
+  DynamicJsonDocument doc(MQTT_PAYLOAD_SIZE);
   
   // Deserialize the JSON document
   DeserializationError error = deserializeJson(doc, MqttBuf, MQTT_PAYLOAD_SIZE);
@@ -757,6 +773,7 @@ void GetLocalData() {
         Serial.printf("Outdoor Humidity:     --   %%\n");
         Serial.printf("Outdoor Sensor Batt:  --   %%\n");
     }
+    miThermometer.clearScanResults();
   #endif
 
   #ifdef BME280_EN
