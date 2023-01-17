@@ -226,8 +226,10 @@ struct MqttS {
     uint8_t  indoor_humidity;      //!< indoor humidity in %
     float    soil_temp_c;          //!< soil temperature in degC
     uint8_t  soil_moisture;        //!< soil moisture in %
-    float    rain_hr;              //!< hourly precipitation in mm 
+    float    rain_hr;              //!< hourly precipitation in mm
+    bool     rain_hr_valid;        //!< hourly precipitation valid
     float    rain_day;             //!< daily precipitation in mm
+    bool     rain_day_valid;       //!< daily precipitation valid
     float    rain_day_prev;        //!< daily precipitation in mm, previous value
     float    rain_week;            //!< weekly precipitation in mm
     float    rain_month;           //!< monthly precipitatiion in mm
@@ -239,10 +241,9 @@ RTC_DATA_ATTR mqtt_sensors_t MqttSensors; //!< MQTT sensor data
 RTC_DATA_ATTR Queue_t MqttHistQCtrl;      //!< MQTT Sensor Data History FIFO Control
 
 struct MqttHistQData {
-  float temperature;  //!< temperature in degC
-  uint8_t humidity;   //!< humidity in %
-  float rain;         //!< precipitation in mm
-  bool  valid;        //!< data valid
+  float   temperature;  //!< temperature in degC
+  uint8_t humidity;     //!< humidity in %
+  bool    valid;        //!< data valid
 };
 
 typedef struct MqttHistQData mqtt_hist_t; //!< Shortcut for struct MqttHistQData
@@ -315,9 +316,10 @@ typedef struct LocalHistQData local_hist_t;            //!< Shortcut for struct 
 RTC_DATA_ATTR local_hist_t LocalHist[LOCAL_HIST_SIZE]; //!< Local Sensor Data History
 RTC_DATA_ATTR time_t       LocalHistTStamp = 0;        //!< Last Local History Update Timestamp
 
-long SleepDuration = 30; //!< Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
-int  WakeupTime    = 7;  //!< Don't wakeup until after 07:00 to save battery power
-int  SleepTime     = 23; //!< Sleep after (23+1) 00:00 to save battery power
+long SleepDuration = 30;   //!< Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour (+ SleepOffset)
+long SleepOffset   = -120; //!< Offset in seconds from SleepDuration; -120 will trigger wakeup 2 minutes earlier
+int  WakeupTime    = 7;    //!< Don't wakeup until after 07:00 to save battery power
+int  SleepTime     = 23;   //!< Sleep after (23+1) 00:00 to save battery power
 
 RTC_DATA_ATTR int   ScreenNo     = START_SCREEN; //!< Current Screen No.
 RTC_DATA_ATTR int   PrevScreenNo = -1;           //!< Previous Screen No.
@@ -350,6 +352,8 @@ void setup() {
 
     StartTime = millis();
     Serial.begin(115200);
+    Serial.setDebugOutput(true);
+    
     bool mqtt_connected = false;
     bool wifi_ok = false;
     bool time_ok = false;
@@ -375,7 +379,7 @@ void setup() {
         //SaveLocalData();
     //}
 
-    Serial.printf("Screen No: %d\n", ScreenNo);
+    log_i("Screen No: %d", ScreenNo);
     
 //    pinMode(TOUCH_INT, INPUT);
     pinMode(TOUCH_PREV, INPUT);
@@ -405,9 +409,9 @@ void setup() {
     wifi_ok = (StartWiFi() == WL_CONNECTED);
     time_ok = SetupTime();
     
-    Serial.println("WiFi o.k.: " + String(wifi_ok));
-    Serial.println("Time o.k.: " + String(time_ok));
-    Serial.println(Date_str + " " + Time_str);
+    log_i("WiFi o.k.: %d", wifi_ok);
+    log_i("Time o.k.: %d", time_ok);
+    log_i("%s %s", Date_str.c_str(), Time_str.c_str());
 
     // Initialize history data queues if required (time has to be set already)
     if (!q_isInitialized(&MqttHistQCtrl)) {
@@ -518,23 +522,19 @@ void setup() {
         display.setFullWindow();
     }
 
-    if (SetupTime()) {
-        Serial.println("Calling HistoryUpdateDue() on " + Date_str + " " + Time_str);
+    time_t t_now = time(NULL);
+    log_i("Time since last MqttHist update: %ld min", (t_now - MqttHistTStamp)/60);
+    log_i("                        minimum: %ld min", HIST_UPDATE_RATE - HIST_UPDATE_TOL);
+    if (t_now - MqttHistTStamp >= (HIST_UPDATE_RATE - HIST_UPDATE_TOL) * 60) {
+        MqttHistTStamp = t_now;
+        SaveMqttData();
     }
-    //if (HistoryUpdateDue()) {
-        time_t t_now = time(NULL);
-        Serial.println("Time since last MqttHist update: " + String((t_now - MqttHistTStamp)/60) + "min");
-        if (t_now - MqttHistTStamp >= (HIST_UPDATE_RATE - HIST_UPDATE_TOL) * 60) {
-            MqttHistTStamp = t_now;
-            SaveMqttData();
-        }
-        if (t_now - RainHrHistTStamp >= (60 - HIST_UPDATE_TOL) * 60) {
-            RainHrHistTStamp = t_now;
-            SaveRainHrData();
-        }
-        SaveRainDayData();
-        
-    //}
+    if (t_now - RainHrHistTStamp >= (60 - HIST_UPDATE_TOL) * 60) {
+        RainHrHistTStamp = t_now;
+        SaveRainHrData();
+    }
+    SaveRainDayData();
+
     
     // Update MQTT screen if active and data is available
     if (ScreenNo == ScreenMQTT && MqttSensors.valid) {
@@ -552,7 +552,7 @@ void setup() {
  * 
  * This will never run!
  */
-void loop() { // this will never run!
+void loop() {
 }
 
 
@@ -570,22 +570,37 @@ void BeginSleep() {
       // wake up immediately
       SleepTimer = 1000;
   } else {
+      UpdateLocalTime();
+      
       // Wake up at fixed interval, synchronized to begin of full hour
-      SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)); //Some ESP32 are too fast to maintain accurate time
-      SleepTimer = (SleepTimer + 20) * 1000000LL; // Added extra 20-secs of sleep to allow for slow ESP32 RTC timers
+      SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec));
+      // MPr: ???
+      //Some ESP32 are too fast to maintain accurate time
+      //SleepTimer = (SleepTimer + 20) * 1000000LL; // Added extra 20-secs of sleep to allow for slow ESP32 RTC timers
+      SleepTimer = SleepTimer + SleepOffset;
+      // Set minimum sleep time (20s)
+      if (SleepTimer < 20) {
+        SleepTimer = 20;
+      }
+      SleepTimer = SleepTimer * 1000000LL;
   }
-  
-  esp_sleep_enable_timer_wakeup(SleepTimer);   // Wake up from timer
-  //esp_sleep_enable_ext0_wakeup(TOUCH_WAKE, 1); // Wake up from touch sensor
+
+  // Wake up from timer
+  esp_sleep_enable_timer_wakeup(SleepTimer);
+
+  // Wake up from touch sensors
   esp_sleep_enable_ext1_wakeup(1ULL << TOUCH_NEXT |
-                               1ULL << TOUCH_PREV, ESP_EXT1_WAKEUP_ANY_HIGH); 
+                               1ULL << TOUCH_PREV, 
+                               ESP_EXT1_WAKEUP_ANY_HIGH); 
+
 #ifdef BUILTIN_LED
   pinMode(BUILTIN_LED, INPUT); // If it's On, turn it off and some boards use GPIO-5 for SPI-SS, which remains low after screen use
   digitalWrite(BUILTIN_LED, HIGH);
 #endif
-  Serial.println("Entering " + String(SleepTimer/1000000LL) + "-secs of sleep time");
-  Serial.println("Awake for : " + String((millis() - StartTime) / 1000.0, 3) + "-secs");
-  Serial.println("Starting deep-sleep period...");
+
+  log_i("Awake for %.3f secs", (millis() - StartTime) / 1000.0);
+  log_i("Entering %lld secs of sleep time", SleepTimer/1000000LL);
+  log_i("Starting deep-sleep period...");
   esp_deep_sleep_start();      // Sleep for e.g. 30 minutes
 }
 
@@ -603,6 +618,7 @@ void ClearHourglass(void) {
     display.setFullWindow();
 }
 
+
 /**
  * \brief Check if history update is due
  * 
@@ -611,13 +627,9 @@ void ClearHourglass(void) {
  * 
  * \return true if update is due, otherwise false
  */
- bool HistoryUpdateDue(void) {
-    //if (SetupTime()) {
-    //  Serial.println("HistoryUpdateDue(): " + Date_str + " " + Time_str);
-    //}
+bool HistoryUpdateDue(void) {
     int mins = (CurrentHour * 60 + CurrentMin) % HIST_UPDATE_RATE;
     bool rv = (mins <= HIST_UPDATE_TOL) || (mins >= (HIST_UPDATE_RATE - HIST_UPDATE_TOL));
-    //Serial.println("HistoryUpdateDue(): " + String(rv));
     return rv;
     
 }
@@ -631,36 +643,36 @@ void ClearHourglass(void) {
  */
 void mqttMessageCb(String &topic, String &payload) {
   mqttMessageReceived = true;
-  Serial.printf("Payload size: %d\n", payload.length());
+  log_d("Payload size: %d", payload.length());
   #ifndef SIMULATE_MQTT
   strncpy(MqttBuf, payload.c_str(), payload.length());
   #endif
   
 }
 
+
 #if 0
 void mqttMessageAdvancedCb(MQTTClient *client, char topic[], char bytes[], int length) {
   mqttMessageReceived = true;
-  Serial.printf("Payload size: %d\n", length);
+  log_d("Payload size: %d", length);
   #ifndef SIMULATE_MQTT
   strncpy(MqttBuf, bytes, length);
   #endif 
 }
 #endif
 
+
 /**
  * \brief Display Open Weather Map (OWM) data
  */
 void DisplayOWMWeather(void) {
-  DisplayGeneralInfoSection(); 
-  //DisplayDateTime(487, 194);
+  DisplayGeneralInfoSection();
   DisplayDateTime(90, 255);
   DisplayDisplayWindSection(108, 146, WxConditions[0].Winddir, WxConditions[0].Windspeed, 81, true, TXT_WIND_SPEED_DIRECTION);
   DisplayMainWeatherSection(300, 100);          // Centre section of display for Location, temperature, Weather report, current Wx Symbol and wind direction
   DisplayForecastSection(217, 245);             // 3hr forecast boxes
   DisplayAstronomySection(391, 165);            // Astronomy section Sun rise/set, Moon phase and Moon icon
-  DisplayOWMAttribution(590,165);
-  //DrawRSSI(695, 15, wifi_signal);
+  DisplayOWMAttribution(581,165);
   DrawRSSI(705, 15, wifi_signal);
 }
 
@@ -674,32 +686,31 @@ void DisplayOWMWeather(void) {
  * \return true if connection was succesful, otherwise false
  */
 bool MqttConnect(WiFiClient& net, MQTTClient& MqttClient) {
-  Serial.print("checking wifi...");
+  log_d("Checking wifi...");
   if (StartWiFi() != WL_CONNECTED) {
     return false;
   }
 
-  Serial.print("\nMQTT connecting...");
+  log_i("MQTT connecting...");
   unsigned long start = millis();
 
   MqttClient.begin(MQTT_HOST, MQTT_PORT, net);
   MqttClient.setOptions(MQTT_KEEPALIVE /* keepAlive [s] */, MQTT_CLEAN_SESSION /* cleanSession */, MQTT_TIMEOUT * 1000 /* timeout [ms] */);
 
   while (!MqttClient.connect(Hostname, MQTT_USER, MQTT_PASS)) {
-    Serial.print(".");
+    log_d(".");
     if (millis() > start + MQTT_CONNECT_TIMEOUT * 1000) {
-      Serial.println("\nconnect timeout!");
+      log_i("Connect timeout!");
       return false;
     }
     delay(1000);
   }
-  Serial.println("\nconnected!");
+  log_i("Connected!");
 
-  //mqtt_client.onMessageAdvanced(mqttMessageAdvancedCb);
   MqttClient.onMessage(mqttMessageCb);
 
   if (!MqttClient.subscribe(MQTT_SUB_IN)) {
-    Serial.println("MQTT subscription failed!");
+    log_i("MQTT subscription failed!");
     return false;
   }
   return true;
@@ -716,10 +727,6 @@ void findMqttMinMaxTemp(float * t_min, float * t_max) {
   mqtt_hist_t mqtt_data;
   float outdoorTMin = 0;
   float outdoorTMax = 0;
-
-  if (!q_isInitialized(&MqttHistQCtrl)) {
-    return;
-  }
 
   // Go back in FIFO at most 24 hrs
   int maxIdx = 24 * 60 / SleepDuration;
@@ -762,7 +769,7 @@ void findMqttMinMaxTemp(float * t_min, float * t_max) {
 void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
   MqttSensors.valid = false;
 
-  Serial.println(F("Waiting for MQTT message..."));
+  log_i("Waiting for MQTT message...");
   #ifndef SIMULATE_MQTT
     unsigned long start = millis();
     int count = 0;
@@ -770,7 +777,7 @@ void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
       MqttClient.loop();
       delay(10);
       if (count++ == 1000) {
-          Serial.print(".");
+          log_d(".");
           count = 0;
       }
       if (mqttMessageReceived)
@@ -779,11 +786,11 @@ void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
         MqttConnect(net, MqttClient);
       }
       if (touchTrig || touchPrevTrig || touchNextTrig) {
-          Serial.println(F("Touch interrupt!"));
+          log_i("Touch interrupt!");
           return;
       }
       if (millis() > start + MQTT_DATA_TIMEOUT * 1000) {
-        Serial.println(F("Timeout!"));
+        log_i("Timeout!");
         MqttClient.disconnect();
         return;
       }
@@ -797,15 +804,15 @@ void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
       }
     }
   #else
-    Serial.println("(Simulated MQTT incoming message)");
+    log_i("(Simulated MQTT incoming message)");
     MqttSensors.valid = true;
   #endif
 
-  Serial.println(F("done!"));
+  log_i("done!");
   MqttClient.disconnect();
-  Serial.printf(MqttBuf);
+  log_d(MqttBuf);
   
-  Serial.print(F("\nCreating JSON object..."));
+  log_d("Creating JSON object...");
 
   // allocate the JsonDocument
   //StaticJsonDocument<MQTT_PAYLOAD_SIZE> doc;
@@ -816,12 +823,11 @@ void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
 
   // Test if parsing succeeds.
   if (error) {
-    Serial.print(F("deserializeJson() failed: "));
-    Serial.println(error.c_str());
+    log_i("deserializeJson() failed: %s", error.c_str());
     return;
   }
   else {
-    Serial.println(F("done!"));
+    log_d("Done!");
   }
   MqttSensors.valid = true;
   
@@ -848,11 +854,20 @@ void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
   MqttSensors.wind_gust_meter_sec = payload["wind_gust_meter_sec"];
 
   JsonObject status = payload["status"];
-  MqttSensors.status.ble_ok     = status["ble_ok"];
-  MqttSensors.status.s1_batt_ok = status["s1_batt_ok"];
-  MqttSensors.status.s1_dec_ok  = status["s1_dec_ok"];
-  MqttSensors.status.ws_batt_ok = status["ws_batt_ok"];
-  MqttSensors.status.ws_dec_ok  = status["ws_dec_ok"];  
+  MqttSensors.status.ble_ok       = status["ble_ok"];
+  MqttSensors.status.s1_batt_ok   = status["s1_batt_ok"];
+  MqttSensors.status.s1_dec_ok    = status["s1_dec_ok"];
+  MqttSensors.status.ws_batt_ok   = status["ws_batt_ok"];
+  MqttSensors.status.ws_dec_ok    = status["ws_dec_ok"];
+
+  // Sanity checks
+  if (MqttSensors.humidity == 0) {
+      MqttSensors.status.ws_dec_ok = false;
+  }
+  MqttSensors.rain_hr_valid  = (MqttSensors.rain_hr  >= 0) && (MqttSensors.rain_hr  < 300);
+  MqttSensors.rain_day_valid = (MqttSensors.rain_day >= 0) && (MqttSensors.rain_day < 1800);
+
+  log_i("MQTT data updated: %d", MqttSensors.valid ? 1 : 0);
 }
 
 
@@ -860,28 +875,14 @@ void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
  * \brief Save MQTT data to history FIFO
  */
 void SaveMqttData(void) {
-    mqtt_hist_t mqtt_data = {0, 0, 0, 0};
-    bool valid = MqttSensors.valid && MqttSensors.status.ws_dec_ok;
-    Serial.println("SaveMqttData(): #" + String(q_getCount(&MqttHistQCtrl)) + " valid: " + String(valid) + " T: " + String(MqttSensors.air_temp_c, 1) + " H: " + String(MqttSensors.humidity));
-    if (MqttSensors.humidity == 0) {
-      valid = false;
-    }
+    mqtt_hist_t mqtt_data = {0, 0, 0};
+
     mqtt_data.temperature = MqttSensors.air_temp_c;
     mqtt_data.humidity    = MqttSensors.humidity;
-    mqtt_data.rain        = MqttSensors.rain_mm;
-    mqtt_data.valid       = valid;
-    
-    /*
-    else {
-      // Store previous data
-      mqtt_hist_t prev_data = {0, 0, 0};
-      if (q_peekPrevious(&MqttHistQCtrl, &prev_data)) {
-        mqtt_data.temperature = prev_data.temperature;
-        mqtt_data.humidity    = prev_data.humidity;
-        mqtt_data.rain        = prev_data.rain;
-      }
-    }
-    */
+    mqtt_data.valid       = MqttSensors.valid && MqttSensors.status.ws_dec_ok;
+
+    log_i("MQTT data updated: %d / Weather sensor data valid: %d", MqttSensors.valid ? 1 : 0, MqttSensors.status.ws_dec_ok ? 1 : 0);
+    log_i("#%d val: %d T: %.1f H: %d", q_getCount(&MqttHistQCtrl), mqtt_data.valid ? 1 : 0, MqttSensors.air_temp_c, MqttSensors.humidity);
     
     q_push(&MqttHistQCtrl, &mqtt_data);   
 }
@@ -891,17 +892,11 @@ void SaveMqttData(void) {
  */
 void SaveRainHrData(void) {
     rain_hr_hist_t rain_hr_data;
-
-    bool valid = MqttSensors.valid && MqttSensors.status.ws_dec_ok;
-    Serial.println("SaveRainHrData(): #" + String(q_getCount(&RainHrHistQCtrl)) + " valid: " + String(valid) + "R: " + String(MqttSensors.rain_hr, 1));
-    if ((MqttSensors.rain_hr) < 0 || (MqttSensors.rain_hr > 300)) {
-      rain_hr_data.rain  = 0;
-      rain_hr_data.valid = false;
-    }
-    else {
-      rain_hr_data.rain  = MqttSensors.rain_hr;
-      rain_hr_data.valid = valid;
-    }
+    
+    rain_hr_data.rain  = MqttSensors.rain_hr;
+    rain_hr_data.valid = MqttSensors.valid && MqttSensors.rain_hr_valid;
+    log_i("#%d val: %d, R: %.1f", q_getCount(&RainHrHistQCtrl), rain_hr_data.valid ? 1 : 0, MqttSensors.rain_hr);
+    
     q_push(&RainHrHistQCtrl, &rain_hr_data);   
 }
 
@@ -912,23 +907,21 @@ void SaveRainHrData(void) {
 void SaveRainDayData(void) {
     rain_day_hist_t rain_day_data;
 
-    bool valid = MqttSensors.valid && MqttSensors.status.ws_dec_ok;
-    Serial.println("SaveRainDayData(): #" + String(q_getCount(&RainDayHistQCtrl)) + " valid: " + String(valid) + "R: " + String(MqttSensors.rain_day, 1));
-    if ((MqttSensors.rain_day) < 0 || (MqttSensors.rain_day > 1800)) {
-      rain_day_data.rain  = 0;
-      rain_day_data.valid = false;
-    }
-    else {
-      if (RainDayHistMDay == CurrentDay) {
-         MqttSensors.rain_day_prev = MqttSensors.rain_day;
-      }
-      rain_day_data.rain  = MqttSensors.rain_day_prev;
-      rain_day_data.valid = valid;
-      
-    }
     if (RainDayHistMDay != CurrentDay) {
-      q_push(&RainDayHistQCtrl, &rain_day_data);
-    }
+        // Day has changed - store last valid accumulated daily value into FIFO
+        rain_day_data.rain  = MqttSensors.rain_day_prev;
+        rain_day_data.valid = true;
+        log_i("#%d R: %.1f", q_getCount(&RainDayHistQCtrl), rain_day_data.rain);
+        q_push(&RainDayHistQCtrl, &rain_day_data);
+    } 
+    
+    if (MqttSensors.valid && MqttSensors.rain_day_valid) {
+        // Save last valid accumulated daily value
+        MqttSensors.rain_day_prev = MqttSensors.rain_day;
+    }    
+    log_i("val: %d, R: %.1f", (MqttSensors.valid && MqttSensors.rain_day_valid) ? 1 : 0, MqttSensors.rain_day);
+
+    // Save current day of month for detection of new day
     RainDayHistMDay = CurrentDay;
 }
 
@@ -937,13 +930,8 @@ void SaveRainDayData(void) {
  * \brief Display MQTT data
  */
 void DisplayMQTTWeather(void) {
-  Serial.println("DispayMQTTWeather()");
-  //Serial.println("DisplayMQTTWeather(): calling DisplayGeneralInfoSection()");
   DisplayGeneralInfoSection();
-  //Serial.println("DisplayMQTTWeather(): DisplayGeneralInfoSection() o.k.");
-  //Serial.println("DisplayMQTTWeather(): Date_str=" + Date_str + " - calling DisplayDateTime()");
   DisplayDateTime(90, 225);
-  //Serial.println("DisplayMQTTWeather(): DisplayDateTime() o.k.");
   display.drawBitmap(  5,  25, epd_bitmap_garten_sw, 220, 165, GxEPD_BLACK);
   display.drawRect(    4,  24, 222, 167, GxEPD_BLACK);
   display.drawBitmap(240,  45, epd_bitmap_temperatur_aussen, 64, 48, GxEPD_BLACK);
@@ -1044,7 +1032,6 @@ void DisplayMQTTWeather(void) {
     display.drawBitmap(680, 100, epd_bitmap_signal_disconnected, 40, 40, GxEPD_BLACK);
   }
   DisplayMqttHistory();
-  //DrawRSSI(695, 15, wifi_signal); // Wi-Fi signal strength
   DrawRSSI(705, 15, wifi_signal); // Wi-Fi signal strength
   
 }
@@ -1073,13 +1060,13 @@ void GetLocalData(void) {
         LocalSensors.ble_thsensor[0].temperature = miThermometer.data[0].temperature/100.0;
         LocalSensors.ble_thsensor[0].humidity    = miThermometer.data[0].humidity/100.0;
         LocalSensors.ble_thsensor[0].batt_level  = miThermometer.data[0].batt_level;
-        Serial.printf("Outdoor Air Temp.:   % 3.1f °C\n", LocalSensors.ble_thsensor[0].temperature);
-        Serial.printf("Outdoor Humidity:     %3.1f %%\n", LocalSensors.ble_thsensor[0].humidity);
-        Serial.printf("Outdoor Sensor Batt:    %d %%\n", LocalSensors.ble_thsensor[0].batt_level);
+        log_d("Outdoor Air Temp.:   % 3.1f °C", LocalSensors.ble_thsensor[0].temperature);
+        log_d("Outdoor Humidity:     %3.1f %%", LocalSensors.ble_thsensor[0].humidity);
+        log_d("Outdoor Sensor Batt:    %d %%", LocalSensors.ble_thsensor[0].batt_level);
     } else {
-        Serial.printf("Outdoor Air Temp.:    --.- °C\n");
-        Serial.printf("Outdoor Humidity:     --   %%\n");
-        Serial.printf("Outdoor Sensor Batt:  --   %%\n");
+        log_d("Outdoor Air Temp.:    --.- °C");
+        log_d("Outdoor Humidity:     --   %%");
+        log_d("Outdoor Sensor Batt:  --   %%");
     }
     miThermometer.clearScanResults();
   #endif
@@ -1090,29 +1077,29 @@ void GetLocalData(void) {
 
     pocketBME280 bme280;
     bme280.setAddress(0x76);
-    Serial.println("BME280: start");
+    log_v("BME280: start");
     if (bme280.begin(myWire)) {
         LocalSensors.i2c_thpsensor[0].valid = true;
         bme280.startMeasurement();
         while (!bme280.isMeasuring()) {
-          Serial.println("BME280: Waiting for Measurement to start");
+          log_v("BME280: Waiting for Measurement to start");
           delay(1);
         }
         while (bme280.isMeasuring()) {
-          Serial.println("BME280: Measurement in progress");
+          log_v("BME280: Measurement in progress");
           delay(1);
         }
         LocalSensors.i2c_thpsensor[0].temperature = bme280.getTemperature() / 100.0;
         LocalSensors.i2c_thpsensor[0].pressure    = bme280.getPressure() / 100.0;
         LocalSensors.i2c_thpsensor[0].humidity    = bme280.getHumidity() / 1024.0;
-        Serial.printf("Indoor Temperature: %.1f °C\n", LocalSensors.i2c_thpsensor[0].temperature);
-        Serial.printf("Indoor Pressure: %.0f hPa\n",   LocalSensors.i2c_thpsensor[0].pressure);
-        Serial.printf("Indoor Humidity: %.0f %%rH\n",  LocalSensors.i2c_thpsensor[0].humidity);
+        log_d("Indoor Temperature: %.1f °C", LocalSensors.i2c_thpsensor[0].temperature);
+        log_d("Indoor Pressure: %.0f hPa",   LocalSensors.i2c_thpsensor[0].pressure);
+        log_d("Indoor Humidity: %.0f %%rH",  LocalSensors.i2c_thpsensor[0].humidity);
     }
     else {
-        Serial.printf("Indoor Temperature: --.- °C\n");
-        Serial.printf("Indoor Pressure:    --   hPa\n");
-        Serial.printf("Indoor Humidity:    --  %%rH\n");      
+        log_d("Indoor Temperature: --.- °C");
+        log_d("Indoor Pressure:    --   hPa");
+        log_d("Indoor Humidity:    --  %%rH");      
     }
   #endif
 }
@@ -1124,34 +1111,18 @@ void GetLocalData(void) {
 void SaveLocalData(void) {
     local_hist_t local_data = {0, 0, 0, 0, 0};
     
-    local_data.th_valid = LocalSensors.ble_thsensor[0].valid;
-    if (LocalSensors.ble_thsensor[0].valid) {
-      local_data.temperature = LocalSensors.ble_thsensor[0].temperature;
-      local_data.humidity    = LocalSensors.ble_thsensor[0].humidity;
-    }
-    /*
-    else {
-      // Store previous data
-      local_hist_t prev_data;
-      if (q_peekPrevious(&LocalHistQCtrl, &prev_data)) {
-        local_data.temperature = prev_data.temperature;
-        local_data.humidity    = prev_data.humidity;
-      }
-    }
-    */
-    local_data.p_valid = LocalSensors.i2c_thpsensor[0].valid;
-    if (LocalSensors.i2c_thpsensor[0].valid) {
-      local_data.pressure = LocalSensors.i2c_thpsensor[0].pressure;
-    }
-    /*
-    else {
-      // Store previous data
-      local_hist_t prev_data;
-      if (q_peekPrevious(&LocalHistQCtrl, &prev_data)) {
-        local_data.pressure = prev_data.pressure;
-      }      
-    }
-    */
+    local_data.th_valid    = LocalSensors.ble_thsensor[0].valid;
+    local_data.temperature = LocalSensors.ble_thsensor[0].temperature;
+    local_data.humidity    = LocalSensors.ble_thsensor[0].humidity;
+
+    local_data.p_valid     = LocalSensors.i2c_thpsensor[0].valid;
+    local_data.pressure    = LocalSensors.i2c_thpsensor[0].pressure;
+    log_i("#%d th_val: %d, T: %.1f H: %.1f p_val: %d P: %.1f", q_getCount(&LocalHistQCtrl), 
+                                                               local_data.th_valid ? 1: 0,
+                                                               LocalSensors.ble_thsensor[0].temperature,
+                                                               LocalSensors.ble_thsensor[0].humidity,
+                                                               local_data.p_valid ? 1 : 0,
+                                                               LocalSensors.i2c_thpsensor[0].pressure);
     q_push(&LocalHistQCtrl, &local_data);   
 }
 
@@ -1167,10 +1138,6 @@ void findLocalMinMaxTemp(float * t_min, float * t_max) {
   local_hist_t local_data;
   float outdoorTMin = 0;
   float outdoorTMax = 0;
-
-  if (!q_isInitialized(&LocalHistQCtrl)) {
-    return;
-  }
 
   // Initialize min/max with last entry 
   if (q_peekPrevious(&LocalHistQCtrl, &local_data)) {
@@ -1262,7 +1229,6 @@ void DisplayLocalWeather() {
      display.drawBitmap(670,   90, epd_bitmap_bolt, 40, 40, GxEPD_BLACK);
   }
   DisplayLocalHistory();
-  //DrawRSSI(695, 15, wifi_signal); // Wi-Fi signal strength
   DrawRSSI(705, 15, wifi_signal); // Wi-Fi signal strength
 }
 
@@ -1309,7 +1275,6 @@ void DisplayGeneralInfoSection(void) {
   uint16_t offs;
   uint16_t w;
 
-  Serial.printf("DisplayGeneralInfoSection(): ScreenNo=%d\n", ScreenNo);
   // Print page heading
   for (int i = 0; i <= 2; i++) {   
     if (i == 0) {
@@ -1344,7 +1309,6 @@ void DisplayGeneralInfoSection(void) {
     }
   }
 
-  //DrawRSSI(695, 15, wifi_signal); // Wi-Fi signal strength and Battery voltage
   display.drawLine(0, 18, SCREEN_WIDTH-1, 18, GxEPD_BLACK);
 }
 
@@ -1362,6 +1326,7 @@ void DisplayDateTime(int x, int y) {
   drawString(x + 13, y+31, Time_str, CENTER);
 }
 
+
 /**
  * \brief Prints the OWM screen's main weather section at the given position
  * 
@@ -1377,6 +1342,7 @@ void DisplayMainWeatherSection(int x, int y) {
   DisplayPrecipitationSection(x + 411, y - 81, 137, 100);
   DisplayForecastTextSection(x + 97, y + 20, 409, 65);
 }
+
 
 /**
  * \brief Prints the wind section at the given position
@@ -1512,6 +1478,7 @@ void DisplayForecastTextSection(int x, int y , int fwidth, int fdepth) {
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
 }
 
+
 /**
  * \brief Displays the OWM forecast with the specified index at the given position  
  * 
@@ -1582,7 +1549,7 @@ void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
     addraindrop(x + 58, y + 40, 7);
   }
   if (WxForecast[1].Snowfall >= 0.005)  // Ignore small amounts
-    drawString(x - 25, y + 60, String(WxForecast[1].Snowfall, 2) + (Units == "M" ? "mm" : "in") + " **", LEFT); // Only display snowfall total today if > 0
+    drawString(x - 25, y + 71, String(WxForecast[1].Snowfall, 2) + (Units == "M" ? "mm" : "in") + " **", LEFT); // Only display snowfall total today if > 0
   if (WxForecast[1].Pop >= 0.005)       // Ignore small amounts
     drawString(x + 2, y + 81, String(WxForecast[1].Pop*100, 0) + "%", LEFT); // Only display pop if > 0
 }
@@ -1598,7 +1565,7 @@ void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
  * \param y         y-coordinate
  */
 void DisplayAstronomySection(int x, int y) {
-  display.drawRect(x, y + 16, 409 /* 216 */, 65, GxEPD_BLACK);
+  display.drawRect(x, y + 16, 191, 65, GxEPD_BLACK);
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   drawString(x + 4, y + 24, ConvertUnixTime(WxConditions[0].Sunrise + WxConditions[0].Timezone).substring(0, 5) + " " + TXT_SUNRISE, LEFT);
   drawString(x + 4, y + 44, ConvertUnixTime(WxConditions[0].Sunset + WxConditions[0].Timezone).substring(0, 5) + " " + TXT_SUNSET, LEFT);
@@ -1608,9 +1575,9 @@ void DisplayAstronomySection(int x, int y) {
   const int month_utc = now_utc->tm_mon + 1;
   const int year_utc = now_utc->tm_year + 1900;
   drawString(x + 4, y + 64, MoonPhase(day_utc, month_utc, year_utc, Hemisphere), LEFT);
-  //DrawMoon(x + 137, y, day_utc, month_utc, year_utc, Hemisphere);
-  DrawMoon(x + 117, y, day_utc, month_utc, year_utc, Hemisphere);
+  DrawMoon(x + 110, y, day_utc, month_utc, year_utc, Hemisphere);
 }
+
 
 /**
  * \brief Displays the OWM attribution at the given position  
@@ -1619,9 +1586,10 @@ void DisplayAstronomySection(int x, int y) {
  * \param y         y-coordinate
  */
 void DisplayOWMAttribution(int x, int y) {
+  display.drawRect(x, y + 16, 219, 65, GxEPD_BLACK);
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x + 4, y + 24, "Weather data provided by OpenWeather", LEFT);
-  drawString(x + 4, y + 44, "https://openweathermap.org/", LEFT);
+  drawString(x + 8, y + 24, "Weather data provided by OpenWeather", LEFT);
+  drawString(x + 8, y + 44, "https://openweathermap.org/", LEFT);
 }
 
 
@@ -1736,7 +1704,7 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
   float minYscale =  10000;
   int last_x, last_y;
   float x2, y2;
-  Serial.println("DrawGraph()");
+  
   if (auto_scale == true) {
     //for (int i = data_offset; i < readings; i++ ) {
     for (int i = 0; i < readings; i++ ) {
@@ -1748,11 +1716,11 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
     if (minYscale != 0) minYscale = round(minYscale - auto_scale_margin); // Auto scale the graph and round to the nearest value defined, default was Y1Min
     Y1Min = round(minYscale);
   }
-  Serial.println("DrawGraph(): auto_scale: YMin = " + String(Y1Min) + " YMax = " + String(Y1Max));
+  log_d("auto_scale: YMin=%f YMax=%f", Y1Min, Y1Max);
   // Draw the graph
   //last_x = x_pos + 1;
   last_x = -1;
-  last_y = y_pos + (Y1Max - constrain(DataArray[1], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight;
+  last_y = y_pos + (Y1Max - constrain(DataArray[data_offset], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight;
   display.drawRect(x_pos, y_pos, gwidth + 3, gheight + 2, GxEPD_BLACK);
   drawString(x_pos + gwidth / 2 + 6, y_pos - 16, title, CENTER);
   // Draw the data
@@ -1760,11 +1728,11 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
     x2 = x_pos + gx * gwidth / (readings - 1) - 1 ; // max_readings is the global variable that sets the maximum data that can be plotted
     y2 = y_pos + (Y1Max - constrain(DataArray[gx], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight + 1;
     if (ValidArray == NULL) {
-         Serial.println("DrawGraph(): No array of valid-flags!");
+         log_d("No array of valid-flags!");
     }
     if (ValidArray == NULL || ValidArray[gx]) {
         if (ValidArray) {
-            Serial.println("DrawGraph(): reading #" + String(gx) + ": valid=" + String(ValidArray[gx]));
+            log_i("reading #%d val: %d data: %f", gx, ValidArray[gx], DataArray[gx]);
         }
         if (barchart_mode) {
             display.fillRect(x2, y2, (gwidth / readings) - 1, y_pos + gheight - y2 + 2, GxEPD_BLACK);
@@ -1892,7 +1860,7 @@ void DisplayLocalHistory() {
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
 
   int data_offset = LOCAL_HIST_SIZE - q_getCount(&LocalHistQCtrl);
-  // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
+  // (x, y, width, height, MinValue, MaxValue, Title, DataArray[], AutoScale, ChartMode, xmin, xmax, dx, data_offset, x_label, ValidArray[])
   DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, data_offset, TXT_DAYS, p_valid);
   DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, LOCAL_HIST_SIZE, autoscale_on, barchart_off, -2, 0, 1, data_offset, TXT_DAYS, th_valid);
   DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,    TXT_HUMIDITY_PERCENT, humidity, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, data_offset, TXT_DAYS, th_valid);
@@ -1903,18 +1871,6 @@ void DisplayLocalHistory() {
  * \brief Display MQTT sensor data history as graphs (pressure, temperature, humidity)
  */
 void DisplayMqttHistory() {
-/*
-  int r = 1;
-  do {
-    if (Units == "I") pressure_readings[r] = WxForecast[r].Pressure * 0.02953;   else pressure_readings[r] = WxForecast[r].Pressure;
-    if (Units == "I") rain_readings[r]     = WxForecast[r].Rainfall * 0.0393701; else rain_readings[r]     = WxForecast[r].Rainfall;
-    if (Units == "I") snow_readings[r]     = WxForecast[r].Snowfall * 0.0393701; else snow_readings[r]     = WxForecast[r].Snowfall;
-    temperature_readings[r] = WxForecast[r].Temperature;
-    humidity_readings[r]    = WxForecast[r].Humidity;
-    r++;
-  } while (r <= max_readings);
-  */
-  
   mqtt_hist_t mqtt_data;
   rain_hr_hist_t rain_hr_data;
   rain_day_hist_t rain_day_data;
@@ -1949,17 +1905,12 @@ void DisplayMqttHistory() {
     humidity   [i] = 0;
   }
 
-  if (q_isInitialized(&MqttHistQCtrl)) {
-    offs = MQTT_HIST_SIZE - q_getCount(&MqttHistQCtrl);
-    for (int i=0; i<q_getCount(&MqttHistQCtrl); i++) {
-      q_peekIdx(&MqttHistQCtrl, &mqtt_data, i);
-      temperature[i + offs] = mqtt_data.temperature;
-      humidity   [i + offs] = (float)(mqtt_data.humidity);
-      rain       [i + offs] = mqtt_data.rain;
-      mqtt_valid [i + offs] = mqtt_data.valid;
-    }
-  } else {
-    offs = MQTT_HIST_SIZE;
+  offs = MQTT_HIST_SIZE - q_getCount(&MqttHistQCtrl);
+  for (int i=0; i<q_getCount(&MqttHistQCtrl); i++) {
+    q_peekIdx(&MqttHistQCtrl, &mqtt_data, i);
+    temperature[i + offs] = mqtt_data.temperature;
+    humidity   [i + offs] = (float)(mqtt_data.humidity);
+    mqtt_valid [i + offs] = mqtt_data.valid;
   }
   
   int gwidth = 150, gheight = 72;
@@ -1971,61 +1922,44 @@ void DisplayMqttHistory() {
   drawString(SCREEN_WIDTH / 2, gy - 40, TXT_MQTT_HISTORY_VALUES, CENTER); // Based on a graph height of 60
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   
-  // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
+  // (x, y, width, height, MinValue, MaxValue, Title, DataArray[], AutoScale, ChartMode, xmin, xmax, dx, data_offset, x_label, ValidArray[])
   DrawGraph(gx,           gy, gwidth, gheight, 10, 30, Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, MQTT_HIST_SIZE, autoscale_on,  barchart_off, -2, 0, 1, offs, TXT_DAYS, mqtt_valid);
   DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 0, 100, TXT_HUMIDITY_PERCENT,                                 humidity,    MQTT_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, offs, TXT_DAYS, mqtt_valid);
 
-  /*
-  for (int i = 0; i<RAIN_HR_HIST_SIZE; i++) {
-    rain_hr[i]       = 0;
-    rain_hr_valid[i] = false;
-  }
-  */
-  /*
-  for (int i=q_getCount(&RainHrHistQCtrl)-1, j=RAIN_HR_HIST_SIZE-1; i>=0; i--, j--) {
-    q_peekIdx(&RainHrHistQCtrl, &rain_hr_data, i);
-    rain_hr[j]       = rain_hr_data.rain;
-    rain_hr_valid[j] = rain_hr_data.valid;
-  }
-  */
   // Hourly Rain History
   for (int i=0; i<RAIN_HR_HIST_SIZE; i++) {
     rain_hr[i] = 0;
   }
 
-  if (q_isInitialized(&RainHrHistQCtrl)) {
-    offs = RAIN_HR_HIST_SIZE - q_getCount(&RainHrHistQCtrl);
-    for (int i=0; i<q_getCount(&RainHrHistQCtrl); i++) {
-      if (q_getCount(&RainHrHistQCtrl) == 0)
-        Serial.println("You are not supposed to be here!");
-      q_peekIdx(&RainHrHistQCtrl, &rain_hr_data, i);
-      rain_hr      [i + offs] = rain_hr_data.rain;
-      rain_hr_valid[i + offs] = rain_hr_data.valid;
-    }
-  } else {
-    offs = RAIN_HR_HIST_SIZE;
+  offs = RAIN_HR_HIST_SIZE - q_getCount(&RainHrHistQCtrl);
+  for (int i=0; i<q_getCount(&RainHrHistQCtrl); i++) {
+    q_peekIdx(&RainHrHistQCtrl, &rain_hr_data, i);
+    rain_hr      [i + offs] = rain_hr_data.rain;
+    rain_hr_valid[i + offs] = rain_hr_data.valid;
   }
-  
+
+  // (x, y, width, height, MinValue, MaxValue, Title, DataArray[], AutoScale, ChartMode, xmin, xmax, dx, data_offset, x_label, ValidArray[])
   DrawGraph(gx + 2 * gap + 5, gy, gwidth, gheight, 0, 300, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_hr, RAIN_HR_HIST_SIZE, autoscale_on, barchart_on, -20, -4,  8, offs, TXT_HOURS, rain_hr_valid);
+
   
   // Daily Rain History
   for (int i=0; i<RAIN_DAY_HIST_SIZE; i++) {
     rain_day[i] = 0;
   }
 
-  if (q_isInitialized(&RainDayHistQCtrl)) {
-    offs = RAIN_DAY_HIST_SIZE - q_getCount(&RainDayHistQCtrl);
-    for (int i=0; i<q_getCount(&RainDayHistQCtrl); i++) {
-      if (q_getCount(&RainDayHistQCtrl) == 0)
-        Serial.println("You are not supposed to be here!");
-      q_peekIdx(&RainDayHistQCtrl, &rain_day_data, i);
-      rain_day      [i + offs] = rain_day_data.rain;
-      rain_day_valid[i + offs] = rain_day_data.valid;
-    }
-  } else {
-    offs = RAIN_DAY_HIST_SIZE;
+  // FIXME: check overflow!
+  offs = RAIN_DAY_HIST_SIZE - q_getCount(&RainDayHistQCtrl) - 1;
+  for (int i=0; i<q_getCount(&RainDayHistQCtrl); i++) {
+    q_peekIdx(&RainDayHistQCtrl, &rain_day_data, i);
+    rain_day      [i + offs] = rain_day_data.rain;
+    rain_day_valid[i + offs] = rain_day_data.valid;
   }
+  
+  rain_day        [RAIN_DAY_HIST_SIZE-1] = MqttSensors.rain_day_prev;
+  rain_day_valid  [RAIN_DAY_HIST_SIZE-1] = true;
 
+
+  // (x, y, width, height, MinValue, MaxValue, Title, DataArray[], AutoScale, ChartMode, xmin, xmax, dx, data_offset, x_label, ValidArray[])
   DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 300, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_day, RAIN_DAY_HIST_SIZE, autoscale_on, barchart_on, -25, -5, 10, offs, TXT_DAYS,  rain_day_valid);
 }
 
@@ -2042,7 +1976,7 @@ void DisplayMqttHistory() {
  * \param IconSize  icon size (SmallIcon/LargeIcon)
  */
 void DisplayConditionsSection(int x, int y, String IconName, bool IconSize) {
-  Serial.println("Icon name: " + IconName);
+  log_d("Icon name: %s", IconName.c_str());
   if      (IconName == "01d" || IconName == "01n")  Sunny(x, y, IconSize, IconName);
   else if (IconName == "02d" || IconName == "02n")  MostlySunny(x, y, IconSize, IconName);
   else if (IconName == "03d" || IconName == "03n")  Cloudy(x, y, IconSize, IconName);
@@ -2107,9 +2041,9 @@ uint8_t StartWiFi() {
   if (WiFi.status() == WL_CONNECTED) {
     return WL_CONNECTED;
   }
-  Serial.print("\r\nConnecting to: "); Serial.println(String(ssid));
+  log_i("Connecting to: %s", ssid);
   //IPAddress dns(8, 8, 8, 8); // Google DNS
-  IPAddress dns(192, 168, 0, 1); // Google DNS
+  IPAddress dns(192, 168, 0, 1); // Local DNS
   WiFi.disconnect();
   WiFi.mode(WIFI_STA); // switch off AP
   WiFi.setAutoConnect(true);
@@ -2130,9 +2064,9 @@ uint8_t StartWiFi() {
   }
   if (connectionStatus == WL_CONNECTED) {
     wifi_signal = WiFi.RSSI(); // Get Wifi Signal strength now, because the WiFi will be turned off to save power!
-    Serial.println("WiFi connected at: " + WiFi.localIP().toString());
+    log_i("WiFi connected at: %s", WiFi.localIP().toString().c_str());
   }
-  else Serial.println("WiFi connection *** FAILED ***");
+  else log_w("WiFi connection failed!");
   return connectionStatus;
 }
 
@@ -2228,7 +2162,7 @@ boolean UpdateLocalTime() {
   struct tm timeinfo;
   char   time_output[32], day_output[30], update_time[30];
   while (!getLocalTime(&timeinfo, 10000)) { // Wait for 10-sec for time to synchronise
-    Serial.println("Failed to obtain time");
+    log_w("Failed to obtain time");
     return false;
   }
   CurrentHour = timeinfo.tm_hour;
@@ -2269,7 +2203,7 @@ void DrawBattery(int x, int y) {
   uint8_t percentage = 100;
   float voltage = analogRead(35) / 4096.0 * 7.46;
   if (voltage > 1 ) { // Only display if there is a valid reading
-    Serial.println("Voltage = " + String(voltage));
+    log_d("Voltage = %f", voltage);
     percentage = 2836.9625 * pow(voltage, 4) - 43987.4889 * pow(voltage, 3) + 255233.8134 * pow(voltage, 2) - 656689.7123 * voltage + 632041.7303;
     if (voltage >= 4.20) percentage = 100;
     if (voltage <= 3.50) percentage = 0;
