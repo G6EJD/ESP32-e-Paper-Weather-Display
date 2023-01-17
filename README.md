@@ -14,12 +14,6 @@ Also see: https://www.arduino.cc/en/Guide/Libraries#toc4
 Download the software to your Arduino's library directory.
 
 1. From the examples, choose depending on your module either
-   - Waveshare_1_54
-   - Waveshare_2_13
-   - Waveshare_2_7
-   - Waveshare_2_9
-   - Waveshare_3_7
-   - Waveshare_4_2
    - Waveshare_7_5
    - Waveshare_7_5_T7 (newer 800x480 version of the older 640x384)
    
@@ -53,25 +47,6 @@ Compile and upload the code - Enjoy!
 
 ![alt text width="600"](/Waveshare_7_5.jpg)
 
-4.2" 400x300 E-Paper Layout
-
-![alt_text, width="400"](/Waveshare_4_2.jpg)
-
-3.7" 480x280 E-Paper Layout
-
-![alt_text, width="400"](/Waveshare_3_7.jpg)
-
-2.7" 264x176 E-Paper Layout
-
-![alt_text, width="400"](/Waveshare_2_7.jpg)
-
-2.13" 250x122 E-Paper Layout
-
-![alt_text, width="200"](/Waveshare_2_13.jpg)
-
-1.54" 200x200 E-Paper Layout
-
-![alt_text, width="200"](/Waveshare_1_54.jpg)
 
 **** NOTE change needed for latest Waveshare HAT versions ****
 
