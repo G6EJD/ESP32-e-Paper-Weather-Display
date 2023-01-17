@@ -18,6 +18,41 @@
   See more at http://www.dsbird.org.uk
 */
 
+/**
+ * ESP32 Weather Display using an EPD 7.5" 800x480 Display
+ * 
+ * Three virtual screens are provided:
+ * 0. Start screen
+ * 1. Current weather data and weather forecast by OpenWeatherMap
+ * 2. Local weather sensor data (internal T/H/P-sensor with I2C interface, BLE sensor(s))
+ * 3. Remote weather sensor data (received from MQTT broker)
+ * 
+ * Initially the start screen is shown. After a delay, the default screen is shown.
+ * 
+ * For each cycle:
+ * - Connect to WiFi
+ * - Draw screen title bar
+ * - Retrieve local data (I2C bus and BLE sensors) -
+ *   bleScanTime must be greater than BLE sensor's advertising cycle time;
+ *   BLE scanning is aborted if all knowsn sensors have been received or a touch sensor is triggered
+ * - Draw current screen
+ * - Retrieve MQTT data -
+ *   wait for MQTT message until MQTT_DATA_TIMEOUT occurs or a touch sensor is triggered
+ * - For MQTT screen: update if new (valid) data has been received
+ * - go to deep sleep mode; wake-up is triggered after an integer multiple of SleepDuration past
+ *   the full hour - minus SleepOffset (to be ready for receiving equally triggered MQTT messages)
+ * 
+ * Switching between screens 1..3 is done by touch sensors.
+ * 
+ * Local and remote sensor data (i.e. not OWM data) is stored in non-volatile (NV) RAM. Thus, at least
+ * data received previously can be shown even in WiFi is not availably.
+ * 
+ * NW RAM is also used to store data for plotting history graphs and for displaying min/max values
+ * (during past 24 hrs).
+ * 
+ * Based on G6EJD/ESP32-e-Paper-Weather-Display Version 16.11
+ * 
+ */
 
 #include "owm_credentials.h"          // See 'owm_credentials' tab and enter your OWM API key and set the Wifi SSID and PASSWORD
 #include <ArduinoJson.h>              // https://github.com/bblanchon/ArduinoJson needs version v6 or above
@@ -111,7 +146,12 @@
 
 #define SCREEN_WIDTH  800             // Set for landscape mode
 #define SCREEN_HEIGHT 480
-bool DebugDisplayUpdate = true;
+
+long SleepDuration = 30;            //!< Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour (+ SleepOffset)
+long SleepOffset   = -120;          //!< Offset in seconds from SleepDuration; -120 will trigger wakeup 2 minutes earlier
+int  WakeupTime    = 7;             //!< Don't wakeup until after 07:00 to save battery power
+int  SleepTime     = 23;            //!< Sleep after (23+1) 00:00 to save battery power (currently only used for OWM screen)
+bool DebugDisplayUpdate = false;    //<! If true, ignore SleepTime/WakeupTime
 
 enum alignment {LEFT, RIGHT, CENTER};
 
@@ -147,7 +187,7 @@ char        MqttBuf[MQTT_PAYLOAD_SIZE+1]; //!< MQTT Payload Buffer
 
 #if defined(MITHERMOMETER_EN) || defined(THEENGSDECODER_EN)
     const int bleScanTime = 31; //!< BLE scan time in seconds
-    //std::vector<std::string> knownBLEAddresses = {"a4:c1:38:b8:1f:7f"}; //!< List of known BLE sensors' MAC addresses
+    //std::vector<std::string> knownBLEAddresses = {"a4:c1:38:b8:1f:7f"}; //!< List of known BLE sensors' MAC addresses 
     std::vector<std::string> knownBLEAddresses = {"49:22:05:17:0c:1f"}; //!< List of known BLE sensors' MAC addresses
 #endif
 
@@ -217,7 +257,7 @@ float snow_readings[max_readings]        = {0}; //!< OWM snow readings
 // MQTT Sensor Data
 struct MqttS {
     bool     valid;                //!< 
-    char     received_at[32];
+    char     received_at[32];      //!< MQTT message received date/time
     struct {
         unsigned int ws_batt_ok:1; //!< weather sensor battery o.k.
         unsigned int ws_dec_ok:1;  //!< weather sensor decoding o.k.
@@ -328,10 +368,6 @@ typedef struct LocalHistQData local_hist_t;            //!< Shortcut for struct 
 RTC_DATA_ATTR local_hist_t LocalHist[LOCAL_HIST_SIZE]; //!< Local Sensor Data History
 RTC_DATA_ATTR time_t       LocalHistTStamp = 0;        //!< Last Local History Update Timestamp
 
-long SleepDuration = 30;   //!< Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour (+ SleepOffset)
-long SleepOffset   = -120; //!< Offset in seconds from SleepDuration; -120 will trigger wakeup 2 minutes earlier
-int  WakeupTime    = 7;    //!< Don't wakeup until after 07:00 to save battery power
-int  SleepTime     = 23;   //!< Sleep after (23+1) 00:00 to save battery power
 
 RTC_DATA_ATTR int   ScreenNo     = START_SCREEN; //!< Current Screen No.
 RTC_DATA_ATTR int   PrevScreenNo = -1;           //!< Previous Screen No.
@@ -355,7 +391,7 @@ void ARDUINO_ISR_ATTR touch_mid_isr() {
 #ifdef THEENGSDECODER_EN
 class MyAdvertisedDeviceCallbacks: public NimBLEAdvertisedDeviceCallbacks {
   
-  int m_devices_found = 0;;
+  int m_devices_found = 0; //!< Number of known devices found
   
   std::string convertServiceData(std::string deviceServiceData) {
     int serviceDataLength = (int)deviceServiceData.length();
@@ -410,7 +446,7 @@ class MyAdvertisedDeviceCallbacks: public NimBLEAdvertisedDeviceCallbacks {
     }
 
     if (decoder.decodeBLEJson(BLEdata) && device_found) {
-      if (CORE_DEBUG_LEVEL >= ESP_LOG_WARN) {
+      if (CORE_DEBUG_LEVEL >= ARDUHAL_LOG_LEVEL_DEBUG) {
         char buf[512];
         serializeJson(BLEdata, buf);
         log_d("TheengsDecoder found device: %s", buf);
@@ -430,13 +466,14 @@ class MyAdvertisedDeviceCallbacks: public NimBLEAdvertisedDeviceCallbacks {
       m_devices_found++;   
       log_d("BLE devices found: %d", m_devices_found);
     }
-    /*
-     * FIXME: This lead to a Guru Meditation...
-     */
-    if (touchPrevTrig || touchNextTrig || touchMidTrig) {
+    
+    // Abort scanning by touch sensor
+    if (TouchTriggered()) {
       log_i("Touch interrupt!");
       pBLEScan->stop();
     }
+    
+    // Abort scanning because all known devices have been found
     if (m_devices_found == knownBLEAddresses.size()) {
       log_i("All devices found.");
       pBLEScan->stop();
@@ -459,7 +496,7 @@ void setup() {
     bool wifi_ok = false;
     bool time_ok;
     
-    if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT1 || touchPrevTrig || touchNextTrig || touchMidTrig) {
+    if ((esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT1) || TouchTriggered()) {
         if (touchPrevTrig || (esp_sleep_get_ext1_wakeup_status() & (1ULL << TOUCH_PREV))) {
             ScreenNo = (ScreenNo == 0) ? LAST_SCREEN : ScreenNo - 1;
             touchPrevTrig = false;
@@ -692,7 +729,7 @@ void BeginSleep() {
   display.powerOff();
   long SleepTimer;
   
-  if (touchMidTrig || touchPrevTrig || touchNextTrig) {
+  if (TouchTriggered()) {
       // wake up immediately
       SleepTimer = 1000;
   } else {
@@ -731,6 +768,11 @@ void BeginSleep() {
   esp_deep_sleep_start();      // Sleep for e.g. 30 minutes
 }
 
+
+inline 
+bool TouchTriggered(void) {
+    return (touchPrevTrig || touchMidTrig || touchNextTrig);
+}
 
 /**
  * \brief Clear hourglass icon from screen's center 
@@ -903,7 +945,7 @@ void convertUtcTimestamp(String time_str_utc, struct tm * ti_local, int tz_offse
   localtime_r(&received_at, ti_local);
   char tbuf[26];
   strftime(tbuf, 25, "%Y-%m-%d %H:%M", ti_local);
-  Serial.printf("Message received at: %s local time, DST: %d\n", tbuf, ti_local->tm_isdst);
+  log_d("Message received at: %s local time, DST: %d\n", tbuf, ti_local->tm_isdst);
 }
 
     
@@ -932,7 +974,7 @@ void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
       if (!MqttClient.connected()) {
         MqttConnect(net, MqttClient);
       }
-      if (touchMidTrig || touchPrevTrig || touchNextTrig) {
+      if (TouchTriggered()) {
           log_i("Touch interrupt!");
           return;
       }
@@ -1223,8 +1265,11 @@ void GetLocalData(void) {
   #endif
   
   #ifdef THEENGSDECODER_EN
-    //NimBLEScan* pBLEScan;
 
+    // From https://github.com/theengs/decoder/blob/development/examples/ESP32/ScanAndDecode/ScanAndDecode.ino:
+    // MyAdvertisedDeviceCallbacks are still triggered multiple times; this makes keeping track of received
+    // sensors difficult. Setting ScanFilterMode to CONFIG_BTDM_SCAN_DUPL_TYPE_DATA_DEVICE seems to
+    // restrict callback invocation to once per device as desired.
     //NimBLEDevice::setScanFilterMode(CONFIG_BTDM_SCAN_DUPL_TYPE_DEVICE);
     NimBLEDevice::setScanFilterMode(CONFIG_BTDM_SCAN_DUPL_TYPE_DATA_DEVICE);
     NimBLEDevice::setScanDuplicateCacheSize(200);
@@ -1237,7 +1282,6 @@ void GetLocalData(void) {
     pBLEScan->setInterval(97); // How often the scan occurs / switches channels; in milliseconds,
     pBLEScan->setWindow(37);  // How long to scan during the interval; in milliseconds.
     pBLEScan->setMaxResults(0); // do not store the scan results, use callback only.
-    //pBLEScan->setDuplicateFilter(true);
     pBLEScan->start(bleScanTime, false /* is_continue */);
   #endif
       
@@ -1878,20 +1922,45 @@ String MoonPhase(int d, int m, int y, String hemisphere) {
 /* (C) D L BIRD
     This function will draw a graph on a ePaper/TFT/LCD display using data from an array containing data to be graphed.
     The variable 'max_readings' determines the maximum number of data elements for each array. Call it with the following parametric data:
-    x_pos-the x axis top-left position of the graph
-    y_pos-the y-axis top-left position of the graph, e.g. 100, 200 would draw the graph 100 pixels along and 200 pixels down from the top-left of the screen
-    width-the width of the graph in pixels
-    height-height of the graph in pixels
-    Y1_Max-sets the scale of plotted data, for example 5000 would scale all data to a Y-axis of 5000 maximum
-    data_array1 is parsed by value, externally they can be called anything else, e.g. within the routine it is called data_array1, but externally could be temperature_readings
-    auto_scale-a logical value (TRUE or FALSE) that switches the Y-axis autoscale On or Off
-    barchart_on-a logical value (TRUE or FALSE) that switches the drawing mode between barhcart and line graph
-    barchart_colour-a sets the title and graph plotting colour
-    If called with Y1_Max value of 500 and the data never goes above 500, then autoscale will retain a 0-500 Y scale, if on, the scale increases/decreases to match the data.
+    x_pos - the x axis top-left position of the graph
+    y_pos - the y-axis top-left position of the graph, e.g. 100, 200 would draw the graph 100 pixels along and 200 pixels down from the top-left of the screen
+    gwidth - the width of the graph in pixels
+    gheight - height of the graph in pixels
+    Y1Max - sets the scale of plotted data, for example 5000 would scale all data to a Y-axis of 5000 maximum
+    DataArray is parsed by value, externally they can be called anything else, e.g. within the routine it is called DataArray, but externally could be temperature_readings
+    auto_scale - a logical value (TRUE or FALSE) that switches the Y-axis autoscale On or Off
+    barchart_mode - a logical value (TRUE or FALSE) that switches the drawing mode between barhcart and line graph
+    If called with Y1Max value of 500 and the data never goes above 500, then autoscale will retain a 0-500 Y scale, if on, the scale increases/decreases to match the data.
     auto_scale_margin, e.g. if set to 1000 then autoscale increments the scale by 1000 steps.
 */
 
-// TODO: documentation
+/**
+ * This function will draw a graph on a ePaper/TFT/LCD display using data from an array containing data to be graphed.
+ * 
+ * DataArray contains the elements to be plotted. Data is plotted from index data_offset to readings-1.
+ * The same data range is also used for auto-scaling (if enabled).
+ * If ValidArray is provided, only elements marked as valid are plotted. In linegraph mode, invalid elements lead to gaps.
+ * In bargraph mode, invalid elements are drawn as bar outlines.
+ * The x-axis is scaled from xmin to xmax with a step size of dx. Currently the x-axis is fixed to 3 steps. 
+ * 
+ * \param x_pos             x-coordinate
+ * \param y_pos             y-coordinatre
+ * \param gwidth            graph widget width
+ * \param gheight           graph widget height
+ * \param Y1Min             y-scale minimum value
+ * \param Y1Max             y-scale maximum value
+ * \param title             title, printed above graph
+ * \param DataArray         array of data
+ * \param readings          no. of elements in DataArray
+ * \param auto_scale        if true, determine y-scale automatically, otherwise use fixed scale (Y1Min;Y1Max)
+ * \param barchart_mode     if true, use barchart mode, otherwise use linechart mode
+ * \param xmin              x-scale minimum value
+ * \param xmax              x-scale maximum value
+ * \param dx                x-scale step size (default: 1)
+ * \param data_offset       offset in DataArray for start of plot (default: 1)
+ * \param x_label           x-axis label, printed below graph (default: TXT_DAYS)
+ * \param ValidArray        array of valid flags; one per each DataArray element (default: NULL)
+ */
 void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], int readings, boolean auto_scale, boolean barchart_mode, int xmin, int xmax, int dx=1, 
                int data_offset=1, const String x_label=TXT_DAYS, bool ValidArray[] = NULL);
 void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], int readings, boolean auto_scale, boolean barchart_mode, int xmin, int xmax, int dx, 
@@ -1903,9 +1972,9 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
   int last_x, last_y;
   float x2, y2;
   
-  if (auto_scale == true) {
-    //for (int i = data_offset; i < readings; i++ ) {
-    for (int i = 0; i < readings; i++ ) {
+  if ((auto_scale == true) && (data_offset < readings)) {
+    //for (int i = 1; i < readings; i++ ) {
+    for (int i = data_offset; i < readings; i++ ) {
       if (DataArray[i] >= maxYscale) maxYscale = DataArray[i];
       if (DataArray[i] <= minYscale) minYscale = DataArray[i];
     }
@@ -2034,12 +2103,12 @@ void DisplayLocalHistory() {
   
   for (int i = 0; i<LOCAL_HIST_SIZE; i++) {
     temperature[i] = 0;
-    humidity[i]    = 0;
-    pressure[i]    = 0;
-    th_valid[i]    = false;
-    p_valid[i]     = false;
+    humidity   [i] = 0;
+    pressure   [i] = 0;
+    th_valid   [i] = false;
+    p_valid    [i] = false;
   }
-
+  /*
   for (int i=q_getCount(&LocalHistQCtrl)-1, j=LOCAL_HIST_SIZE-1; i>=0; i--, j--) {
     q_peekIdx(&LocalHistQCtrl, &local_data, i);
     temperature[j] = local_data.temperature;
@@ -2047,6 +2116,16 @@ void DisplayLocalHistory() {
     pressure[j] = local_data.pressure;
     th_valid[j] = local_data.th_valid;
     p_valid[j]  = local_data.p_valid;
+  }
+  */
+  int offs = LOCAL_HIST_SIZE - q_getCount(&LocalHistQCtrl);
+  for (int i=0; i<q_getCount(&LocalHistQCtrl); i++) {
+    q_peekIdx(&LocalHistQCtrl, &local_data, i);
+    temperature[i + offs] = local_data.temperature;
+    humidity   [i + offs] = local_data.humidity;
+    pressure   [i + offs] = local_data.pressure;
+    th_valid   [i + offs] = local_data.th_valid;
+    p_valid    [i + offs] = local_data.p_valid;
   }
 
   int gwidth = 150, gheight = 72;
@@ -2056,12 +2135,11 @@ void DisplayLocalHistory() {
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
   drawString(SCREEN_WIDTH / 2, gy - 40, TXT_LOCAL_HISTORY_VALUES, CENTER); // Based on a graph height of 60
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-
-  int data_offset = LOCAL_HIST_SIZE - q_getCount(&LocalHistQCtrl);
+  
   // (x, y, width, height, MinValue, MaxValue, Title, DataArray[], AutoScale, ChartMode, xmin, xmax, dx, data_offset, x_label, ValidArray[])
-  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, data_offset, TXT_DAYS, p_valid);
-  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, LOCAL_HIST_SIZE, autoscale_on, barchart_off, -2, 0, 1, data_offset, TXT_DAYS, th_valid);
-  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,    TXT_HUMIDITY_PERCENT, humidity, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, data_offset, TXT_DAYS, th_valid);
+  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, offs, TXT_DAYS, p_valid);
+  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, LOCAL_HIST_SIZE, autoscale_on, barchart_off, -2, 0, 1, offs, TXT_DAYS, th_valid);
+  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,    TXT_HUMIDITY_PERCENT, humidity, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1, offs, TXT_DAYS, th_valid);
 }
 
 
@@ -2226,7 +2304,8 @@ uint8_t StartWiFi() {
   }
   log_i("Connecting to: %s", ssid);
   //IPAddress dns(8, 8, 8, 8); // Google DNS
-  IPAddress dns(192, 168, 0, 1); // Local DNS
+  //IPAddress dns(192, 168, 0, 1); // Local DNS
+  IPAddress dns(MY_DNS);
   WiFi.disconnect();
   WiFi.mode(WIFI_STA); // switch off AP
   WiFi.setAutoConnect(true);
@@ -2338,14 +2417,14 @@ boolean SetupTime() {
  * 
  * The global variables CurrentHour, CurrentMin, CurrentSec, CurrentDay
  * and day_output/time_output are updated.
- * day_output contains the localized date string,
+ * date_output contains the localized date string,
  * time_output contains the localized text TXT_UPDATED with the time string.
  * 
  * \return true if RTC time was valid, false otherwise
  */
 boolean UpdateLocalTime() {
   struct tm timeinfo;
-  char   time_output[32], day_output[32];
+  char   time_output[32], date_output[32];
   while (!getLocalTime(&timeinfo, 10000)) { // Wait for 10-sec for time to synchronise
     log_w("Failed to obtain time");
     return false;
@@ -2354,33 +2433,43 @@ boolean UpdateLocalTime() {
   CurrentMin  = timeinfo.tm_min;
   CurrentSec  = timeinfo.tm_sec;
   CurrentDay  = timeinfo.tm_mday;
-  printTime(timeinfo, time_output, day_output, 32);
+  printTime(timeinfo, time_output, date_output, 32);
             
-  Date_str = day_output;
+  Date_str = date_output;
   Time_str = time_output;
   return true;
 }
 
-void printTime(struct tm &timeinfo, char *day_output, char *time_output, int max_size) {
+/**
+ * \brief Print localized time to variables
+ * 
+ * \param timeinfo      date and time data structure
+ * \param date_output   test output buffer for localized date
+ * \param time_output   text output buffer for localized time
+ * \param max_size      maximum text buffer size
+ * 
+ * 
+ */
+void printTime(struct tm &timeinfo, char *date_output, char *time_output, int max_size) {
   char update_time[30];
   
   //See http://www.cplusplus.com/reference/ctime/strftime/
   //Serial.println(&timeinfo, "%a %b %d %Y   %H:%M:%S");      // Displays: Saturday, June 24 2017 14:05:49
   if (Units == "M") {
     if ((Language == "CZ") || (Language == "DE") || (Language == "PL") || (Language == "NL")){
-      sprintf(day_output, "%s, %02u. %s %04u", weekday_D[timeinfo.tm_wday], timeinfo.tm_mday, month_M[timeinfo.tm_mon], (timeinfo.tm_year) + 1900); // day_output >> So., 23. Juni 2019 <<
+      sprintf(date_output, "%s, %02u. %s %04u", weekday_D[timeinfo.tm_wday], timeinfo.tm_mday, month_M[timeinfo.tm_mon], (timeinfo.tm_year) + 1900); // day_output >> So., 23. Juni 2019 <<
     }
     else
     {
-      sprintf(day_output, "%s %02u-%s-%04u", weekday_D[timeinfo.tm_wday], timeinfo.tm_mday, month_M[timeinfo.tm_mon], (timeinfo.tm_year) + 1900);
+      sprintf(date_output, "%s %02u-%s-%04u", weekday_D[timeinfo.tm_wday], timeinfo.tm_mday, month_M[timeinfo.tm_mon], (timeinfo.tm_year) + 1900);
     }
-    strftime(update_time, max_size, "%H:%M:%S", &timeinfo);  // Creates: '14:05:49'
+    strftime(update_time, max_size, "%H:%M:%S", &timeinfo);         // Creates: '14:05:49'
     sprintf(time_output, "%s %s", TXT_UPDATED, update_time);
   }
   else
   {
-    strftime(day_output, max_size, "%a %b-%d-%Y", &timeinfo); // Creates  'Sat May-31-2019'
-    strftime(update_time, sizeof(update_time), "%r", &timeinfo);        // Creates: '02:05:49pm'
+    strftime(date_output, max_size, "%a %b-%d-%Y", &timeinfo);      // Creates  'Sat May-31-2019'
+    strftime(update_time, sizeof(update_time), "%r", &timeinfo);    // Creates: '02:05:49pm'
     sprintf(time_output, "%s %s", TXT_UPDATED, update_time);
   }
 }
@@ -2576,56 +2665,6 @@ void InitialiseDisplay() {
   }
 */
 /*
-  Version 16.0 reformatted to use u8g2 fonts
-   1.  Added ß to translations, eventually that conversion can move to the lang_xx.h file
-   2.  Spaced temperature, pressure and precipitation equally, suggest in DE use 'niederschlag' for 'Rain/Snow'
-   3.  No-longer displays Rain or Snow unless there has been any.
-   4.  The nn-mm 'Rain suffix' has been replaced with two rain drops
-   5.  Similarly for 'Snow' two snow flakes, no words and '=Rain' and '"=Snow' for none have gone.
-   6.  Improved the Cloud Cover icon and only shows if reported, 0% cloud (clear sky) is no-report and no icon.
-   7.  Added a Visibility icon and reported distance in Metres. Only shows if reported.
-   8.  Fixed the occasional sleep time error resulting in constant restarts, occurred when updates took longer than expected.
-   9.  Improved the smaller sun icon.
-   10. Added more space for the Sunrise/Sunset and moon phases when translated.
-
-  Version 16.1 Correct timing errors after sleep - persistent problem that is not deterministic
-   1.  Removed Weather (Main) category e.g. previously 'Clear (Clear sky)', now only shows area category of 'Clear sky' and then ', caterory1' and ', category2'
-   2.  Improved accented character displays
-
-  Version 16.2 Correct comestic icon issues
-   1.  At night the addition of a moon icon overwrote the Visibility report, so order of drawing was changed to prevent this.
-   2.  RainDrop icon was too close to the reported value of rain, moved right. Same for Snow Icon.
-   3.  Improved large sun icon sun rays and improved all icon drawing logic, rain drops now use common shape.
-   5.  Moved MostlyCloudy Icon down to align with the rest, same for MostlySunny.
-   6.  Improved graph axis alignment.
-
-  Version 16.3 Correct comestic icon issues
-   1.  Reverted some aspects of UpdateLocalTime() as locialisation changes were unecessary and can be achieved through lang_aa.h files
-   2.  Correct configuration mistakes with moon calculations.
-
-  Version 16.4 Corrected time server addresses and adjusted maximum time-out delay
-   1.  Moved time-server address to the credentials file
-   2.  Increased wait time for a valid time setup to 10-secs
-   3.  Added a lowercase conversion of hemisphere to allow for 'North' or 'NORTH' or 'nOrth' entries for hemisphere
-   4.  Adjusted graph y-axis alignment, redcued number of x dashes
-
-  Version 16.5 Clarified connections for Waveshare ESP32 driver board
-   1.  Added SPI.end(); and SPI.begin(CLK, MISO, MOSI, CS); to enable explicit definition of pins to be used.
-
-  Version 16.6 changed GxEPD2 initialisation from 115200 to 0
-   1.  Display.init(115200); becomes display.init(0); to stop blank screen following update to GxEPD2
-   
-  Version 16.7 changed u8g2 fonts selection
-   1.  Omitted 'FONT(' and added _tf to font names either Regular (R) or Bold (B)
-  
-  Version 16.8
-   1. Added extra 20-secs of sleep to allow for slow ESP32 RTC timers
-   
-  Version 16.9
-   1. Added probability of precipitation display e.g. 17%
-
-  Version 16.10
-   1. Updated display inittialisation for 7.5" T7 display type, which iss now the standard 7.5" display type.
   
   Version 16.11
    1. Adjusted graph drawing for negative numbers
