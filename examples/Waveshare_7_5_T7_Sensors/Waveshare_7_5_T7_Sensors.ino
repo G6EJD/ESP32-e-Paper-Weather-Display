@@ -24,7 +24,8 @@
 #include "time.h"                     // Built-in
 #include <SPI.h>                      // Built-in
 #include <MQTT.h>
-#include "src/cQueue/cQueue.h"
+//#include "src/cQueue/cQueue.h"
+#include <cQueue.h>
 #include <vector>
 #include <string>
 #include "garten.h"
@@ -244,7 +245,7 @@ float humidity_readings[max_readings]    = {0};
 float rain_readings[max_readings]        = {0};
 float snow_readings[max_readings]        = {0};
 
-long SleepDuration = 30; // Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
+long SleepDuration = 5 /* 30 */; // Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
 int  WakeupTime    = 7;  // Don't wakeup until after 07:00 to save battery power
 int  SleepTime     = 23; // Sleep after (23+1) 00:00 to save battery power
 
@@ -269,7 +270,7 @@ void setup() {
   } else if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER) {
     // FIXME Check if touch wakeup occurs at the same time as timer wakeup
     if (!q_isInitialized(&LocalHistQCtrl)) {
-      q_init_static(&LocalHistQCtrl, sizeof(LocalHist[0]), LOCAL_HIST_SIZE, FIFO, true, (uint8_t *)LocalHist);
+      q_init_static(&LocalHistQCtrl, sizeof(LocalHist[0]), LOCAL_HIST_SIZE, FIFO, true, (uint8_t *)LocalHist, sizeof(LocalHist));
     }
     local_hist_t local_data;
     local_data.temperature = LocalSensors.ble_thsensor[0].temperature;
