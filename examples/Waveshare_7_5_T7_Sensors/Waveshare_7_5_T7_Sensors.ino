@@ -65,9 +65,9 @@
 #endif
 #ifdef TTN
 // #2
-//#define MQTT_SUB_IN "v3/flora-lora@ttn/devices/eui-9876b6000011c87b/up"
+#define MQTT_SUB_IN "v3/flora-lora@ttn/devices/eui-9876b6000011c87b/up"
 // #1
-#define MQTT_SUB_IN "v3/flora-lora@ttn/devices/eui-9876b6000011c941/up"
+//#define MQTT_SUB_IN "v3/flora-lora@ttn/devices/eui-9876b6000011c941/up"
 #endif
 
 #define MITHERMOMETER_EN
@@ -127,6 +127,8 @@ static const uint8_t    EPD_MISO   = 12; // Master-In Slave-Out not used, as no 
 static const uint8_t    EPD_MOSI   = 14;
 static const gpio_num_t TOUCH_WAKE = GPIO_NUM_32;
 static const uint8_t    TOUCH_INT  = 32;
+static const uint8_t    TOUCH_NEXT = 32;
+static const uint8_t    TOUCH_PREV = 33;
 
 #ifdef SIMULATE_MQTT
 const char * MqttBuf = "{\"end_device_ids\":{\"device_id\":\"eui-9876b6000011c87b\",\"application_ids\":{\"application_id\":\"flora-lora\"},\"dev_eui\":\"9876B6000011C87B\",\"join_eui\":\"0000000000000000\",\"dev_addr\":\"260BFFCA\"},\"correlation_ids\":[\"as:up:01GH0PHSCTGKZ51EB8XCBBGHQD\",\"gs:conn:01GFQX269DVXYK9W6XF8NNZWDD\",\"gs:up:host:01GFQX26AXQM4QHEAPW48E8EWH\",\"gs:uplink:01GH0PHS6A65GBAPZB92XNGYAP\",\"ns:uplink:01GH0PHS6BEPXS9Y7DMDRNK84Y\",\"rpc:/ttn.lorawan.v3.GsNs/HandleUplink:01GH0PHS6BY76SY2VPRSHNDDRH\",\"rpc:/ttn.lorawan.v3.NsAs/HandleUplink:01GH0PHSCS7D3V8ERSKF0DTJ8H\"],\"received_at\":\"2022-11-04T06:51:44.409936969Z\",\"uplink_message\":{\"session_key_id\":\"AYRBaM/qASfqUi+BQK75Gg==\",\"f_port\":1,\"frm_payload\":\"PwOOWAgACAAIBwAAYEKAC28LAw0D4U0DwAoAAAAAwMxMP8DMTD/AzEw/AAAAAAAAAAAA\",\"decoded_payload\":{\"bytes\":{\"air_temp_c\":\"9.1\",\"battery_v\":2927,\"humidity\":88,\"indoor_humidity\":77,\"indoor_temp_c\":\"9.9\",\"rain_day\":\"0.8\",\"rain_hr\":\"0.0\",\"rain_mm\":\"56.0\",\"rain_mon\":\"0.8\",\"rain_week\":\"0.8\",\"soil_moisture\":10,\"soil_temp_c\":\"9.6\",\"status\":{\"ble_ok\":true,\"res\":false,\"rtc_sync_req\":false,\"runtime_expired\":true,\"s1_batt_ok\":true,\"s1_dec_ok\":true,\"ws_batt_ok\":true,\"ws_dec_ok\":true},\"supply_v\":2944,\"water_temp_c\":\"7.8\",\"wind_avg_meter_sec\":\"0.8\",\"wind_direction_deg\":\"180.0\",\"wind_gust_meter_sec\":\"0.8\"}},\"rx_metadata\":[{\"gateway_ids\":{\"gateway_id\":\"lora-db0fc\",\"eui\":\"3135323538002400\"},\"time\":\"2022-11-04T06:51:44.027496Z\",\"timestamp\":1403655780,\"rssi\":-104,\"channel_rssi\":-104,\"snr\":8.25,\"location\":{\"latitude\":52.27640735,\"longitude\":10.54058183,\"altitude\":65,\"source\":\"SOURCE_REGISTRY\"},\"uplink_token\":\"ChgKFgoKbG9yYS1kYjBmYxIIMTUyNTgAJAAQ5KyonQUaCwiA7ZKbBhCw6tpgIKDtnYPt67cC\",\"channel_index\":4,\"received_at\":\"2022-11-04T06:51:44.182146570Z\"}],\"settings\":{\"data_rate\":{\"lora\":{\"bandwidth\":125000,\"spreading_factor\":8,\"coding_rate\":\"4/5\"}},\"frequency\":\"867300000\",\"timestamp\":1403655780,\"time\":\"2022-11-04T06:51:44.027496Z\"},\"received_at\":\"2022-11-04T06:51:44.203702153Z\",\"confirmed\":true,\"consumed_airtime\":\"0.215552s\",\"locations\":{\"user\":{\"latitude\":52.24619,\"longitude\":10.50106,\"source\":\"SOURCE_REGISTRY\"}},\"network_ids\":{\"net_id\":\"000013\",\"tenant_id\":\"ttn\",\"cluster_id\":\"eu1\",\"cluster_address\":\"eu1.cloud.thethings.network\"}}}";
@@ -171,6 +173,8 @@ int     CurrentMin = 0;              //!< Current time - minutes
 int     CurrentSec = 0;              //!< Current time - seconds
 long    StartTime = 0;               //!< Start timestamp
 RTC_DATA_ATTR bool    touchTrig = false;           //!< Flag: Touch sensor has been triggered
+RTC_DATA_ATTR bool    touchPrevTrig = false;
+RTC_DATA_ATTR bool    touchNextTrig = false;
 bool    mqttMessageReceived = false; //!< Flag: MQTT message has been received
 
 //################ PROGRAM VARIABLES and OBJECTS ################
@@ -233,7 +237,7 @@ RTC_DATA_ATTR Queue_t MqttHistQCtrl;      //!< MQTT Sensor Data History FIFO Con
 
 struct MqttHistQData {
   float temperature;  //!< temperature in degC
-  float humidity;     //!< humidity in %
+  uint8_t humidity;   //!< humidity in %
   float rain;         //!< precipitation in mm
   bool  valid;        //!< data valid
 };
@@ -310,7 +314,13 @@ void ARDUINO_ISR_ATTR touch_isr() {
     touchTrig = true;
 }
 
+void ARDUINO_ISR_ATTR touch_prev_isr() {
+    touchPrevTrig = true;
+}
 
+void ARDUINO_ISR_ATTR touch_next_isr() {
+    touchNextTrig = true;
+}
 /**
  * \brief Arduino setup()
  */
@@ -327,6 +337,15 @@ void setup() {
         PrevScreenNo = ScreenNo;
         ScreenNo = (ScreenNo == LAST_SCREEN) ? 0 : ScreenNo + 1;
         touchTrig = false;
+    } else if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT1 || touchPrevTrig || touchNextTrig) {
+        if (touchPrevTrig || (esp_sleep_get_ext1_wakeup_status() & (1ULL << TOUCH_PREV))) {
+            ScreenNo = (ScreenNo == 0) ? LAST_SCREEN : ScreenNo - 1;
+            touchPrevTrig = false;
+        }
+        if (touchNextTrig || (esp_sleep_get_ext1_wakeup_status() & (1ULL << TOUCH_NEXT))) {
+            ScreenNo = (ScreenNo == LAST_SCREEN) ? 0 : ScreenNo + 1;
+            touchNextTrig = false;
+        }
     } else if (esp_sleep_get_wakeup_cause() == 0xC /* SW_CPU_RESET */) {
         ;
     } 
@@ -337,9 +356,13 @@ void setup() {
 
     Serial.printf("Screen No: %d\n", ScreenNo);
     
-    pinMode(TOUCH_INT, INPUT);
+//    pinMode(TOUCH_INT, INPUT);
+    pinMode(TOUCH_PREV, INPUT);
+    pinMode(TOUCH_NEXT, INPUT);
     
-    attachInterrupt(TOUCH_INT, touch_isr, RISING);
+//    attachInterrupt(TOUCH_INT, touch_isr, RISING);
+    attachInterrupt(TOUCH_PREV, touch_prev_isr, RISING);
+    attachInterrupt(TOUCH_NEXT, touch_next_isr, RISING);
     
     // Screen has changed -
     // clear screen, update title bar and show hourglass
@@ -505,7 +528,7 @@ void BeginSleep() {
   display.powerOff();
   long SleepTimer;
   
-  if (touchTrig) {
+  if (touchTrig || touchPrevTrig || touchNextTrig) {
       // wake up immediately
       SleepTimer = 1000;
   } else {
@@ -515,7 +538,9 @@ void BeginSleep() {
   }
   
   esp_sleep_enable_timer_wakeup(SleepTimer);   // Wake up from timer
-  esp_sleep_enable_ext0_wakeup(TOUCH_WAKE, 1); // Wake up from touch sensor
+  //esp_sleep_enable_ext0_wakeup(TOUCH_WAKE, 1); // Wake up from touch sensor
+  esp_sleep_enable_ext1_wakeup(1ULL << TOUCH_NEXT |
+                               1ULL << TOUCH_PREV, ESP_EXT1_WAKEUP_ANY_HIGH); 
 #ifdef BUILTIN_LED
   pinMode(BUILTIN_LED, INPUT); // If it's On, turn it off and some boards use GPIO-5 for SPI-SS, which remains low after screen use
   digitalWrite(BUILTIN_LED, HIGH);
@@ -596,6 +621,7 @@ void DisplayOWMWeather(void) {
   DisplayMainWeatherSection(300, 100);          // Centre section of display for Location, temperature, Weather report, current Wx Symbol and wind direction
   DisplayForecastSection(217, 245);             // 3hr forecast boxes
   DisplayAstronomySection(391, 165);            // Astronomy section Sun rise/set, Moon phase and Moon icon
+  DisplayOWMAttribution(590,165);
   //DrawRSSI(695, 15, wifi_signal);
   DrawRSSI(705, 15, wifi_signal);
 }
@@ -714,7 +740,7 @@ void GetMqttData(WiFiClient& net, MQTTClient& MqttClient) {
       if (!MqttClient.connected()) {
         MqttConnect(net, MqttClient);
       }
-      if (touchTrig) {
+      if (touchTrig || touchPrevTrig || touchNextTrig) {
           Serial.println(F("Touch interrupt!"));
           return;
       }
@@ -801,7 +827,10 @@ void SaveMqttData(void) {
     }
     mqtt_hist_t mqtt_data = {0, 0, 0, 0};
     bool valid = MqttSensors.valid && MqttSensors.status.ws_dec_ok;
-    Serial.println("SaveMqttData(): #" + String(q_getCount(&MqttHistQCtrl)) + " valid: " + String(valid) + "T: " + String(MqttSensors.air_temp_c, 1) + "H: " + String(MqttSensors.humidity, 1));
+    Serial.println("SaveMqttData(): #" + String(q_getCount(&MqttHistQCtrl)) + " valid: " + String(valid) + " T: " + String(MqttSensors.air_temp_c, 1) + " H: " + String(MqttSensors.humidity));
+    if (MqttSensors.humidity == 0) {
+      valid = false;
+    }
     mqtt_data.temperature = MqttSensors.air_temp_c;
     mqtt_data.humidity    = MqttSensors.humidity;
     mqtt_data.rain        = MqttSensors.rain_mm;
@@ -832,9 +861,14 @@ void SaveRainHrData(void) {
 
     bool valid = MqttSensors.valid && MqttSensors.status.ws_dec_ok;
     Serial.println("SaveRainHrData(): #" + String(q_getCount(&RainHrHistQCtrl)) + " valid: " + String(valid) + "R: " + String(MqttSensors.rain_hr, 1));
-    rain_hr_data.rain  = MqttSensors.rain_hr;
-    rain_hr_data.valid = valid;
-
+    if ((MqttSensors.rain_hr) < 0 || (MqttSensors.rain_hr > 300)) {
+      rain_hr_data.rain  = 0;
+      rain_hr_data.valid = false;
+    }
+    else {
+      rain_hr_data.rain  = MqttSensors.rain_hr;
+      rain_hr_data.valid = valid;
+    }
     q_push(&RainHrHistQCtrl, &rain_hr_data);   
 }
 
@@ -1404,7 +1438,13 @@ void DisplayAstronomySection(int x, int y) {
   const int month_utc = now_utc->tm_mon + 1;
   const int year_utc = now_utc->tm_year + 1900;
   drawString(x + 4, y + 64, MoonPhase(day_utc, month_utc, year_utc, Hemisphere), LEFT);
-  DrawMoon(x + 137, y, day_utc, month_utc, year_utc, Hemisphere);
+  //DrawMoon(x + 137, y, day_utc, month_utc, year_utc, Hemisphere);
+  DrawMoon(x + 117, y, day_utc, month_utc, year_utc, Hemisphere);
+}
+void DisplayOWMAttribution(int x, int y) {
+  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  drawString(x + 4, y + 24, "Weather data provided by OpenWeather", LEFT);
+  drawString(x + 4, y + 44, "https://openweathermap.org/", LEFT);
 }
 //#########################################################################################
 void DrawMoon(int x, int y, int dd, int mm, int yy, String hemisphere) {
@@ -1511,6 +1551,7 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
     if (minYscale != 0) minYscale = round(minYscale - auto_scale_margin); // Auto scale the graph and round to the nearest value defined, default was Y1Min
     Y1Min = round(minYscale);
   }
+  Serial.println("DrawGraph(): auto_scale: YMin = " + String(Y1Min) + " YMax = " + String(Y1Max));
   // Draw the graph
   //last_x = x_pos + 1;
   last_x = -1;
@@ -1690,20 +1731,22 @@ void DisplayMqttHistory() {
     mqtt_valid[j]  = mqtt_data.valid;
   }
   */
+  for (int i=0; i<MQTT_HIST_SIZE; i++) {
+    temperature[i] = 0;
+    humidity   [i] = 0;
+  }
+
   if (q_isInitialized(&MqttHistQCtrl)) {
     offs = MQTT_HIST_SIZE - q_getCount(&MqttHistQCtrl);
     for (int i=0; i<q_getCount(&MqttHistQCtrl); i++) {
       q_peekIdx(&MqttHistQCtrl, &mqtt_data, i);
       temperature[i + offs] = mqtt_data.temperature;
-      humidity   [i + offs] = mqtt_data.humidity;
+      humidity   [i + offs] = (float)(mqtt_data.humidity);
       rain       [i + offs] = mqtt_data.rain;
       mqtt_valid [i + offs] = mqtt_data.valid;
     }
   } else {
     offs = MQTT_HIST_SIZE;
-    for (int i=0; i<MQTT_HIST_SIZE; i++) {
-      temperature[i] = 0;
-    }
   }
   
   int gwidth = 150, gheight = 72;
@@ -1732,6 +1775,10 @@ void DisplayMqttHistory() {
     rain_hr_valid[j] = rain_hr_data.valid;
   }
   */
+  for (int i=0; i<RAIN_HR_HIST_SIZE; i++) {
+    rain_hr[i] = 0;
+  }
+
   if (q_isInitialized(&RainHrHistQCtrl)) {
     offs = RAIN_HR_HIST_SIZE - q_getCount(&RainHrHistQCtrl);
     for (int i=0; i<q_getCount(&RainHrHistQCtrl); i++) {
@@ -1743,13 +1790,10 @@ void DisplayMqttHistory() {
     }
   } else {
     offs = RAIN_HR_HIST_SIZE;
-    for (int i=0; i<RAIN_HR_HIST_SIZE; i++) {
-      rain_hr[i] = 0;
-    }
   }
   
-  DrawGraph(gx + 2 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_hr, RAIN_HR_HIST_SIZE, autoscale_on, barchart_on, -20, -4,  8, offs, TXT_HOURS, rain_hr_valid);
-  DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_hr, RAIN_HR_HIST_SIZE, autoscale_on, barchart_on, -25, -5, 10, offs, TXT_DAYS,  rain_hr_valid);
+  DrawGraph(gx + 2 * gap + 5, gy, gwidth, gheight, 0, 300, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_hr, RAIN_HR_HIST_SIZE, autoscale_on, barchart_on, -20, -4,  8, offs, TXT_HOURS, rain_hr_valid);
+  DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 300, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_hr, RAIN_HR_HIST_SIZE, autoscale_on, barchart_on, -25, -5, 10, offs, TXT_DAYS,  rain_hr_valid);
 }
 
 //#########################################################################################
