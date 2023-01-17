@@ -130,6 +130,7 @@ static const gpio_num_t TOUCH_WAKE = GPIO_NUM_32;
 static const uint8_t    TOUCH_INT  = 32;
 static const uint8_t    TOUCH_NEXT = 32;
 static const uint8_t    TOUCH_PREV = 33;
+static const uint8_t    TOUCH_MID  = 35;
 
 #ifdef SIMULATE_MQTT
 const char * MqttBuf = "{\"end_device_ids\":{\"device_id\":\"eui-9876b6000011c87b\",\"application_ids\":{\"application_id\":\"flora-lora\"},\"dev_eui\":\"9876B6000011C87B\",\"join_eui\":\"0000000000000000\",\"dev_addr\":\"260BFFCA\"},\"correlation_ids\":[\"as:up:01GH0PHSCTGKZ51EB8XCBBGHQD\",\"gs:conn:01GFQX269DVXYK9W6XF8NNZWDD\",\"gs:up:host:01GFQX26AXQM4QHEAPW48E8EWH\",\"gs:uplink:01GH0PHS6A65GBAPZB92XNGYAP\",\"ns:uplink:01GH0PHS6BEPXS9Y7DMDRNK84Y\",\"rpc:/ttn.lorawan.v3.GsNs/HandleUplink:01GH0PHS6BY76SY2VPRSHNDDRH\",\"rpc:/ttn.lorawan.v3.NsAs/HandleUplink:01GH0PHSCS7D3V8ERSKF0DTJ8H\"],\"received_at\":\"2022-11-04T06:51:44.409936969Z\",\"uplink_message\":{\"session_key_id\":\"AYRBaM/qASfqUi+BQK75Gg==\",\"f_port\":1,\"frm_payload\":\"PwOOWAgACAAIBwAAYEKAC28LAw0D4U0DwAoAAAAAwMxMP8DMTD/AzEw/AAAAAAAAAAAA\",\"decoded_payload\":{\"bytes\":{\"air_temp_c\":\"9.1\",\"battery_v\":2927,\"humidity\":88,\"indoor_humidity\":77,\"indoor_temp_c\":\"9.9\",\"rain_day\":\"0.8\",\"rain_hr\":\"0.0\",\"rain_mm\":\"56.0\",\"rain_mon\":\"0.8\",\"rain_week\":\"0.8\",\"soil_moisture\":10,\"soil_temp_c\":\"9.6\",\"status\":{\"ble_ok\":true,\"res\":false,\"rtc_sync_req\":false,\"runtime_expired\":true,\"s1_batt_ok\":true,\"s1_dec_ok\":true,\"ws_batt_ok\":true,\"ws_dec_ok\":true},\"supply_v\":2944,\"water_temp_c\":\"7.8\",\"wind_avg_meter_sec\":\"0.8\",\"wind_direction_deg\":\"180.0\",\"wind_gust_meter_sec\":\"0.8\"}},\"rx_metadata\":[{\"gateway_ids\":{\"gateway_id\":\"lora-db0fc\",\"eui\":\"3135323538002400\"},\"time\":\"2022-11-04T06:51:44.027496Z\",\"timestamp\":1403655780,\"rssi\":-104,\"channel_rssi\":-104,\"snr\":8.25,\"location\":{\"latitude\":52.27640735,\"longitude\":10.54058183,\"altitude\":65,\"source\":\"SOURCE_REGISTRY\"},\"uplink_token\":\"ChgKFgoKbG9yYS1kYjBmYxIIMTUyNTgAJAAQ5KyonQUaCwiA7ZKbBhCw6tpgIKDtnYPt67cC\",\"channel_index\":4,\"received_at\":\"2022-11-04T06:51:44.182146570Z\"}],\"settings\":{\"data_rate\":{\"lora\":{\"bandwidth\":125000,\"spreading_factor\":8,\"coding_rate\":\"4/5\"}},\"frequency\":\"867300000\",\"timestamp\":1403655780,\"time\":\"2022-11-04T06:51:44.027496Z\"},\"received_at\":\"2022-11-04T06:51:44.203702153Z\",\"confirmed\":true,\"consumed_airtime\":\"0.215552s\",\"locations\":{\"user\":{\"latitude\":52.24619,\"longitude\":10.50106,\"source\":\"SOURCE_REGISTRY\"}},\"network_ids\":{\"net_id\":\"000013\",\"tenant_id\":\"ttn\",\"cluster_id\":\"eu1\",\"cluster_address\":\"eu1.cloud.thethings.network\"}}}";
@@ -590,7 +591,8 @@ void BeginSleep() {
 
   // Wake up from touch sensors
   esp_sleep_enable_ext1_wakeup(1ULL << TOUCH_NEXT |
-                               1ULL << TOUCH_PREV, 
+                               1ULL << TOUCH_PREV |
+                               1ULL << TOUCH_MID, 
                                ESP_EXT1_WAKEUP_ANY_HIGH); 
 
 #ifdef BUILTIN_LED
@@ -1084,7 +1086,7 @@ void GetLocalData(void) {
     myWire.begin(I2C_SDA, I2C_SCL, 100000);
 
     pocketBME280 bme280;
-    bme280.setAddress(0x76);
+    bme280.setAddress(0x77);
     log_v("BME280: start");
     if (bme280.begin(myWire)) {
         LocalSensors.i2c_thpsensor[0].valid = true;
@@ -1449,7 +1451,7 @@ void DisplayTemperatureSection(int x, int y, int twidth, int tdepth) {
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   drawString(x, y + 5, TXT_TEMPERATURES, CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-  drawString(x + 10, y + 78, String(WxConditions[0].High, 0) + "° | " + String(WxConditions[0].Low, 0) + "°", CENTER); // Show forecast high and Low
+  drawString(x + 10, y + 78, String(WxConditions[0].Low, 0) + "° | " + String(WxConditions[0].High, 0) + "°", CENTER); // Show forecast low and high
   u8g2Fonts.setFont(u8g2_font_helvB24_tf);
   drawString(x - 22, y + 53, String(WxConditions[0].Temperature, 1) + "°", CENTER); // Show current Temperature
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
@@ -2312,7 +2314,7 @@ void DisplayLocalTemperatureSection(int x, int y, int twidth, int tdepth, String
   if (!valid) {
     if (minmax) {
       u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-      drawString(x-5, y + 70, "? " + _unit + " | ? " + _unit, CENTER); // Show forecast high and Low
+      drawString(x-5, y + 70, "? " + _unit + " | ? " + _unit, CENTER);
     }
     //u8g2Fonts.setFont(u8g2_font_helvB24_tf);
     //u8g2Fonts.setFont(u8g2_font_helvB18_tf);
@@ -2323,7 +2325,7 @@ void DisplayLocalTemperatureSection(int x, int y, int twidth, int tdepth, String
   } else {
     if (minmax) {
       u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-      drawString(x-5, y + 70, String(tmax, 0) + _unit + " | " + String(tmin, 0) + _unit, CENTER); // Show forecast high and Low
+      drawString(x-5, y + 70, String(tmin, 0) + _unit + " | " + String(tmax, 0) + _unit, CENTER); // Show temperature min and max
     }
     //u8g2Fonts.setFont(u8g2_font_helvB24_tf);
     //u8g2Fonts.setFont(u8g2_font_helvB18_tf);
