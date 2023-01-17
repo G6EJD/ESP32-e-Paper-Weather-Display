@@ -24,6 +24,7 @@
 #include "time.h"                     // Built-in
 #include <SPI.h>                      // Built-in
 #include <MQTT.h>
+#include "src/cQueue/cQueue.h"
 #include <vector>
 #include <string>
 #include "garten.h"
@@ -37,12 +38,17 @@
 //#define FORCE_NO_SIGNAL
 
 #define MQTT_PAYLOAD_SIZE 4096
+#define MQTT_KEEPALIVE 60
+#define MQTT_TIMEOUT 30000
+#define MQTT_CLEAN_SESSION false
+
+#define LOCAL_HIST_SIZE 144
+
 #ifdef FLORA
 #define MQTT_SUB_IN "ESPWeather-267B81/data/WeatherSensor"
 #endif
 #ifdef TTN
 #define MQTT_SUB_IN "v3/flora-lora@ttn/devices/eui-9876b6000011c87b/up"
-//                   v3/flora-lora@ttn/devices/eui-9876b6000011c87b/up
 #endif
 
 #define MITHERMOMETER_EN
@@ -119,23 +125,37 @@ mqtt_sensors_t MqttSensors;      //!< sensor data array
 
 struct LocalS {
   struct {
-      bool    valid;
-      float   temperature;
-      float   humidity;
-      float   batt_voltage;
-      uint8_t batt_level;
-      int     rssi;
+      bool     valid;
+      float    temperature;
+      float    humidity;
+      uint16_t batt_voltage;
+      uint8_t  batt_level;
+      int      rssi;
   } ble_thsensor[1];
   struct {
-      bool    valid;
-      float   temperature;
-      float   humidity;
-      float   pressure;
+      bool     valid;
+      float    temperature;
+      float    humidity;
+      float    pressure;
   } i2c_thpsensor[1];
 };
 
 typedef struct LocalS local_sensors_t;
 local_sensors_t LocalSensors;
+
+RTC_DATA_ATTR Queue_t LocalHistQCtrl;
+
+struct LocalHistQData {
+  float temperature;
+  float humidity;
+  float pressure;
+};
+
+typedef struct LocalHistQData local_hist_t;
+// FIFO for 24 hours; updated every hour
+
+RTC_DATA_ATTR local_hist_t LocalHist[LOCAL_HIST_SIZE];
+
 
 // Connections for e.g. LOLIN D32
 //static const uint8_t EPD_BUSY = 4;  // to EPD BUSY
@@ -240,12 +260,32 @@ bool swResetCaught = false;
 void setup() {
   StartTime = millis();
   Serial.begin(115200);
+
+  GetLocalData();
   if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
     ScreenNo = (ScreenNo == LAST_SCREEN) ? 0 : ScreenNo + 1;
   } else if (esp_sleep_get_wakeup_cause() == 0xC /* SW_CPU_RESET */) {
     ;
+  } else if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER) {
+    // FIXME Check if touch wakeup occurs at the same time as timer wakeup
+    if (!q_isInitialized(&LocalHistQCtrl)) {
+      q_init_static(&LocalHistQCtrl, sizeof(LocalHist[0]), LOCAL_HIST_SIZE, FIFO, true, (uint8_t *)LocalHist);
+    }
+    local_hist_t local_data;
+    local_data.temperature = LocalSensors.ble_thsensor[0].temperature;
+    local_data.humidity    = LocalSensors.ble_thsensor[0].humidity;
+    local_data.pressure    = LocalSensors.i2c_thpsensor[0].pressure;
+    q_push(&LocalHistQCtrl, &local_data);   
   }
   Serial.printf("Screen No: %d\n", ScreenNo);
+  
+
+  
+  //for (int i=0; i<q_getCount(&LocalHistQCtrl); i++) {
+  //  q_peekIdx(&LocalHistQCtrl, &local_data, i);
+  //  Serial.printf("Data %d: t: %.1f h: %.0f p: %.0f\n", i, local_data.temperature, local_data.humidity, local_data.pressure);
+  //}
+  
   if (StartWiFi() == WL_CONNECTED && SetupTime() == true) {
     //WiFiClient client;   // wifi client object
     //client.setInsecure();
@@ -377,7 +417,7 @@ void DisplayMQTTWeather(WiFiClient wifi_client) {
   mqtt_client.begin(MQTT_HOST, MQTT_PORT, wifi_client);
   Serial.println(F("MQTT connecting... "));
   //mqtt_client.setCleanSession(false);
-  mqtt_client.setOptions(60 /* keepAlive [s] */, true /* cleanSession */, 30000 /* timeout [ms] */);
+  mqtt_client.setOptions(MQTT_KEEPALIVE /* keepAlive [s] */, MQTT_CLEAN_SESSION /* cleanSession */, MQTT_TIMEOUT /* timeout [ms] */);
   //mqtt_connect(mqtt_client);
   //mqtt_client.onMessageAdvanced(mqttMessageAdvancedCb);
   mqtt_client.onMessage(mqttMessageCb);
@@ -583,12 +623,12 @@ void DisplayMQTTWeather(WiFiClient wifi_client) {
   if (!MqttSensors.status.ws_dec_ok) {
     display.drawBitmap(680, 100, epd_bitmap_signal_disconnected, 40, 40, GxEPD_BLACK);
   }
-  DisplayHistory();
+  DisplayMqttHistory();
   DrawRSSI(695, 15, wifi_signal); // Wi-Fi signal strength
   
 }
-//#########################################################################################
-void DisplayLocalWeather() {                        // 7.5" e-paper display is 800x480 resolution
+
+void GetLocalData() {
   LocalSensors.ble_thsensor[0].valid  = false;
   LocalSensors.i2c_thpsensor[0].valid = false; 
 
@@ -610,7 +650,7 @@ void DisplayLocalWeather() {                        // 7.5" e-paper display is 8
         LocalSensors.ble_thsensor[0].batt_level  = miThermometer.data[0].batt_level;
         Serial.printf("Outdoor Air Temp.:   % 3.1f °C\n", LocalSensors.ble_thsensor[0].temperature);
         Serial.printf("Outdoor Humidity:     %3.1f %%\n", LocalSensors.ble_thsensor[0].humidity);
-        Serial.printf("Outdoor Sensor Batt:    %2f %%\n", LocalSensors.ble_thsensor[0].batt_level);
+        Serial.printf("Outdoor Sensor Batt:    %d %%\n", LocalSensors.ble_thsensor[0].batt_level);
     } else {
         Serial.printf("Outdoor Air Temp.:    --.- °C\n");
         Serial.printf("Outdoor Humidity:     --   %%\n");
@@ -655,6 +695,9 @@ void DisplayLocalWeather() {                        // 7.5" e-paper display is 8
     OutdoorTmin = (LocalSensors.ble_thsensor[0].temperature < OutdoorTmin) ? LocalSensors.ble_thsensor[0].temperature : OutdoorTmin;
     OutdoorTmax = (LocalSensors.ble_thsensor[0].temperature > OutdoorTmax) ? LocalSensors.ble_thsensor[0].temperature : OutdoorTmax;
   }
+}
+//#########################################################################################
+void DisplayLocalWeather() {                        // 7.5" e-paper display is 800x480 resolution
   
   DisplayGeneralInfoSection();
   DisplayDateTime(90, 225);
@@ -707,7 +750,7 @@ void DisplayLocalWeather() {                        // 7.5" e-paper display is 8
      // No pressure
      display.drawBitmap(670,   90, epd_bitmap_bolt, 40, 40, GxEPD_BLACK);
   }
-  DisplayHistory();
+  DisplayLocalHistory();
   DrawRSSI(695, 15, wifi_signal); // Wi-Fi signal strength
 }
 //#########################################################################################
@@ -740,49 +783,46 @@ void DisplayTestScreen(void) {
 
 
 void DisplayGeneralInfoSection(void) {
-  const int dist = 50;
-  const float corr1 = 1.9;
-  const float corr2 = 1.4;
-  int offs = 0;
-  int16_t x1;
-  int16_t y1;
+  const int dist = 40;
+  uint16_t offs;
   uint16_t w;
-  uint16_t h;
 
-  display.setTextWrap(false);
+  // Print page heading
   for (int i = 0; i <= 2; i++) {   
     if (i == 0) {
+      // Current menu item, centered
       u8g2Fonts.setFont(u8g2_font_helvB14_tf);
-      display.getTextBounds(Locations[ScreenNo], 0, 0, &x1, &y1, &w, &h);
-      drawString(SCREEN_WIDTH/2 - w/2 * corr1, 6, Locations[ScreenNo], LEFT);
-      offs = SCREEN_WIDTH/2 + w/2 * corr1 + dist;
+      w = u8g2Fonts.getUTF8Width(Locations[ScreenNo].c_str());
+      drawString(SCREEN_WIDTH/2 - w/2, 6, Locations[ScreenNo], LEFT);
+      offs = SCREEN_WIDTH/2 + w/2 + dist;
     }
     else if (ScreenNo + i <= LAST_SCREEN) {
+      // Next menu items to the right, at fixed distance 
       u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-      display.getTextBounds(Locations[ScreenNo + i], 0, 0, &x1, &y1, &w, &h);
-      offs = offs + w/2 * corr2;
-      drawString(offs, 6, Locations[ScreenNo + i], CENTER);
-      offs = offs + w/2 * corr2 + dist;
+      w = u8g2Fonts.getUTF8Width(Locations[ScreenNo + i].c_str());
+      drawString(offs, 6, Locations[ScreenNo + i], LEFT);
+      offs = offs + w + dist;
     } 
   }
   for (int i = 0; i >= -2; i--) {   
     if (i == 0) {
+      // Current menu item, centered (already printed, just calculate offset for previous item)
       u8g2Fonts.setFont(u8g2_font_helvB14_tf);
-      display.getTextBounds(Locations[ScreenNo], 0, 0, &x1, &y1, &w, &h);
-      offs = SCREEN_WIDTH/2 - w/2 * corr1 - dist;
+      w = u8g2Fonts.getUTF8Width(Locations[ScreenNo].c_str());
+      offs = SCREEN_WIDTH/2 - w/2 - dist;
     }
     else if (ScreenNo + i > -1) {
+      // Previous menu items to the left, at fixed distance
       u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-      display.getTextBounds(Locations[ScreenNo + i], 0, 0, &x1, &y1, &w, &h);
-      offs = offs - w/2 * corr2;
-      drawString(offs, 6, Locations[ScreenNo + i], CENTER);
-      offs = offs - w/2 * corr2 - dist;
+      w = u8g2Fonts.getUTF8Width(Locations[ScreenNo + i].c_str());
+      offs = offs - w;
+      drawString(offs, 6, Locations[ScreenNo + i], LEFT);
+      offs = offs - dist;
     }
   }
-  DrawRSSI(695, 15, wifi_signal); // Wi-Fi signal strength and Battery voltage
 
+  DrawRSSI(695, 15, wifi_signal); // Wi-Fi signal strength and Battery voltage
   display.drawLine(0, 18, SCREEN_WIDTH-1, 18, GxEPD_BLACK);
-  display.drawLine(SCREEN_WIDTH/2, 0, SCREEN_WIDTH/2, 480, GxEPD_BLACK);
 }
 //#########################################################################################
 void DisplayDateTime(int x, int y) {
@@ -1039,15 +1079,63 @@ void DisplayForecastSection(int x, int y) {
   drawString(SCREEN_WIDTH / 2, gy - 40, TXT_FORECAST_VALUES, CENTER); // Based on a graph height of 60
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
-  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure_readings, max_readings, autoscale_on, barchart_off);
-  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature_readings, max_readings, autoscale_on, barchart_off);
-  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,   TXT_HUMIDITY_PERCENT, humidity_readings, max_readings, autoscale_off, barchart_off);
+  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure_readings, max_readings, autoscale_on, barchart_off, 0, 2, 1);
+  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature_readings, max_readings, autoscale_on, barchart_off, 0, 2, 1);
+  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,   TXT_HUMIDITY_PERCENT, humidity_readings, max_readings, autoscale_off, barchart_off, 0, 2, 1);
   if (SumOfPrecip(rain_readings, max_readings) >= SumOfPrecip(snow_readings, max_readings))
-    DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_readings, max_readings, autoscale_on, barchart_on);
-  else DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_SNOWFALL_MM : TXT_SNOWFALL_IN, snow_readings, max_readings, autoscale_on, barchart_on);
+    DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_readings, max_readings, autoscale_on, barchart_on, 0, 2, 1);
+  else DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_SNOWFALL_MM : TXT_SNOWFALL_IN, snow_readings, max_readings, autoscale_on, barchart_on, 0, 2, 1);
 }
 //#########################################################################################
-void DisplayHistory() {
+void DisplayLocalHistory() {
+  int r = 1;
+  do {
+    if (Units == "I") pressure_readings[r] = WxForecast[r].Pressure * 0.02953;   else pressure_readings[r] = WxForecast[r].Pressure;
+    if (Units == "I") rain_readings[r]     = WxForecast[r].Rainfall * 0.0393701; else rain_readings[r]     = WxForecast[r].Rainfall;
+    if (Units == "I") snow_readings[r]     = WxForecast[r].Snowfall * 0.0393701; else snow_readings[r]     = WxForecast[r].Snowfall;
+    temperature_readings[r] = WxForecast[r].Temperature;
+    humidity_readings[r]    = WxForecast[r].Humidity;
+    r++;
+  } while (r <= max_readings);
+
+  local_hist_t local_data;
+  /*
+  local_data.temperature = LocalSensors.ble_thsensor[0].temperature;
+  local_data.humidity    = LocalSensors.ble_thsensor[0].temperature;
+  local_data.pressure    = LocalSensors.i2c_thpsensor[0].pressure;
+  */
+
+  int gwidth = 150, gheight = 72;
+  int gx = (SCREEN_WIDTH - gwidth * 3) / 4 + 5;
+  int gy = 375;
+  int gap = gwidth + gx;
+  u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  drawString(SCREEN_WIDTH / 2, gy - 40, TXT_LOCAL_HISTORY_VALUES, CENTER); // Based on a graph height of 60
+  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
+  float temperature[LOCAL_HIST_SIZE];
+  float humidity[LOCAL_HIST_SIZE];
+  float pressure[LOCAL_HIST_SIZE];
+  for (int i = 0; i<LOCAL_HIST_SIZE; i++) {
+    temperature[i] = 0;
+    humidity[i] = 0;
+    pressure[i] = 0; 
+  }
+  //int j = LOCAL_HIST_SIZE-1;
+  for (int i=q_getCount(&LocalHistQCtrl)-1, j=LOCAL_HIST_SIZE-1; i>=0; i--, j--) {
+    q_peekIdx(&LocalHistQCtrl, &local_data, i);
+    temperature[j] = local_data.temperature;
+    humidity[j] = local_data.humidity;
+    pressure[j] = local_data.pressure;
+    //j--;
+  }
+
+  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1);
+  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature, LOCAL_HIST_SIZE, autoscale_on, barchart_off, -2, 0, 1);
+  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,    TXT_HUMIDITY_PERCENT, humidity, LOCAL_HIST_SIZE, autoscale_off, barchart_off, -2, 0, 1);
+}
+//#########################################################################################
+void DisplayMqttHistory() {
   int r = 1;
   do {
     if (Units == "I") pressure_readings[r] = WxForecast[r].Pressure * 0.02953;   else pressure_readings[r] = WxForecast[r].Pressure;
@@ -1065,12 +1153,12 @@ void DisplayHistory() {
   drawString(SCREEN_WIDTH / 2, gy - 40, TXT_FORECAST_VALUES, CENTER); // Based on a graph height of 60
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
-  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure_readings, max_readings, autoscale_on, barchart_off);
-  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature_readings, max_readings, autoscale_on, barchart_off);
-  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,   TXT_HUMIDITY_PERCENT, humidity_readings, max_readings, autoscale_off, barchart_off);
+  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure_readings, max_readings, autoscale_on, barchart_off, -2, 0, 1);
+  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature_readings, max_readings, autoscale_on, barchart_off, -2, 0, 1);
+  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,   TXT_HUMIDITY_PERCENT, humidity_readings, max_readings, autoscale_off, barchart_off, -2, 0, 1);
   if (SumOfPrecip(rain_readings, max_readings) >= SumOfPrecip(snow_readings, max_readings))
-    DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_readings, max_readings, autoscale_on, barchart_on);
-  else DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_SNOWFALL_MM : TXT_SNOWFALL_IN, snow_readings, max_readings, autoscale_on, barchart_on);
+    DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_readings, max_readings, autoscale_on, barchart_on, -2, 0, 1);
+  else DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_SNOWFALL_MM : TXT_SNOWFALL_IN, snow_readings, max_readings, autoscale_on, barchart_on, -2, 0, 1);
 }
 
 //#########################################################################################
@@ -1521,7 +1609,7 @@ void Nodata(int x, int y, bool IconSize, String IconName) {
     If called with Y!_Max value of 500 and the data never goes above 500, then autoscale will retain a 0-500 Y scale, if on, the scale increases/decreases to match the data.
     auto_scale_margin, e.g. if set to 1000 then autoscale increments the scale by 1000 steps.
 */
-void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], int readings, boolean auto_scale, boolean barchart_mode) {
+void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], int readings, boolean auto_scale, boolean barchart_mode, int xmin, int xmax, int dx) {
 #define auto_scale_margin 0 // Sets the autoscale increment, so axis steps up in units of e.g. 3
 #define y_minor_axis 5      // 5 y-axis division markers
   float maxYscale = -10000;
@@ -1572,8 +1660,14 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
         drawString(x_pos - 2, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 0), RIGHT);
     }
   }
-  for (int i = 0; i <= 2; i++) {
-    drawString(15 + x_pos + gwidth / 3 * i, y_pos + gheight + 3, String(i), LEFT);
+  //
+  float xdiv = xmax - xmin + 1;
+  xdiv = (xdiv < 0) ? -xdiv/dx : xdiv/dx;
+  
+  // FIXME adjust x-offset for other number of labels than 3
+  for (int n = xmin, i=0; n <= xmax; n = n + dx, i++) {
+    drawString(15 + x_pos + gwidth / xdiv * i, y_pos + gheight + 3, String(n), LEFT);
+    //i++;
   }
   drawString(x_pos + gwidth / 2, y_pos + gheight + 14, TXT_DAYS, CENTER);
 }
