@@ -354,7 +354,9 @@ void ARDUINO_ISR_ATTR touch_mid_isr() {
 
 #ifdef THEENGSDECODER_EN
 class MyAdvertisedDeviceCallbacks: public NimBLEAdvertisedDeviceCallbacks {
-
+  
+  int m_devices_found = 0;;
+  
   std::string convertServiceData(std::string deviceServiceData) {
     int serviceDataLength = (int)deviceServiceData.length();
     char spr[2 * serviceDataLength + 1];
@@ -424,17 +426,21 @@ class MyAdvertisedDeviceCallbacks: public NimBLEAdvertisedDeviceCallbacks {
       log_i("Temperature:       %.1f°C", LocalSensors.ble_thsensor[idx].temperature);
       log_i("Humidity:          %.1f%%", LocalSensors.ble_thsensor[idx].humidity);
       log_i("Battery level:     %d%%",   LocalSensors.ble_thsensor[idx].batt_level);
-      log_i("RSSI             %ddBm",    LocalSensors.ble_thsensor[idx].rssi = (int)BLEdata["rssi"]);      
+      log_i("RSSI             %ddBm",    LocalSensors.ble_thsensor[idx].rssi = (int)BLEdata["rssi"]);
+      m_devices_found++;   
+      log_d("BLE devices found: %d", m_devices_found);
     }
     /*
      * FIXME: This lead to a Guru Meditation...
      */
-    /*
-    if (touchPrevTrig || touchNextTrig) {
+    if (touchPrevTrig || touchNextTrig || touchMidTrig) {
       log_i("Touch interrupt!");
       pBLEScan->stop();
     }
-    */
+    if (m_devices_found == knownBLEAddresses.size()) {
+      log_i("All devices found.");
+      pBLEScan->stop();
+    }
   }
 };
 #endif
@@ -1219,7 +1225,8 @@ void GetLocalData(void) {
   #ifdef THEENGSDECODER_EN
     //NimBLEScan* pBLEScan;
 
-    NimBLEDevice::setScanFilterMode(CONFIG_BTDM_SCAN_DUPL_TYPE_DEVICE);
+    //NimBLEDevice::setScanFilterMode(CONFIG_BTDM_SCAN_DUPL_TYPE_DEVICE);
+    NimBLEDevice::setScanFilterMode(CONFIG_BTDM_SCAN_DUPL_TYPE_DATA_DEVICE);
     NimBLEDevice::setScanDuplicateCacheSize(200);
     NimBLEDevice::init("");
 
@@ -1230,6 +1237,7 @@ void GetLocalData(void) {
     pBLEScan->setInterval(97); // How often the scan occurs / switches channels; in milliseconds,
     pBLEScan->setWindow(37);  // How long to scan during the interval; in milliseconds.
     pBLEScan->setMaxResults(0); // do not store the scan results, use callback only.
+    //pBLEScan->setDuplicateFilter(true);
     pBLEScan->start(bleScanTime, false /* is_continue */);
   #endif
       
