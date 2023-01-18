@@ -66,7 +66,7 @@
 #include <cQueue.h>                   // https://github.com/SMFSW/cQueue
 #include "src/WeatherSymbols.h"
 #include "garten.h"
-#include "wohnung.h"
+#include "bitmap_local.h"
 #include "bitmaps.h"
 #include "weather_report.h"
 
@@ -1397,7 +1397,7 @@ void DisplayLocalWeather() {
   
   DisplayGeneralInfoSection();
   DisplayDateTime(90, 225);
-  display.drawBitmap(  5,  25, epd_bitmap_wohnung_sw, 220, 165, GxEPD_BLACK);
+  display.drawBitmap(  5,  25, epd_bitmap_local, 220, 165, GxEPD_BLACK);
   display.drawRect(    4,  24, 222, 167, GxEPD_BLACK);
   display.drawBitmap(240,  45, epd_bitmap_temperatur_aussen, 64, 48, GxEPD_BLACK);
   display.drawBitmap(438,  45, epd_bitmap_feuchte_aussen, 64, 48, GxEPD_BLACK);
