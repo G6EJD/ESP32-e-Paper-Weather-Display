@@ -14,7 +14,9 @@
     "url": "git+https://github.com/matthias-bs/ESP32-e-Paper-Weather-Display.git"
   },
   "author": "Matthias Prinke",
-  //"license": "MIT license",
+  "license": {
+    "url": "https://github.com/matthias-bs/ESP32-e-Paper-Weather-Display/blob/master/Licence.txt"
+  },
   "bugs": {
     "url": "https://github.com/matthias-bs/ESP32-e-Paper-Weather-Display/issues"
   },
