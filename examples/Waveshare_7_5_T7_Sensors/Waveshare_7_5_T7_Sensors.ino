@@ -65,10 +65,11 @@
 #include <MQTT.h>                     // https://github.com/256dpi/arduino-mqtt
 #include <cQueue.h>                   // https://github.com/SMFSW/cQueue
 #include "src/WeatherSymbols.h"
-#include "garten.h"
-#include "bitmap_local.h"
-#include "bitmaps.h"
-#include "weather_report.h"
+#include "bitmap_weather_report.h"    // Picture shown on ScreenStart
+#include "bitmap_local.h"             // Picture shown on ScreenLocal - replace by your own
+#include "bitmap_remote.h"            // Picture shown on ScreenMQTT  - replace by your own
+#include "bitmaps.h"                  // Icon bitmaps
+
 
 // Screen definitions
 #define ScreenOWM   0
