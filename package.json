@@ -1,0 +1,32 @@
+{
+  "name": "ESP32-e-Paper-Weather-Display",
+  "version": "0.0.1",
+  "description": "An ESP32 7.5in ePaper Display showing data from OpenWeather, local sensors and MQTT brokers",
+  "main": "Waveshare_7_5_T7_Sensors.ino",
+  "frameworks": "arduino",
+  "platforms": "ESP32",
+  "directories": {
+    "src": "src",
+    "examples": "examples"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/matthias-bs/ESP32-e-Paper-Weather-Display.git"
+  },
+  "author": "Matthias Prinke",
+  //"license": "MIT license",
+  "bugs": {
+    "url": "https://github.com/matthias-bs/ESP32-e-Paper-Weather-Display/issues"
+  },
+  "homepage": "https://github.com/matthias-bs/ESP32-e-Paper-Weather-Display#README",
+  "dependencies": {
+    "GxEPD2": "ZinggJM/GxEPD2#semver:^1.5.0",
+    "U8g2_for_Adafruit_GFX": "olikraus/U8g2_for_Adafruit_GFX#semver:^1.8.0",
+    "cQueue": "SMFSW/cQueue#semver:^1.8",
+    "TheengsDecoder": "theengs/decoder#semver:^1.0.0",
+    "arduino-mqtt": "256dpi/arduino-mqtt#semver:^2.5.0",
+    "ArduinoJson": "bblanchon/ArduinoJson#semver:^6.20.0",
+    "pocketBME280": "angrest/pocketBME280#semver:^1.2.4",
+    "NimBLE-Arduino": "h2zero/NimBLE-Arduino#semver:^1.4.1"
+  }
+}
