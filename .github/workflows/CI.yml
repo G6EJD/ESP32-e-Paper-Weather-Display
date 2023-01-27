@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+
+  build:
+    strategy:
+      matrix:
+        board:
+          - esp32:esp32:esp32:DebugLevel=none
+          - esp32:esp32:esp32:DebugLevel=verbose
+          
+
+    runs-on: ubuntu-latest
+    name: ${{ matrix.board }}
+    env:
+      run-build: ${{ contains(matrix.board, 'esp32:esp32') || contains(github.event.head_commit.message, 'CI_BUILD_ALL') || contains(github.event.head_commit.message, 'Bump version to') || contains(github.event.head_commit.message, format('{0}', matrix.board)) }}
+
+    steps:
+      - name: Install arduino-cli
+        if: ${{ env.run-build == 'true' }}
+        run:
+          |
+          mkdir -p ~/.local/bin
+          echo "~/.local/bin" >> $GITHUB_PATH
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=~/.local/bin sh
+
+      - name: Get platform name
+        if: ${{ env.run-build == 'true' }}
+        uses: jungwinter/split@v2
+        id: split
+        with:
+          msg: ${{ matrix.board }}
+          separator: ':'
+
+      - name: Prepare platform-specific settings
+        if: ${{ env.run-build == 'true' }}
+        id: prep
+        run:
+          |
+          # common settings - no extra options, skip nothing, all warnings
+          echo "skip-pattern=''" >> $GITHUB_OUTPUT
+          echo "warnings='all'" >> $GITHUB_OUTPUT
+
+          # platform-dependent settings - extra board options, board index URLs, skip patterns etc.
+          if [[ "${{ contains(matrix.board, 'esp32:esp32') }}" == "true" ]]; then
+            # ESP32
+            python -m pip install pyserial
+            echo "index-url=--additional-urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install libraries
+        if: ${{ env.run-build == 'true' }}
+        run:
+          |
+          declare -a required_libs=(
+            "MQTT@2.5.0"
+            "GxEPD2@1.5.0"
+            "U8g2_for_Adafruit_GFX@1.8.0"
+            "cQueue@1.8"
+            "TheengsDecoder@1.0.0"
+            "ArduinoJson@6.20.0"
+            "pocketBME280@1.2.4"
+            "NimBLE-Arduino@1.4.1"
+          )
+          for i in "${required_libs[@]}"
+          do
+            arduino-cli lib install "$i"
+          done
+
+      - name: Install platform
+        if: ${{ env.run-build == 'true' }}
+        run:
+          |
+          arduino-cli core update-index ${{ format('{0}', steps.prep.outputs.index-url) }}
+          arduino-cli core install ${{ format('{0}:{1} {2}', steps.split.outputs._0, steps.split.outputs._1, steps.prep.outputs.index-url) }}
+
+      - name: Checkout repository
+        if: ${{ env.run-build == 'true' }}
+        uses: actions/checkout@v3
+      
+      #- name: Copy WeatherSensorCfg.h
+      #  if: ${{ env.run-build == 'true' }}
+      #  run:
+      #    |
+      #    cp /home/runner/work/BresserWeatherSensorTTN/BresserWeatherSensorTTN/WeatherSensorCfg.h.template \
+      #       /home/runner/Arduino/libraries/BresserWeatherSensorReceiver/src/WeatherSensorCfg.h
+
+      #- name: Customizing lmic_project_config.h (LMIC_ENABLE_DeviceTimeReq)
+      #  if: ${{ env.run-build == 'true' }}
+      #  run:
+      #    |
+      #    echo "#define LMIC_ENABLE_DeviceTimeReq 1" >> /home/runner/Arduino/libraries/MCCI_LoRaWAN_LMIC_library/project_config/lmic_project_config.h
+      #    # Fix for linker error with Arduino core for ESP32 v2.0.x as suggested in https://github.com/mcci-catena/arduino-lmic/issues/714#issuecomment-822051171
+      #    echo "#define hal_init LMICHAL_init" >> /home/runner/Arduino/libraries/MCCI_LoRaWAN_LMIC_library/project_config/lmic_project_config.h
+      
+      - name: Build sketch
+        if: ${{ env.run-build == 'true' }}
+        run:
+          |
+          #for example in $(find $PWD/examples -name '*.ino' | sort); do
+          # modified to compile a singe sketch (instead of a library's examples)
+          for example in $(find $PWD -name '*.ino' | sort); do
+            # check whether to skip this sketch
+            if [ ! -z '${{ steps.prep.outputs.skip-pattern }}' ] && [[ ${example} =~ ${{ steps.prep.outputs.skip-pattern }} ]]; then
+              # skip sketch
+              echo -e "\n\033[1;33mSkipped ${example##*/} (matched with ${{ steps.prep.outputs.skip-pattern }})\033[0m";
+            else
+              # build sketch
+              echo -e "\n\033[1;33mBuilding ${example##*/} ... \033[0m";
+              arduino-cli compile --libraries /home/runner/work/BresserWeatherSensorReceiver --fqbn ${{ matrix.board }}${{ steps.prep.outputs.options }} $example --warnings=${{ steps.prep.outputs.warnings }}
+              
+              
+              if [ $? -ne 0 ]; then
+                echo -e "\033[1;31m${example##*/} build FAILED\033[0m\n";
+                exit 1;
+              else
+                echo -e "\033[1;32m${example##*/} build PASSED\033[0m\n";
+              fi
+            fi
+          done
