@@ -8,7 +8,6 @@ on:
   workflow_dispatch:
 
 jobs:
-
   build:
     strategy:
       matrix:
@@ -16,7 +15,6 @@ jobs:
           - esp32:esp32:esp32:PartitionScheme=min_spiffs,DebugLevel=none
           - esp32:esp32:esp32:PartitionScheme=min_spiffs,DebugLevel=verbose
           
-
     runs-on: ubuntu-latest
     name: ${{ matrix.board }}
     env:
@@ -86,27 +84,11 @@ jobs:
         if: ${{ env.run-build == 'true' }}
         uses: actions/checkout@v3
       
-      #- name: Copy WeatherSensorCfg.h
-      #  if: ${{ env.run-build == 'true' }}
-      #  run:
-      #    |
-      #    cp /home/runner/work/BresserWeatherSensorTTN/BresserWeatherSensorTTN/WeatherSensorCfg.h.template \
-      #       /home/runner/Arduino/libraries/BresserWeatherSensorReceiver/src/WeatherSensorCfg.h
-
-      #- name: Customizing lmic_project_config.h (LMIC_ENABLE_DeviceTimeReq)
-      #  if: ${{ env.run-build == 'true' }}
-      #  run:
-      #    |
-      #    echo "#define LMIC_ENABLE_DeviceTimeReq 1" >> /home/runner/Arduino/libraries/MCCI_LoRaWAN_LMIC_library/project_config/lmic_project_config.h
-      #    # Fix for linker error with Arduino core for ESP32 v2.0.x as suggested in https://github.com/mcci-catena/arduino-lmic/issues/714#issuecomment-822051171
-      #    echo "#define hal_init LMICHAL_init" >> /home/runner/Arduino/libraries/MCCI_LoRaWAN_LMIC_library/project_config/lmic_project_config.h
-      
       - name: Build examples
         if: ${{ env.run-build == 'true' }}
         run:
           |
           for example in $(find $PWD/examples -name '*.ino' | sort); do
-            echo -e "\n ${example}"
             # check whether to skip this sketch
             if [ ! -z '${{ steps.prep.outputs.skip-pattern }}' ] && [[ ${example} =~ ${{ steps.prep.outputs.skip-pattern }} ]]; then
               # skip sketch
