@@ -106,6 +106,7 @@ jobs:
         run:
           |
           for example in $(find $PWD/examples -name '*.ino' | sort); do
+            echo -e "\n ${example}"
             # check whether to skip this sketch
             if [ ! -z '${{ steps.prep.outputs.skip-pattern }}' ] && [[ ${example} =~ ${{ steps.prep.outputs.skip-pattern }} ]]; then
               # skip sketch
