@@ -100,14 +100,6 @@
 #define HIST_UPDATE_RATE     30
 #define HIST_UPDATE_TOL       5
 
-// MQTT Brokers
-#ifdef LOCAL
-#define MQTT_SUB_IN "ESPWeather-267B81/data/WeatherSensor"
-#endif
-#ifdef TTN
-#define MQTT_SUB_IN "v3/flora-lora@ttn/devices/eui-9876b6000011c87b/up"
-#endif
-
 //#define MITHERMOMETER_EN         //!< Enable MiThermometer   (BLE sensors)
 #define THEENGSDECODER_EN          //!< Enable Theengs Decoder (BLE sensors)
 #define BME280_EN                  //!< Enable BME280 T/H/p-sensor (I2C)
