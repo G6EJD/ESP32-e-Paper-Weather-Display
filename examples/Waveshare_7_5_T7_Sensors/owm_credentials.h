@@ -9,6 +9,7 @@ const int   MQTT_PORT = 1883;
 const char *MQTT_HOST = "your_broker";
 const char *MQTT_USER = "your_user";   // leave blank if no credentials used
 const char *MQTT_PASS = "your_passwd"; // leave blank if no credentials used
+const char *MQTT_SUB_IN = "your/subscribe/topic";
 
 const char *Hostname = "your_hostname";
 
