@@ -529,7 +529,7 @@ boolean SetupTime() {
 //#########################################################################################
 boolean UpdateLocalTime() {
   struct tm timeinfo;
-  char   time_output[30], day_output[30], update_time[30];
+  char   time_output[32], day_output[30], update_time[30];
   while (!getLocalTime(&timeinfo, 10000)) { // Wait for 10-sec for time to synchronise
     Serial.println("Failed to obtain time");
     return false;
