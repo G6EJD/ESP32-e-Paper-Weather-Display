@@ -120,12 +120,12 @@
 #include <GxEPD2_BW.h>             //!< https://github.com/ZinggJM/GxEPD2
 //#include <GxEPD2_3C.h>
 #include <U8g2_for_Adafruit_GFX.h> //!< https://github.com/olikraus/U8g2_for_Adafruit_GFX
-#include "src/epaper_fonts.h"
-#include "src/forecast_record.h"
+//#include "src/epaper_fonts.h"
+#include "forecast_record.h"
 //#include "src/lang.h"            // Localisation (English)
 //#include "src/lang_cz.h"         // Localisation (Czech)
 //#include "src/lang_fr.h"         // Localisation (French)
-#include "src/lang_de.h"           // Localisation (German)
+#include "lang_de.h"           // Localisation (German)
 //#include "src/lang_it.h"         // Localisation (Italian)
 //#include "src/lang_nl.h"         // Localization (Dutch)
 //#include "src/lang_pl.h"         // Localisation (Polish)
