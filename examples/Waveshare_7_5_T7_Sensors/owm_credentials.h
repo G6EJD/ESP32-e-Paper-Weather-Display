@@ -10,6 +10,8 @@ const char *MQTT_HOST = "your_broker";
 const char *MQTT_USER = "your_user";   // leave blank if no credentials used
 const char *MQTT_PASS = "your_passwd"; // leave blank if no credentials used
 
+const char *Hostname = "your_hostname";
+
 // Use your own API key by signing up for a free developer account at https://openweathermap.org/
 String apikey       = "your_API_key";                      // See: https://openweathermap.org/  // It's free to get an API key, but don't take more than 60 readings/minute!
 const char server[] = "api.openweathermap.org";
