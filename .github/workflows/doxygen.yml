@@ -3,7 +3,8 @@ name: Doxygen
 on:
   push:
     branches: [ "main" ]
-  workflow_dispatch:
+permissions:
+  contents: write
 
 jobs:
   doxygen:
@@ -21,6 +22,6 @@ jobs:
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@releases/v4
         with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          #GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: gh-pages
           FOLDER: docs/html
