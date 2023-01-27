@@ -486,7 +486,6 @@ void setup() {
     
     bool mqtt_connected = false;
     bool wifi_ok = false;
-    bool time_ok;
     
     if ((esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT1) || TouchTriggered()) {
         if (touchPrevTrig || (esp_sleep_get_ext1_wakeup_status() & (1ULL << TOUCH_PREV))) {
@@ -541,8 +540,11 @@ void setup() {
     }
     
     wifi_ok = (StartWiFi() == WL_CONNECTED);
-    time_ok = SetupTime();
     
+    if (CORE_DEBUG_LEVEL >= ARDUHAL_LOG_LEVEL_INFO) {
+        bool time_ok = SetupTime();
+    }
+  
     log_i("WiFi o.k.: %d", wifi_ok);
     log_i("Time o.k.: %d", time_ok);
     log_i("%s %s", Date_str.c_str(), Time_str.c_str());
