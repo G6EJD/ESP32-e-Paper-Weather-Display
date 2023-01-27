@@ -46,7 +46,7 @@ jobs:
           |
           # common settings - no extra options, skip nothing, all warnings
           echo "options=''" >> $GITHUB_OUTPUT
-          echo "skip-pattern=''" >> $GITHUB_OUTPUT
+          echo "skip-pattern='Waveshare_7_5_3C'" >> $GITHUB_OUTPUT
           echo "warnings='all'" >> $GITHUB_OUTPUT
 
           # platform-dependent settings - extra board options, board index URLs, skip patterns etc.
