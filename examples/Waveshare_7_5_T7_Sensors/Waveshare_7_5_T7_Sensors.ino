@@ -238,7 +238,7 @@ bool    mqttMessageReceived = false; //!< Flag: MQTT message has been received
 RTC_DATA_ATTR Forecast_record_type  WxConditions[1]; //!< OWM Weather Conditions
 Forecast_record_type  WxForecast[max_readings];      //!< OWM Weather Forecast
 
-#include "src/common.h"
+#include "common.h"
 
 #define autoscale_on  true
 #define autoscale_off false
