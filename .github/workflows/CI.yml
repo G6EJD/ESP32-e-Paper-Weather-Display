@@ -101,7 +101,7 @@ jobs:
       #    # Fix for linker error with Arduino core for ESP32 v2.0.x as suggested in https://github.com/mcci-catena/arduino-lmic/issues/714#issuecomment-822051171
       #    echo "#define hal_init LMICHAL_init" >> /home/runner/Arduino/libraries/MCCI_LoRaWAN_LMIC_library/project_config/lmic_project_config.h
       
-      - name: Build sketch
+      - name: Build examples
         if: ${{ env.run-build == 'true' }}
         run:
           |
@@ -114,7 +114,6 @@ jobs:
               # build sketch
               echo -e "\n\033[1;33mBuilding ${example##*/} ... \033[0m";
               arduino-cli compile --libraries /home/runner/work/ESP32-e-Paper-Weather-Display --fqbn ${{ matrix.board }}${{ steps.prep.outputs.options }} $example --warnings=${{ steps.prep.outputs.warnings }}
-              
               
               if [ $? -ne 0 ]; then
                 echo -e "\033[1;31m${example##*/} build FAILED\033[0m\n";
