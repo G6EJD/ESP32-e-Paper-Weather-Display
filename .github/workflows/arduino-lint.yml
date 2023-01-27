@@ -9,5 +9,4 @@ jobs:
       - uses: arduino/arduino-lint-action@v1
         with:
           library-manager: false
-          project-type: sketch
           # compliance: strict
