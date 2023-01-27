@@ -1134,7 +1134,7 @@ void SaveRainDayData(void) {
 void DisplayMQTTWeather(void) {
   DisplayGeneralInfoSection();
   DisplayMQTTDateTime(90, 225);
-  display.drawBitmap(  5,  25, epd_bitmap_garten_sw, 220, 165, GxEPD_BLACK);
+  display.drawBitmap(  5,  25, epd_bitmap_remote, 220, 165, GxEPD_BLACK);
   display.drawRect(    4,  24, 222, 167, GxEPD_BLACK);
   display.drawBitmap(240,  45, epd_bitmap_temperatur_aussen, 64, 48, GxEPD_BLACK);
   display.drawBitmap(438,  45, epd_bitmap_feuchte_aussen, 64, 48, GxEPD_BLACK);
