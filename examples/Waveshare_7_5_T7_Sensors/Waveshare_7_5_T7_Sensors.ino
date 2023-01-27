@@ -541,9 +541,9 @@ void setup() {
     
     wifi_ok = (StartWiFi() == WL_CONNECTED);
     
-    if (CORE_DEBUG_LEVEL >= ARDUHAL_LOG_LEVEL_INFO) {
-        int time_ok = SetupTime();
-    }
+#if (CORE_DEBUG_LEVEL >= ARDUHAL_LOG_LEVEL_INFO)
+    int time_ok = SetupTime();
+#endif
   
     log_i("WiFi o.k.: %d", wifi_ok);
     log_i("Time o.k.: %d", time_ok);
