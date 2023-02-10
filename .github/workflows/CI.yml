@@ -59,7 +59,7 @@ jobs:
         run:
           |
           declare -a required_libs=(
-            "MQTT@2.5.0"
+            "MQTT@2.5.1"
             "GxEPD2@1.5.0"
             "U8g2_for_Adafruit_GFX@1.8.0"
             "cQueue@1.8.0"
