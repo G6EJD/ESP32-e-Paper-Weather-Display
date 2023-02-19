@@ -34,6 +34,11 @@ After inclusion, Go to File, Examples and scroll down to 'ESP32-e-paperWeather-d
 Also see: https://www.arduino.cc/en/Guide/Libraries#toc4
 
 - [Arduino JSON](https://github.com/bblanchon/ArduinoJson) (v6 or above) by Benoît Blanchon
+- [pocketBME280](https://github.com/angrest/pocketBME280) by Axel Grewe
+- [NimBLE-Arduino](https://github.com/h2zero/NimBLE-Arduino) by h2zero
+- [Theengs Decoder](https://github.com/theengs/decoder) by Florian Robert
+- [Arduino MQTT](https://github.com/256dpi/arduino-mqtt) by Joël Gähwiler
+- [cQueue](https://github.com/SMFSW/cQueue) by SMFSW
 
 Download the software to your Arduino's library directory.
 
