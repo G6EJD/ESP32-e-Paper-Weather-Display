@@ -60,7 +60,7 @@ Download the software to your Arduino's library directory.
    * MQTT settings (for remote data)
    * a valid weather station location on OpenWeatherMap
 
-4. Set the Bluetooth sensor's address (`knownBLEAddresses` in *.ino)
+4. Set the Bluetooth sensor's address (`knownBLEAddresses` in `*.ino`)
 
 5. If your are using the older style Waveshare HAT then you need to use:
   
@@ -77,9 +77,9 @@ The Battery monitor assumes the use of a Lolin D32 board which uses GPIO-35 as a
 7. Change the **Partition Scheme** in the Arduino IDE to "Mnimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS)"
 
 8. Optional: Personalize your display
-   * change the text on the start screen (define `TXT_START`)
-   * change the screen titles (string `Locations[]`)
-   * replace the bitmap images on the local/remote screens
+   * change the text on the start screen (define `TXT_START` in `*.ino`)
+   * change the screen titles (string `Locations[]` in `*.ino`)
+   * replace the bitmap images on the local/remote screens (`bitmap_local.h` and `bitmap_remote.h)
      
      see [Image to C++ - Conversion to Bitmap](https://javl.github.io/image2cpp/)
 
