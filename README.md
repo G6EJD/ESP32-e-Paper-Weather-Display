@@ -1,13 +1,15 @@
 # ESP32-e-Paper-Weather-Display
 [![CI](https://github.com/matthias-bs/ESP32-e-Paper-Weather-Display/actions/workflows/CI.yml/badge.svg)](https://github.com/matthias-bs/ESP32-e-Paper-Weather-Display/actions/workflows/CI.yml)
 
+<img src="https://github.com/matthias-bs/ESP32-e-Paper-Weather-Display/blob/main/weather_station_architecture.png" alt="Weather Station Architecture Diagram" width="1080">
+
 ## Features
 * [Open Weather Map](https://openweathermap.org/) current Weather / forecast Weather Display (from [G6EJD/ESP32-e-Paper-Weather-Display](https://github.com/G6EJD/ESP32-e-Paper-Weather-Display))
 * Local Sensor Data Display
     * [Theengs Decoder](https://github.com/theengs/decoder) Bluetooth Low Energy Sensors Integration
     * [BME280 Temperature/Humidity/Barometric Pressure Sensor](https://www.bosch-sensortec.com/products/environmental-sensors/humidity-sensors-bme280/) Integration
 * Remote Sensor Data Display
-    * MQTT Client Integration (e.g. for connection to [BresserWeatherSensorTTN](https://github.com/matthias-bs/BresserWeatherSensorTTN))
+    * MQTT Client Integration (e.g. for [BresserWeatherSensorReceiver](https://github.com/matthias-bs/BresserWeatherSensorReceiver) or [BresserWeatherSensorTTN](https://github.com/matthias-bs/BresserWeatherSensorTTN))
 * Switching between virtual Screens via TTP223 Touch Sensors
 * Currently only 7.5" e-Paper Displays supported
 
