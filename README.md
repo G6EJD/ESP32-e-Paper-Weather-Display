@@ -13,6 +13,11 @@
 * Switching between virtual Screens via TTP223 Touch Sensors
 * Currently only 7.5" e-Paper Displays supported
 
+## Screens
+### Local Sensor Data
+![3-weather_local](https://user-images.githubusercontent.com/83612361/219953502-6f0e3b16-58f8-4845-b5d6-c796484c778f.jpg)
+
+
 ## Setup
 
 For standalone use, download the ZIP file to your desktop.
