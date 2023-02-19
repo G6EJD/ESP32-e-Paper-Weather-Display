@@ -29,10 +29,13 @@ For standalone use, download the ZIP file to your desktop.
 
 Go to Sketch > Include Library... > Add .ZIP Library... Then, choose the ZIP file.
 
-After inclusion, Go to File, Examples and scroll down to 'ESP32-e-paperWeather-display' and choose your version/screen size. Make sure to come back to this dialog from time to time to keep each library up to date. Also make sure that you only have one version of each of the libraries installed.
+After inclusion, Go to File > Examples and scroll down to 'ESP32-e-paperWeather-display' and choose `Waveshare_7_5_T7_Sensors.ino` <!--your version/screen size-->. Make sure to come back to this dialog from time to time to keep each library up to date. Also make sure that you only have one version of each of the following libraries installed.
 
 Also see: https://www.arduino.cc/en/Guide/Libraries#toc4
 
+- [GxEPD2 library](https://github.com/ZinggJM/GxEPD2) by Jean-Marc Zingg
+   - [Adafruit_GFX](https://github.com/adafruit/Adafruit-GFX-Library) by Adafruit Industries
+   - [U8g2_for_Adafruit_GFX](https://github.com/olikraus/U8g2_for_Adafruit_GFX) by Oli Kraus
 - [Arduino JSON](https://github.com/bblanchon/ArduinoJson) (v6 or above) by Benoît Blanchon
 - [pocketBME280](https://github.com/angrest/pocketBME280) by Axel Grewe
 - [NimBLE-Arduino](https://github.com/h2zero/NimBLE-Arduino) by h2zero
@@ -42,29 +45,42 @@ Also see: https://www.arduino.cc/en/Guide/Libraries#toc4
 
 Download the software to your Arduino's library directory.
 
-1. From the examples, choose depending on your module either
-   - Waveshare_7_5
-   - Waveshare_7_5_T7 (newer 800x480 version of the older 640x384)
-   
-   Code requires [GxEPD2 library](https://github.com/ZinggJM/GxEPD2)
-   - which needs [Adafruit_GFX](https://github.com/adafruit/Adafruit-GFX-Library)
-   - an also requires [U8g2_for_Adafruit_GFX](https://github.com/olikraus/U8g2_for_Adafruit_GFX)
+1. From the examples, choose <!--depending on your module either-->
+   - Waveshare_7_5_T7_Sensors
+   <!-- Waveshare_7_5_T7 (newer 800x480 version of the older 640x384)-->
 
 2. Obtain your [OWM API key](https://openweathermap.org/appid) - it's free
 
-3. Edit the owm_credentials.h file in the IDE (TAB at top of IDE) and change your Language, Country, choose your units Metric or Imperial and be sure to find a valid weather station location on OpenWeatherMap, if your display has all blank values your location does not exist!
+3. Edit the `owm_credentials.h` file in the IDE (TAB at top of IDE) and edit
+   * Language
+   * Country
+   * Time Zone
+   * Units (Metric or Imperial)
+   * MQTT settings (for remote data)
+   * a valid weather station location on OpenWeatherMap
 
-4. If your are using the older style Waveshare HAT then you need to use:
+4. Set the Bluetooth sensor's address (`knownBLEAddresses` in *.ino)
+
+5. If your are using the older style Waveshare HAT then you need to use:
   
   **display.init(); //for older Waveshare HAT's 
   
   In the InitialiseDisplay() function, comment out the variant as required 
 
-5. Save your files.
+6. Save your files.
 
 NOTE: See schematic for the wiring diagram, all displays are wired the same, so wire a 7.5" the same as a 4.2", 2.9" or 1.54" display! Both 2.13" TTGO T5 and 2.7" T5S boards come pre-wired. The 3.7" FireBeetle example contains wiring details.
 
 The Battery monitor assumes the use of a Lolin D32 board which uses GPIO-35 as an ADC input, also it has an on-board 100K+100K voltage divider directly connected to the Battery terminals. On other boards, you will need to change the analogRead(35) statement to your board e.g. (39) and attach a voltage divider to the battery terminals. The TTGO T5 and T5S boards already contain the resistor divider on the correct pin. The FireBeetle has a battery monitor on GPIO-36.
+
+7. Change the **Partition Scheme** in the Arduino IDE to "Mnimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS)"
+
+8. Optional: Personalize your display
+   * change the text on the start screen (define `TXT_START`)
+   * change the screen titles (string `Locations[]`)
+   * replace the bitmap images on the local/remote screens
+     
+     see [Image to C++ - Conversion to Bitmap](https://javl.github.io/image2cpp/)
 
 Compile and upload the code - Enjoy!
 
