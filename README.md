@@ -2,7 +2,7 @@
 [![CI](https://github.com/matthias-bs/ESP32-e-Paper-Weather-Display/actions/workflows/CI.yml/badge.svg)](https://github.com/matthias-bs/ESP32-e-Paper-Weather-Display/actions/workflows/CI.yml)
 
 ## Features
-* [Open Weather Map](https://openweathermap.org/) current Weather / forecast Weather Display (from [G6EJD/ESP32-e-Paper-Weather-Display](https://github.com/G6EJD/ESP32-e-Paper-Weather-Display)
+* [Open Weather Map](https://openweathermap.org/) current Weather / forecast Weather Display (from [G6EJD/ESP32-e-Paper-Weather-Display](https://github.com/G6EJD/ESP32-e-Paper-Weather-Display))
 * Local Sensor Data Display
     * [Theengs Decoder](https://github.com/theengs/decoder) Bluetooth Low Energy Sensors Integration
     * [BME280 Temperature/Humidity/Barometric Pressure Sensor](https://www.bosch-sensortec.com/products/environmental-sensors/humidity-sensors-bme280/) Integration
