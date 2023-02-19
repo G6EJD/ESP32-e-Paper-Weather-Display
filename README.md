@@ -11,6 +11,7 @@
 * Remote Sensor Data Display
     * MQTT Client Integration (e.g. for [BresserWeatherSensorReceiver](https://github.com/matthias-bs/BresserWeatherSensorReceiver) or [BresserWeatherSensorTTN](https://github.com/matthias-bs/BresserWeatherSensorTTN))
 * Switching between virtual Screens via TTP223 Touch Sensors
+* Sensor Histogram Data stored in ESP32's RTC RAM (persistent in Deep-Sleep Mode)
 * Currently only 7.5" e-Paper Displays supported
 
 ## Screens
