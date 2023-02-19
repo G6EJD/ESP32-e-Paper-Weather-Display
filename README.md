@@ -4,7 +4,7 @@
 <img src="https://github.com/matthias-bs/ESP32-e-Paper-Weather-Display/blob/main/weather_station_architecture.png" alt="Weather Station Architecture Diagram" width="1080">
 
 ## Features
-* [Open Weather Map](https://openweathermap.org/) current Weather / forecast Weather Display (from [G6EJD/ESP32-e-Paper-Weather-Display](https://github.com/G6EJD/ESP32-e-Paper-Weather-Display))
+* [Open Weather Map](https://openweathermap.org/) Weather Report / Forecast Display (from [G6EJD/ESP32-e-Paper-Weather-Display](https://github.com/G6EJD/ESP32-e-Paper-Weather-Display))
 * Local Sensor Data Display
     * [Theengs Decoder](https://github.com/theengs/decoder) Bluetooth Low Energy Sensors Integration
     * [BME280 Temperature/Humidity/Barometric Pressure Sensor](https://www.bosch-sensortec.com/products/environmental-sensors/humidity-sensors-bme280/) Integration
@@ -14,8 +14,13 @@
 * Currently only 7.5" e-Paper Displays supported
 
 ## Screens
+**Note:** Display quality is much better in reality than in the images below! 
+### Weather Report / Forecast
+![2-weather_report_forecast](https://user-images.githubusercontent.com/83612361/219954116-dd68a860-7884-4ef7-af2b-0ddd452a2d07.jpg)
 ### Local Sensor Data
 ![3-weather_local](https://user-images.githubusercontent.com/83612361/219953502-6f0e3b16-58f8-4845-b5d6-c796484c778f.jpg)
+### Remote Sensor Data
+![4-weather_remote](https://user-images.githubusercontent.com/83612361/219953834-cd48c8b0-d533-40d9-b4aa-15b58e0bcb52.png)
 
 
 ## Setup
