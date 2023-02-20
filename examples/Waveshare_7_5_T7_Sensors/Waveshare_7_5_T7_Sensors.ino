@@ -21,7 +21,7 @@
 /**
  * ESP32 Weather Display using an EPD 7.5" 800x480 Display
  * 
- * Three virtual screens are provided:
+ * Four virtual screens are provided:
  * 0. Start screen
  * 1. Current weather data and weather forecast by OpenWeatherMap
  * 2. Local weather sensor data (internal T/H/P-sensor with I2C interface, BLE sensor(s))
@@ -34,7 +34,7 @@
  * - Draw screen title bar
  * - Retrieve local data (I2C bus and BLE sensors) -
  *   bleScanTime must be greater than BLE sensor's advertising cycle time;
- *   BLE scanning is aborted if all knowsn sensors have been received or a touch sensor is triggered
+ *   BLE scanning is aborted if all known sensors have been received or a touch sensor is triggered
  * - Draw current screen
  * - Retrieve MQTT data -
  *   wait for MQTT message until MQTT_DATA_TIMEOUT occurs or a touch sensor is triggered
@@ -47,7 +47,7 @@
  * Local and remote sensor data (i.e. not OWM data) is stored in non-volatile (NV) RAM. Thus, at least
  * data received previously can be shown even in WiFi is not availably.
  * 
- * NW RAM is also used to store data for plotting history graphs and for displaying min/max values
+ * NV RAM is also used to store data for plotting history graphs and for displaying min/max values
  * (during past 24 hrs).
  * 
  * Based on G6EJD/ESP32-e-Paper-Weather-Display Version 16.11
