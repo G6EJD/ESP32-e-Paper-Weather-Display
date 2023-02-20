@@ -71,17 +71,6 @@
 #include "bitmap_remote.h"            // Picture shown on ScreenMQTT  - replace by your own
 
 
-
-// Screen definitions
-#define ScreenOWM   0
-#define ScreenLocal 1
-#define ScreenMQTT  2
-#define ScreenStart 3
-
-#define TXT_START "Your Weather Station"
-#define START_SCREEN ScreenStart // ScreenMQTT
-#define LAST_SCREEN  ScreenMQTT
-
 //#define SIMULATE_MQTT
 //#define FORCE_LOW_BATTERY
 //#define FORCE_NO_SIGNAL
