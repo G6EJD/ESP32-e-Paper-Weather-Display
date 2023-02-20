@@ -225,7 +225,7 @@ Forecast_record_type  WxForecast[max_readings];      //!< OWM Weather Forecast
 #define barchart_on   true
 #define barchart_off  false
 
-String Locations[] = {"Forecast", "Local", "Remote", "Start"}; //!< Locations/Screen Titles
+String Locations[] = LOCATIONS_TXT; //!< Locations/Screen Titles
 
 // OWM Forecast Data
 float pressure_readings[max_readings]    = {0}; //!< OWM pressure readings
