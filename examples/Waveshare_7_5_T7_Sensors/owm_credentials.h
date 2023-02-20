@@ -67,3 +67,7 @@ int  daylightOffset_sec = 3600; // In the UK DST is +1hr or 3600-secs, other cou
 #define TXT_START "Your Weather Station"
 #define START_SCREEN ScreenStart
 #define LAST_SCREEN  ScreenMQTT
+
+// Locations / Screen Titles
+#define LOCATIONS_TXT {"Forecast", "Local", "Remote", "Start"}
+
