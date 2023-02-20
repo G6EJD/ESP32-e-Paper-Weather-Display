@@ -48,3 +48,15 @@ int  daylightOffset_sec = 3600; // In the UK DST is +1hr or 3600-secs, other cou
 //const char* Timezone = "NZST-12NZDT,M9.5.0,M4.1.0/3";      // Auckland
 //const char* Timezone = "EET-2EEST,M3.5.5/0,M10.5.5/0";     // Asia
 //const char* Timezone = "ACST-9:30ACDT,M10.1.0,M4.1.0/3":   // Australia
+
+// Personalization Options
+
+// Screen definitions
+#define ScreenOWM   0
+#define ScreenLocal 1
+#define ScreenMQTT  2
+#define ScreenStart 3
+
+#define TXT_START "Your Weather Station"
+#define START_SCREEN ScreenStart
+#define LAST_SCREEN  ScreenMQTT
