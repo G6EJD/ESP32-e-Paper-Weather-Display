@@ -5,13 +5,20 @@ const char* password = "your_PASSWORD"; // WiFi password needed for the SSID
 // Domain Name Server - separate bytes by comma!
 #define MY_DNS 192,168,0,1
 
+// Weather display's hostname
+const char *Hostname = "your_hostname";
+
+//!< List of known BLE sensors' MAC addresses (separate multiple entries by comma)
+//#define KNOWN_BLE_ADDRESSES {"a4:c1:38:b8:1f:7f"}  
+#define KNOWN_BLE_ADDRESSES {"49:22:05:17:0c:1f"}
+
+// MQTT connection for remote sensor data
 const int   MQTT_PORT = 1883;
 const char *MQTT_HOST = "your_broker";
 const char *MQTT_USER = "your_user";   // leave blank if no credentials used
 const char *MQTT_PASS = "your_passwd"; // leave blank if no credentials used
 const char *MQTT_SUB_IN = "your/subscribe/topic";
 
-const char *Hostname = "your_hostname";
 
 // Use your own API key by signing up for a free developer account at https://openweathermap.org/
 String apikey       = "your_API_key";                      // See: https://openweathermap.org/  // It's free to get an API key, but don't take more than 60 readings/minute!
