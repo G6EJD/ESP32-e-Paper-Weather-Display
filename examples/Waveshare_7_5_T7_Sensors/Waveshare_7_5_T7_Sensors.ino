@@ -167,9 +167,8 @@ char        MqttBuf[MQTT_PAYLOAD_SIZE+1]; //!< MQTT Payload Buffer
 
 
 #if defined(MITHERMOMETER_EN) || defined(THEENGSDECODER_EN)
-    const int bleScanTime = 31; //!< BLE scan time in seconds
-    //std::vector<std::string> knownBLEAddresses = {"a4:c1:38:b8:1f:7f"}; //!< List of known BLE sensors' MAC addresses 
-    std::vector<std::string> knownBLEAddresses = {"49:22:05:17:0c:1f"}; //!< List of known BLE sensors' MAC addresses
+    const int bleScanTime = 31; //!< BLE scan time in seconds 
+    std::vector<std::string> knownBLEAddresses = KNOWN_BLE_ADDRESSES;
 #endif
 
 
