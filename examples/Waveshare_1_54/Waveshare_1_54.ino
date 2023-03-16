@@ -193,7 +193,7 @@ void DisplayForecastSection(int x, int y) {
   DisplayForecastWeather(x + offset * 1, y, offset, 1);
   DisplayForecastWeather(x + offset * 2, y, offset, 2);
   DisplayForecastWeather(x + offset * 3, y, offset, 3);
-  int r = 1;
+  int r = 0;
   do {
     if (Units == "I") pressure_readings[r] = WxForecast[r].Pressure * 0.02953;
     else              pressure_readings[r] = WxForecast[r].Pressure;
@@ -201,7 +201,7 @@ void DisplayForecastSection(int x, int y) {
     if (Units == "I") rain_readings[r]     = WxForecast[r].Rainfall * 0.0393701;
     else              rain_readings[r]     = WxForecast[r].Rainfall;
     r++;
-  } while (r <= max_readings);
+  } while (r < max_readings);
 }
 //#########################################################################################
 void DisplayForecastWeather(int x, int y, int offset, int index) {

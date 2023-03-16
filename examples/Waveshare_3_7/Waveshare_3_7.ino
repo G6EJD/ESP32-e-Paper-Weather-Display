@@ -285,7 +285,7 @@ void DrawForecastSection(int x, int y) {
   DrawForecastWeather(x + 80*5, y, 5);
 
   //Long range 3day trend graphs
-  for (int r = 1; r < max_readings; r++) {
+  for (int r = 0; r < max_readings; r++) {
     if (Units == "I") {
       pressure_readings[r] = WxForecast[r].Pressure * 0.02953;
       rain_readings[r]     = WxForecast[r].Rainfall * 0.0393701;
