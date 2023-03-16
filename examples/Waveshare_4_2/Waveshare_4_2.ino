@@ -191,7 +191,7 @@ void DrawForecastSection(int x, int y) {
   DrawForecastWeather(x + 56, y, 1);
   DrawForecastWeather(x + 112, y, 2);
   //       (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
-  for (int r = 1; r <= max_readings; r++) {
+  for (int r = 0; r < max_readings; r++) {
     if (Units == "I") {
       pressure_readings[r] = WxForecast[r].Pressure * 0.02953;
       rain_readings[r]     = WxForecast[r].Rainfall * 0.0393701;

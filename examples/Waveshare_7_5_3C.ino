@@ -393,7 +393,7 @@ void DisplayForecastSection(int x, int y) {
     f++;
   } while (f <= 7);
   // Pre-load temporary arrays with with data - because C parses by reference
-  int r = 1;
+  int r = 0;
   do {
     if (Units == "I") pressure_readings[r] = WxForecast[r].Pressure * 0.02953;   else pressure_readings[r] = WxForecast[r].Pressure;
     if (Units == "I") rain_readings[r]     = WxForecast[r].Rainfall * 0.0393701; else rain_readings[r]     = WxForecast[r].Rainfall;
@@ -401,7 +401,7 @@ void DisplayForecastSection(int x, int y) {
     temperature_readings[r] = WxForecast[r].Temperature;
     humidity_readings[r]    = WxForecast[r].Humidity;
     r++;
-  } while (r <= max_readings);
+  } while (r < max_readings);
   int gwidth = 150, gheight = 72;
   int gx = (SCREEN_WIDTH - gwidth * 4) / 5 + 5;
   int gy = 375;
