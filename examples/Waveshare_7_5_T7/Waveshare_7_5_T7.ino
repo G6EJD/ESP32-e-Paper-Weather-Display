@@ -96,10 +96,13 @@ Forecast_record_type  WxForecast[max_readings];
 #define autoscale_off false
 #define barchart_on   true
 #define barchart_off  false
+#define lhs_yaxis     true
+#define rhs_yaxis     false
 
 float pressure_readings[max_readings]    = {0};
 float temperature_readings[max_readings] = {0};
 float humidity_readings[max_readings]    = {0};
+float pop_readings[max_readings]         = {0};
 float rain_readings[max_readings]        = {0};
 float snow_readings[max_readings]        = {0};
 
@@ -397,24 +400,30 @@ void DisplayForecastSection(int x, int y) {
     if (Units == "I") snow_readings[r]     = WxForecast[r].Snowfall * 0.0393701; else snow_readings[r]     = WxForecast[r].Snowfall;
     temperature_readings[r] = WxForecast[r].Temperature;
     humidity_readings[r]    = WxForecast[r].Humidity;
+    pop_readings[r]    = WxForecast[r].Pop * 100;
     r++;
   } while (r < max_readings);
   int gwidth = 150, gheight = 72;
-  int gx = (SCREEN_WIDTH - gwidth * 4) / 5 + 5;
+  int gx = (SCREEN_WIDTH - gwidth * 4) / 5 + 1; //+ 1 shift to accommodate RHS labels on precip graph, else +5
   int gy = 375;
   int gap = gwidth + gx;
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
   drawString(SCREEN_WIDTH / 2, gy - 40, TXT_FORECAST_VALUES, CENTER); // Based on a graph height of 60
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
-  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure_readings, max_readings, autoscale_on, barchart_off);
-  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature_readings, max_readings, autoscale_on, barchart_off);
-  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,   TXT_HUMIDITY_PERCENT, humidity_readings, max_readings, autoscale_off, barchart_off);
+  DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure_readings, max_readings, autoscale_on, barchart_off, lhs_yaxis);
+  DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature_readings, max_readings, autoscale_on, barchart_off, lhs_yaxis);
+  DrawGraph(gx + 2 * gap, gy, gwidth, gheight, 0, 100,   TXT_HUMIDITY_PERCENT, humidity_readings, max_readings, autoscale_on, barchart_off, lhs_yaxis);
   const int Rain_array_size = sizeof(rain_readings) / sizeof(float);
   const int Snow_array_size = sizeof(snow_readings) / sizeof(float);
-  if (SumOfPrecip(rain_readings, Rain_array_size) >= SumOfPrecip(snow_readings, Snow_array_size))
-    DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_readings, Rain_array_size, autoscale_on, barchart_on);
-  else DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_SNOWFALL_MM : TXT_SNOWFALL_IN, snow_readings, Snow_array_size, autoscale_on, barchart_on);
+  if (SumOfPrecip(rain_readings, Rain_array_size) >= SumOfPrecip(snow_readings, Snow_array_size)) {
+    DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, rain_readings, Rain_array_size, autoscale_on, barchart_on, lhs_yaxis);
+    DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 100, Units == "M" ? TXT_RAINFALL_MM : TXT_RAINFALL_IN, pop_readings, max_readings, autoscale_off, barchart_off, rhs_yaxis); // lhs_yaxis=false
+  }
+  else {
+    DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 30, Units == "M" ? TXT_SNOWFALL_MM : TXT_SNOWFALL_IN, snow_readings, Snow_array_size, autoscale_on, barchart_on, lhs_yaxis);
+    DrawGraph(gx + 3 * gap + 5, gy, gwidth, gheight, 0, 100, Units == "M" ? TXT_SNOWFALL_MM : TXT_SNOWFALL_IN, pop_readings, max_readings, autoscale_off, barchart_off, rhs_yaxis);
+  }
 }
 //#########################################################################################
 void DisplayConditionsSection(int x, int y, String IconName, bool IconSize) {
@@ -862,7 +871,7 @@ void Nodata(int x, int y, bool IconSize, String IconName) {
     If called with Y!_Max value of 500 and the data never goes above 500, then autoscale will retain a 0-500 Y scale, if on, the scale increases/decreases to match the data.
     auto_scale_margin, e.g. if set to 1000 then autoscale increments the scale by 1000 steps.
 */
-void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], int readings, boolean auto_scale, boolean barchart_mode) {
+void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], int readings, boolean auto_scale, boolean barchart_mode, boolean lhs_flag) {
 #define auto_scale_margin 0 // Sets the autoscale increment, so axis steps up in units of e.g. 3
 #define y_minor_axis 5      // 5 y-axis division markers
   float maxYscale = -10000;
@@ -897,22 +906,38 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
     last_y = y2;
   }
   //Draw the Y-axis scale
-#define number_of_dashes 20
+#define number_of_dashes 20 // dashes for y=constant guides
   for (int spacing = 0; spacing <= y_minor_axis; spacing++) {
     for (int j = 0; j < number_of_dashes; j++) { // Draw dashed graph grid lines
       if (spacing < y_minor_axis) display.drawFastHLine((x_pos + 3 + j * gwidth / number_of_dashes), y_pos + (gheight * spacing / y_minor_axis), gwidth / (2 * number_of_dashes), GxEPD_BLACK);
     }
-    if ((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing) < 5 || title == TXT_PRESSURE_IN) {
-      drawString(x_pos - 1, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1), RIGHT);
-    }
-    else
-    {
-      if (Y1Min < 1 && Y1Max < 10)
+    if (lhs_flag) {  // Draw left hand y-axis labels
+      if ((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing) < 5 || title == TXT_PRESSURE_IN) {
         drawString(x_pos - 1, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1), RIGHT);
+      }
       else
-        drawString(x_pos - 2, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 0), RIGHT);
+      {
+        if (Y1Min < 1 && Y1Max < 10)
+          drawString(x_pos - 1, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1), RIGHT);
+        else
+          drawString(x_pos - 2, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 0), RIGHT);
+      }
     }
+    else  // Draw right hand y-axis labels
+    {   
+      if ((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing) < 5 || title == TXT_PRESSURE_IN) {
+        drawString(x_pos + gwidth + 5, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1), LEFT);
+      }
+      else
+      {
+        if (Y1Min < 1 && Y1Max < 10)
+          drawString(x_pos + gwidth + 5, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1), LEFT);
+        else
+          drawString(x_pos + gwidth + 5, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 0), LEFT);
+      }    
+    }   
   }
+  //Draw the X-axis scale
   for (int i = 0; i <= 2; i++) {
     drawString(15 + x_pos + gwidth / 3 * i, y_pos + gheight + 3, String(i), LEFT);
   }
