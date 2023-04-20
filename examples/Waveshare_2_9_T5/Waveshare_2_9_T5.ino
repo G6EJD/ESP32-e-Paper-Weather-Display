@@ -551,9 +551,9 @@ void MostlySunny(int x, int y, bool IconSize, String IconName) {
 }
 //#########################################################################################
 void MostlyCloudy(int x, int y, bool IconSize, String IconName) {
-  int scale = Small, linesize = 3;
-  if (IconSize == LargeIcon) {
-    scale = Large;
+  int scale = Large, linesize = 3;
+  if (IconSize == SmallIcon) {
+    scale = Small;
     linesize = 1;
   }
   if (IconName.endsWith("n")) addmoon(x, y, scale, IconSize);
