@@ -404,15 +404,7 @@ void addfog(int x, int y, int scale, int linesize) {
     display.fillRect(x - scale * 3, y + scale * 2.7, scale * 6, linesize, GxEPD_BLACK);
   }
 }
-//#########################################################################################
-void MostlyCloudy(int x, int y, bool LargeSize, String IconName) {
-  int scale = Small, offset = 0;
-  int linesize = 1;
-  if (IconName.endsWith("n")) addmoon(x, y + offset, scale);
-  addcloud(x, y + offset, scale, linesize);
-  addsun(x - scale * 1.8, y - scale * 1.8 + offset, scale);
-  addcloud(x, y + offset, scale, linesize);
-}
+MostlyCloudy
 //#########################################################################################
 void MostlySunny(int x, int y, bool LargeSize, String IconName) {
   int scale = Small, offset = 0;
