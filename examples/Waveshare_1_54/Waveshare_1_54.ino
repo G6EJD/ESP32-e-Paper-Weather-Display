@@ -411,7 +411,7 @@ void MostlyCloudy(int x, int y, bool IconSize, String IconName) {
     scale = Small;
     linesize = 1;
   }
-  if (IconName.endsWith("n")) addmoon(x, y, scale, IconSize);
+  if (IconName.endsWith("n")) addmoon(x, y, scale);
   addcloud(x, y, scale, linesize);
   addsun(x - scale * 1.8, y - scale * 1.8, scale, IconSize);
   addcloud(x, y, scale, linesize);
