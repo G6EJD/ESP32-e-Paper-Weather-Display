@@ -264,23 +264,9 @@ void DisplayDisplayWindSection(int x, int y, float angle, float windspeed, int C
 }
 //#########################################################################################
 String WindDegToDirection(float winddirection) {
-  if (winddirection >= 348.75 || winddirection < 11.25)  return TXT_N;
-  if (winddirection >=  11.25 && winddirection < 33.75)  return TXT_NNE;
-  if (winddirection >=  33.75 && winddirection < 56.25)  return TXT_NE;
-  if (winddirection >=  56.25 && winddirection < 78.75)  return TXT_ENE;
-  if (winddirection >=  78.75 && winddirection < 101.25) return TXT_E;
-  if (winddirection >= 101.25 && winddirection < 123.75) return TXT_ESE;
-  if (winddirection >= 123.75 && winddirection < 146.25) return TXT_SE;
-  if (winddirection >= 146.25 && winddirection < 168.75) return TXT_SSE;
-  if (winddirection >= 168.75 && winddirection < 191.25) return TXT_S;
-  if (winddirection >= 191.25 && winddirection < 213.75) return TXT_SSW;
-  if (winddirection >= 213.75 && winddirection < 236.25) return TXT_SW;
-  if (winddirection >= 236.25 && winddirection < 258.75) return TXT_WSW;
-  if (winddirection >= 258.75 && winddirection < 281.25) return TXT_W;
-  if (winddirection >= 281.25 && winddirection < 303.75) return TXT_WNW;
-  if (winddirection >= 303.75 && winddirection < 326.25) return TXT_NW;
-  if (winddirection >= 326.25 && winddirection < 348.75) return TXT_NNW;
-  return "?";
+  int dir = int((winddirection / 22.5) + 0.5);
+  String Ord_direction[16] = {TXT_N, TXT_NNE, TXT_NE, TXT_ENE, TXT_E, TXT_ESE, TXT_SE, TXT_SSE, TXT_S, TXT_SSW, TXT_SW, TXT_WSW, TXT_W, TXT_WNW, TXT_NW, TXT_NNW};
+  return Ord_direction[(dir % 16)];
 }
 //#########################################################################################
 void DrawPressureAndTrend(int x, int y, float pressure, String slope) {
@@ -412,7 +398,7 @@ void DisplayWXicon(int x, int y, String IconName, bool IconSize) {
   if      (IconName == "01d" || IconName == "01n")  Sunny(x, y, IconSize, IconName);
   else if (IconName == "02d" || IconName == "02n")  MostlySunny(x, y, IconSize, IconName);
   else if (IconName == "03d" || IconName == "03n")  Cloudy(x, y, IconSize, IconName);
-  else if (IconName == "04d" || IconName == "04n")  MostlySunny(x, y, IconSize, IconName);
+  else if (IconName == "04d" || IconName == "04n")  MostlyCloudy(x, y, IconSize, IconName);
   else if (IconName == "09d" || IconName == "09n")  ChanceRain(x, y, IconSize, IconName);
   else if (IconName == "10d" || IconName == "10n")  Rain(x, y, IconSize, IconName);
   else if (IconName == "11d" || IconName == "11n")  Tstorms(x, y, IconSize, IconName);
@@ -618,9 +604,9 @@ void MostlySunny(int x, int y, bool IconSize, String IconName) {
 }
 //#########################################################################################
 void MostlyCloudy(int x, int y, bool IconSize, String IconName) {
-  int scale = Small, linesize = 3;
-  if (IconSize == LargeIcon) {
-    scale = Large;
+  int scale = Large, linesize = 3;
+  if (IconSize == SmallIcon) {
+    scale = Small;
     linesize = 1;
   }
   if (IconName.endsWith("n")) addmoon(x, y, scale, IconSize);
@@ -824,15 +810,21 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
   display.drawRect(x_pos, y_pos, gwidth + 3, gheight + 2, GxEPD_BLACK);
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   drawString(x_pos + gwidth / 2, y_pos - 12, title, CENTER);
+  // Draw the graph
+  last_x = x_pos;
+  last_y = y_pos + (Y1Max - constrain(DataArray[1], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight;
+  display.drawRect(x_pos, y_pos, gwidth + 3, gheight + 2, GxEPD_BLACK);
+  drawString(x_pos + gwidth / 2, y_pos - 13, title, CENTER);
   // Draw the data
-  for (int gx = 1; gx < readings; gx++) {
-    x1 = last_x;
-    y1 = last_y;
-    x2 = x_pos + gx * gwidth / (readings - 1) - 1 ; // max_readings is the global variable that sets the maximum data that can be plotted
+  for (int gx = 0; gx < readings; gx++) {
     y2 = y_pos + (Y1Max - constrain(DataArray[gx], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight + 1;
     if (barchart_mode) {
-      display.fillRect(x2, y2, (gwidth / readings) - 1, y_pos + gheight - y2 + 1, GxEPD_BLACK);
-    } else {
+      x2 = x_pos + gx * (gwidth / readings) + 2;
+      display.fillRect(x2, y2, (gwidth / readings) - 2, y_pos + gheight - y2 + 2, GxEPD_BLACK);
+    } 
+    else
+    {
+      x2 = x_pos + gx * gwidth / (readings - 1) + 1; // max_readings is the global variable that sets the maximum data that can be plotted
       display.drawLine(last_x, last_y, x2, y2, GxEPD_BLACK);
     }
     last_x = x2;

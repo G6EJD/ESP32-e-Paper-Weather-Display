@@ -280,23 +280,9 @@ void DrawWind(int x, int y, float angle, float windspeed) {
 }
 //#########################################################################################
 String WindDegToDirection(float winddirection) {
-  if (winddirection >= 348.75 || winddirection < 11.25)  return TXT_N;
-  if (winddirection >=  11.25 && winddirection < 33.75)  return TXT_NNE;
-  if (winddirection >=  33.75 && winddirection < 56.25)  return TXT_NE;
-  if (winddirection >=  56.25 && winddirection < 78.75)  return TXT_ENE;
-  if (winddirection >=  78.75 && winddirection < 101.25) return TXT_E;
-  if (winddirection >= 101.25 && winddirection < 123.75) return TXT_ESE;
-  if (winddirection >= 123.75 && winddirection < 146.25) return TXT_SE;
-  if (winddirection >= 146.25 && winddirection < 168.75) return TXT_SSE;
-  if (winddirection >= 168.75 && winddirection < 191.25) return TXT_S;
-  if (winddirection >= 191.25 && winddirection < 213.75) return TXT_SSW;
-  if (winddirection >= 213.75 && winddirection < 236.25) return TXT_SW;
-  if (winddirection >= 236.25 && winddirection < 258.75) return TXT_WSW;
-  if (winddirection >= 258.75 && winddirection < 281.25) return TXT_W;
-  if (winddirection >= 281.25 && winddirection < 303.75) return TXT_WNW;
-  if (winddirection >= 303.75 && winddirection < 326.25) return TXT_NW;
-  if (winddirection >= 326.25 && winddirection < 348.75) return TXT_NNW;
-  return "?";
+  int dir = int((winddirection / 22.5) + 0.5);
+  String Ord_direction[16] = {TXT_N, TXT_NNE, TXT_NE, TXT_ENE, TXT_E, TXT_ESE, TXT_SE, TXT_SSE, TXT_S, TXT_SSW, TXT_SW, TXT_WSW, TXT_W, TXT_WNW, TXT_NW, TXT_NNW};
+  return Ord_direction[(dir % 16)];
 }
 //#########################################################################################
 void arrow(int x, int y, int asize, float aangle, int pwidth, int plength) {
@@ -341,7 +327,7 @@ void DisplayWXicon(int x, int y, String IconName, bool IconSize) {
   if      (IconName == "01d" || IconName == "01n")  Sunny(x, y, IconSize, IconName);
   else if (IconName == "02d" || IconName == "02n")  MostlySunny(x, y, IconSize, IconName);
   else if (IconName == "03d" || IconName == "03n")  Cloudy(x, y, IconSize, IconName);
-  else if (IconName == "04d" || IconName == "04n")  MostlySunny(x, y, IconSize, IconName);
+  else if (IconName == "04d" || IconName == "04n")  MostlyCloudy(x, y, IconSize, IconName);
   else if (IconName == "09d" || IconName == "09n")  ChanceRain(x, y, IconSize, IconName);
   else if (IconName == "10d" || IconName == "10n")  Rain(x, y, IconSize, IconName);
   else if (IconName == "11d" || IconName == "11n")  Tstorms(x, y, IconSize, IconName);
@@ -565,9 +551,9 @@ void MostlySunny(int x, int y, bool IconSize, String IconName) {
 }
 //#########################################################################################
 void MostlyCloudy(int x, int y, bool IconSize, String IconName) {
-  int scale = Small, linesize = 3;
-  if (IconSize == LargeIcon) {
-    scale = Large;
+  int scale = Large, linesize = 3;
+  if (IconSize == SmallIcon) {
+    scale = Small;
     linesize = 1;
   }
   if (IconName.endsWith("n")) addmoon(x, y, scale, IconSize);
