@@ -11,6 +11,7 @@ const String TXT_TEMPERATURES         = "Temperatur";
 const String TXT_TEMPERATURE_C        = "Temperatur [°C]";
 const String TXT_TEMPERATURE_F        = "Temperatur [°F]";
 const String TXT_HUMIDITY_PERCENT     = "Luftfeuchte [%]";
+const String TXT_RELATIVE_HUMIDITY    = "rF";
 
 //Luftdruck
 const String TXT_PRESSURE         = "Luftdruck";

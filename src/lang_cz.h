@@ -1,13 +1,14 @@
 #define FONT(x) x##_te
 
 //Temperature - Humidity - Forecast
-const String TXT_FORECAST_VALUES  = "3-denní předpověd";
-const String TXT_CONDITIONS       = "Situace";
-const String TXT_DAYS             = "(Dny)";
-const String TXT_TEMPERATURES     = "Teplota";
-const String TXT_TEMPERATURE_C    = "Teplota (*C)";
-const String TXT_TEMPERATURE_F    = "Teplota (*F)";
-const String TXT_HUMIDITY_PERCENT = "Vlhkost (%)";
+const String TXT_FORECAST_VALUES   = "3-denní předpověd";
+const String TXT_CONDITIONS        = "Situace";
+const String TXT_DAYS              = "(Dny)";
+const String TXT_TEMPERATURES      = "Teplota";
+const String TXT_TEMPERATURE_C     = "Teplota (*C)";
+const String TXT_TEMPERATURE_F     = "Teplota (*F)";
+const String TXT_HUMIDITY_PERCENT  = "Vlhkost (%)";
+const String TXT_RELATIVE_HUMIDITY = "rH";
 
 // Pressure
 const String TXT_PRESSURE         = "Tlak";

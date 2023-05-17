@@ -1,13 +1,14 @@
 #define FONT(x) x##_tf
 
 //Temperature - Humidity - Forecast
-const String TXT_FORECAST_VALUES  = "3 dagers værvarsel";
-const String TXT_CONDITIONS       = "Tilstand";
-const String TXT_DAYS             = "(Dager)";
-const String TXT_TEMPERATURES     = "Temperatur";
-const String TXT_TEMPERATURE_C    = "Temperatur (*C)";
-const String TXT_TEMPERATURE_F    = "Temperatur (*F)";
-const String TXT_HUMIDITY_PERCENT = "Luftfuktighet (%)";
+const String TXT_FORECAST_VALUES   = "3 dagers værvarsel";
+const String TXT_CONDITIONS        = "Tilstand";
+const String TXT_DAYS              = "(Dager)";
+const String TXT_TEMPERATURES      = "Temperatur";
+const String TXT_TEMPERATURE_C     = "Temperatur (*C)";
+const String TXT_TEMPERATURE_F     = "Temperatur (*F)";
+const String TXT_HUMIDITY_PERCENT  = "Luftfuktighet (%)";
+const String TXT_RELATIVE_HUMIDITY = "rH";
 
 // Pressure
 const String TXT_PRESSURE         = "Lufttrykk";

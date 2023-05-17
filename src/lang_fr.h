@@ -7,7 +7,8 @@ const String TXT_DAYS = "(Jours)";
 const String TXT_TEMPERATURES = "Température";
 const String TXT_TEMPERATURE_C = "Température (°C)";
 const String TXT_TEMPERATURE_F = "Température (°F)";
-const String TXT_HUMIDITY_PERCENT = "Humidité (%)";
+const String TXT_HUMIDITY_PERCENT  = "Humidité (%)";
+const String TXT_RELATIVE_HUMIDITY = "rH";
 
 // Pressure
 const String TXT_PRESSURE = "Pression";
