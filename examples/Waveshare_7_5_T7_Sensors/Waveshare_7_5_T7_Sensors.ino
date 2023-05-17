@@ -1629,23 +1629,9 @@ void DisplayDisplayWindSection(int x, int y, float angle, float windspeed, int C
  * \return cardinal direction (localized, 1..3 letters)
  */
 String WindDegToDirection(float winddirection) {
-  if (winddirection >= 348.75 || winddirection < 11.25)  return TXT_N;
-  if (winddirection >=  11.25 && winddirection < 33.75)  return TXT_NNE;
-  if (winddirection >=  33.75 && winddirection < 56.25)  return TXT_NE;
-  if (winddirection >=  56.25 && winddirection < 78.75)  return TXT_ENE;
-  if (winddirection >=  78.75 && winddirection < 101.25) return TXT_E;
-  if (winddirection >= 101.25 && winddirection < 123.75) return TXT_ESE;
-  if (winddirection >= 123.75 && winddirection < 146.25) return TXT_SE;
-  if (winddirection >= 146.25 && winddirection < 168.75) return TXT_SSE;
-  if (winddirection >= 168.75 && winddirection < 191.25) return TXT_S;
-  if (winddirection >= 191.25 && winddirection < 213.75) return TXT_SSW;
-  if (winddirection >= 213.75 && winddirection < 236.25) return TXT_SW;
-  if (winddirection >= 236.25 && winddirection < 258.75) return TXT_WSW;
-  if (winddirection >= 258.75 && winddirection < 281.25) return TXT_W;
-  if (winddirection >= 281.25 && winddirection < 303.75) return TXT_WNW;
-  if (winddirection >= 303.75 && winddirection < 326.25) return TXT_NW;
-  if (winddirection >= 326.25 && winddirection < 348.75) return TXT_NNW;
-  return "?";
+  int dir = int((winddirection / 22.5) + 0.5);
+  String Ord_direction[16] = {TXT_N, TXT_NNE, TXT_NE, TXT_ENE, TXT_E, TXT_ESE, TXT_SE, TXT_SSE, TXT_S, TXT_SSW, TXT_SW, TXT_WSW, TXT_W, TXT_WNW, TXT_NW, TXT_NNW};
+  return Ord_direction[(dir % 16)];
 }
 
 
