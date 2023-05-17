@@ -2210,7 +2210,7 @@ void DisplayConditionsSection(int x, int y, String IconName, bool IconSize) {
   if      (IconName == "01d" || IconName == "01n")  Sunny(x, y, IconSize, IconName);
   else if (IconName == "02d" || IconName == "02n")  MostlySunny(x, y, IconSize, IconName);
   else if (IconName == "03d" || IconName == "03n")  Cloudy(x, y, IconSize, IconName);
-  else if (IconName == "04d" || IconName == "04n")  MostlySunny(x, y, IconSize, IconName);
+  else if (IconName == "04d" || IconName == "04n")  MostlyCloudy(x, y, IconSize, IconName);
   else if (IconName == "09d" || IconName == "09n")  ChanceRain(x, y, IconSize, IconName);
   else if (IconName == "10d" || IconName == "10n")  Rain(x, y, IconSize, IconName);
   else if (IconName == "11d" || IconName == "11n")  Tstorms(x, y, IconSize, IconName);
