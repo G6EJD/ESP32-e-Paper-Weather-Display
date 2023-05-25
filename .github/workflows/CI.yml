@@ -60,11 +60,11 @@ jobs:
           |
           declare -a required_libs=(
             "MQTT@2.5.1"
-            "GxEPD2@1.5.1"
+            "GxEPD2@1.5.2"
             "U8g2_for_Adafruit_GFX@1.8.0"
             "cQueue@1.8.0"
             "TheengsDecoder@1.3.0"
-            "ArduinoJson@6.21.1"
+            "ArduinoJson@6.21.2"
             "pocketBME280@1.2.4"
             "NimBLE-Arduino@1.4.1"
           )
