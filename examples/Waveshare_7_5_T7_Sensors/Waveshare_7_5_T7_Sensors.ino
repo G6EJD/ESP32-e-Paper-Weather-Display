@@ -333,6 +333,12 @@ struct LocalS {
       float    humidity;           //!< humidity in %
       float    pressure;           //! pressure in hPa
   } i2c_thpsensor[1];
+  struct {
+    bool valid;         //!< data valid
+    float temperature;  //!< temperature in degC
+    float humidity;     //!< humidity in %
+    uint16_t co2;       //!< CO2 in ppm
+  } i2c_co2sensor;
 };
 
 typedef struct LocalS local_sensors_t; //!< Shortcut for struct LocalS
