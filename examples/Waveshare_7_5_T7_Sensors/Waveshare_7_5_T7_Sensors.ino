@@ -132,6 +132,7 @@
 
 #define SCREEN_WIDTH  800           //!< EPD screen width
 #define SCREEN_HEIGHT 480           //!< EPD screen height
+#define PARTIAL_UPDATE
 
 long SleepDuration = 30;            //!< Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour (+ SleepOffset)
 long SleepOffset   = -120;          //!< Offset in seconds from SleepDuration; -120 will trigger wakeup 2 minutes earlier
