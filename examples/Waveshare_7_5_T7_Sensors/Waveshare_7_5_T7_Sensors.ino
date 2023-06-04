@@ -92,6 +92,7 @@
 //#define MITHERMOMETER_EN         //!< Enable MiThermometer   (BLE sensors)
 #define THEENGSDECODER_EN          //!< Enable Theengs Decoder (BLE sensors)
 #define BME280_EN                  //!< Enable BME280 T/H/p-sensor (I2C)
+#define SCD4X_EN                   //!< Enable SCD4x CO2-sensor (I2C)
 #define MITHERMOMETER_BATTALERT 6  //!< Low battery alert threshold [%]
 #define WATER_TEMP_INVALID -30.0   //!< Water temperature invalid marker [°C]
 #define I2C_SDA 21                 //!< I2C Serial Data
@@ -123,6 +124,10 @@
 
 #ifdef BME280_EN
   #include <pocketBME280.h>         // https://github.com/angrest/pocketBME280
+#endif
+
+#ifdef SCD4X_EN
+#include <SensirionI2CScd4x.h> // https://github.com/Sensirion/arduino-i2c-scd4x
 #endif
 
 #define SCREEN_WIDTH  800           //!< EPD screen width
@@ -328,6 +333,12 @@ struct LocalS {
       float    humidity;           //!< humidity in %
       float    pressure;           //! pressure in hPa
   } i2c_thpsensor[1];
+  struct {
+    bool valid;         //!< data valid
+    float temperature;  //!< temperature in degC
+    float humidity;     //!< humidity in %
+    uint16_t co2;       //!< CO2 in ppm
+  } i2c_co2sensor;
 };
 
 typedef struct LocalS local_sensors_t; //!< Shortcut for struct LocalS
@@ -1224,50 +1235,84 @@ void DisplayMQTTWeather(void) {
  * \brief Get local sensor data
  */
 void GetLocalData(void) {
-  LocalSensors.ble_thsensor[0].valid  = false;
-  LocalSensors.i2c_thpsensor[0].valid = false; 
+  LocalSensors.ble_thsensor[0].valid = false;
+  LocalSensors.i2c_thpsensor[0].valid = false;
+  LocalSensors.i2c_co2sensor.valid = false;
 
-  #ifdef MITHERMOMETER_EN
-    // Setup BLE Temperature/Humidity Sensors
-    ATC_MiThermometer miThermometer(knownBLEAddresses); //!< Mijia Bluetooth Low Energy Thermo-/Hygrometer
-    miThermometer.begin();
-    
-    // Set sensor data invalid
-    miThermometer.resetData();
-        
-    // Get sensor data - run BLE scan for <bleScanTime>
-    miThermometer.getData(bleScanTime);
-    
-    if (miThermometer.data[0].valid) {
-        LocalSensors.ble_thsensor[0].valid       = true;
-        LocalSensors.ble_thsensor[0].temperature = miThermometer.data[0].temperature/100.0;
-        LocalSensors.ble_thsensor[0].humidity    = miThermometer.data[0].humidity/100.0;
-        LocalSensors.ble_thsensor[0].batt_level  = miThermometer.data[0].batt_level;
-    }
-    miThermometer.clearScanResults();
-  #endif
+#if defined(SCD4X_EN) || defined(BME280_EN)
+  TwoWire myWire = TwoWire(0);
+  myWire.begin(I2C_SDA, I2C_SCL, 100000);
+#endif
+
+#ifdef SCD4X_EN
+  // To Do:
+  // - Move after BME280 code
+  // - Add barometric pressure compansation
+  SensirionI2CScd4x scd4x;
+
+  uint16_t error;
+  char errorMessage[256];
+
+  scd4x.begin(myWire);
+
+  // stop potentially previously started measurement
+  error = scd4x.stopPeriodicMeasurement();
+  if (error) {
+    errorToString(error, errorMessage, 256);
+    log_e("Error trying to execute stopPeriodicMeasurement(): %s", errorMessage);
+  }
   
-  #ifdef THEENGSDECODER_EN
+  // Start Measurement
+  error = scd4x.measureSingleShot();
+  if (error) {
+    errorToString(error, errorMessage, 256);
+    log_e("Error trying to execute measureSingleShot(): %s", errorMessage);
+  }
 
-    // From https://github.com/theengs/decoder/blob/development/examples/ESP32/ScanAndDecode/ScanAndDecode.ino:
-    // MyAdvertisedDeviceCallbacks are still triggered multiple times; this makes keeping track of received
-    // sensors difficult. Setting ScanFilterMode to CONFIG_BTDM_SCAN_DUPL_TYPE_DATA_DEVICE seems to
-    // restrict callback invocation to once per device as desired.
-    //NimBLEDevice::setScanFilterMode(CONFIG_BTDM_SCAN_DUPL_TYPE_DEVICE);
-    NimBLEDevice::setScanFilterMode(CONFIG_BTDM_SCAN_DUPL_TYPE_DATA_DEVICE);
-    NimBLEDevice::setScanDuplicateCacheSize(200);
-    NimBLEDevice::init("");
+  log_d("First measurement takes ~5 sec...");
+#endif
 
-    pBLEScan = NimBLEDevice::getScan(); //create new scan
-    // Set the callback for when devices are discovered, no duplicates.
-    pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks(), false);
-    pBLEScan->setActiveScan(true); // Set active scanning, this will get more data from the advertiser.
-    pBLEScan->setInterval(97); // How often the scan occurs / switches channels; in milliseconds,
-    pBLEScan->setWindow(37);  // How long to scan during the interval; in milliseconds.
-    pBLEScan->setMaxResults(0); // do not store the scan results, use callback only.
-    pBLEScan->start(bleScanTime, false /* is_continue */);
-  #endif
-      
+#ifdef MITHERMOMETER_EN
+  // Setup BLE Temperature/Humidity Sensors
+  ATC_MiThermometer miThermometer(knownBLEAddresses);  //!< Mijia Bluetooth Low Energy Thermo-/Hygrometer
+  miThermometer.begin();
+
+  // Set sensor data invalid
+  miThermometer.resetData();
+
+  // Get sensor data - run BLE scan for <bleScanTime>
+  miThermometer.getData(bleScanTime);
+
+  if (miThermometer.data[0].valid) {
+    LocalSensors.ble_thsensor[0].valid = true;
+    LocalSensors.ble_thsensor[0].temperature = miThermometer.data[0].temperature / 100.0;
+    LocalSensors.ble_thsensor[0].humidity = miThermometer.data[0].humidity / 100.0;
+    LocalSensors.ble_thsensor[0].batt_level = miThermometer.data[0].batt_level;
+  }
+  miThermometer.clearScanResults();
+#endif
+
+#ifdef THEENGSDECODER_EN
+
+  // From https://github.com/theengs/decoder/blob/development/examples/ESP32/ScanAndDecode/ScanAndDecode.ino:
+  // MyAdvertisedDeviceCallbacks are still triggered multiple times; this makes keeping track of received
+  // sensors difficult. Setting ScanFilterMode to CONFIG_BTDM_SCAN_DUPL_TYPE_DATA_DEVICE seems to
+  // restrict callback invocation to once per device as desired.
+  //NimBLEDevice::setScanFilterMode(CONFIG_BTDM_SCAN_DUPL_TYPE_DEVICE);
+  NimBLEDevice::setScanFilterMode(CONFIG_BTDM_SCAN_DUPL_TYPE_DATA_DEVICE);
+  NimBLEDevice::setScanDuplicateCacheSize(200);
+  NimBLEDevice::init("");
+
+  pBLEScan = NimBLEDevice::getScan();  //create new scan
+  // Set the callback for when devices are discovered, no duplicates.
+  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks(), false);
+  pBLEScan->setActiveScan(true);  // Set active scanning, this will get more data from the advertiser.
+  pBLEScan->setInterval(97);      // How often the scan occurs / switches channels; in milliseconds,
+  pBLEScan->setWindow(37);        // How long to scan during the interval; in milliseconds.
+  pBLEScan->setMaxResults(0);     // do not store the scan results, use callback only.
+  pBLEScan->start(bleScanTime, false /* is_continue */);
+#endif
+
   if (LocalSensors.ble_thsensor[0].valid) {
     log_d("Outdoor Air Temp.:   % 3.1f °C", LocalSensors.ble_thsensor[0].temperature);
     log_d("Outdoor Humidity:     %3.1f %%", LocalSensors.ble_thsensor[0].humidity);
@@ -1278,37 +1323,74 @@ void GetLocalData(void) {
     log_d("Outdoor Sensor Batt:  --   %%");
   }
 
-  #ifdef BME280_EN
-    TwoWire myWire = TwoWire(0);
-    myWire.begin(I2C_SDA, I2C_SCL, 100000);
 
-    pocketBME280 bme280;
-    bme280.setAddress(0x77);
-    log_v("BME280: start");
-    if (bme280.begin(myWire)) {
-        LocalSensors.i2c_thpsensor[0].valid = true;
-        bme280.startMeasurement();
-        while (!bme280.isMeasuring()) {
-          log_v("BME280: Waiting for Measurement to start");
-          delay(1);
-        }
-        while (bme280.isMeasuring()) {
-          log_v("BME280: Measurement in progress");
-          delay(1);
-        }
-        LocalSensors.i2c_thpsensor[0].temperature = bme280.getTemperature() / 100.0;
-        LocalSensors.i2c_thpsensor[0].pressure    = bme280.getPressure() / 100.0;
-        LocalSensors.i2c_thpsensor[0].humidity    = bme280.getHumidity() / 1024.0;
-        log_d("Indoor Temperature: %.1f °C", LocalSensors.i2c_thpsensor[0].temperature);
-        log_d("Indoor Pressure: %.0f hPa",   LocalSensors.i2c_thpsensor[0].pressure);
-        log_d("Indoor Humidity: %.0f %%rH",  LocalSensors.i2c_thpsensor[0].humidity);
+#ifdef BME280_EN
+  pocketBME280 bme280;
+  bme280.setAddress(0x77);
+  log_v("BME280: start");
+  if (bme280.begin(myWire)) {
+    LocalSensors.i2c_thpsensor[0].valid = true;
+    bme280.startMeasurement();
+    while (!bme280.isMeasuring()) {
+      log_v("BME280: Waiting for Measurement to start");
+      delay(1);
     }
-    else {
-        log_d("Indoor Temperature: --.- °C");
-        log_d("Indoor Pressure:    --   hPa");
-        log_d("Indoor Humidity:    --  %%rH");      
+    while (bme280.isMeasuring()) {
+      log_v("BME280: Measurement in progress");
+      delay(1);
     }
-  #endif
+    LocalSensors.i2c_thpsensor[0].temperature = bme280.getTemperature() / 100.0;
+    LocalSensors.i2c_thpsensor[0].pressure = bme280.getPressure() / 100.0;
+    LocalSensors.i2c_thpsensor[0].humidity = bme280.getHumidity() / 1024.0;
+    log_d("Indoor Temperature: %.1f °C", LocalSensors.i2c_thpsensor[0].temperature);
+    log_d("Indoor Pressure: %.0f hPa", LocalSensors.i2c_thpsensor[0].pressure);
+    log_d("Indoor Humidity: %.0f %%rH", LocalSensors.i2c_thpsensor[0].humidity);
+  } else {
+    log_d("Indoor Temperature: --.- °C");
+    log_d("Indoor Pressure:    --   hPa");
+    log_d("Indoor Humidity:    --  %%rH");
+  }
+#endif
+
+#ifdef SCD4X_EN
+  if (LocalSensors.i2c_thpsensor[0].valid) {
+    error = scd4x.setAmbientPressure((uint16_t)LocalSensors.i2c_thpsensor[0].pressure);
+    if (error) {
+      errorToString(error, errorMessage, 256);
+      log_e("Error trying to execute setAmbientPressure(): %s", errorMessage);
+    }
+  }
+  // Read Measurement
+  bool isDataReady = false;
+
+  for (int i=0; i < 50; i++) {
+    error = scd4x.getDataReadyFlag(isDataReady);
+    if (error) {
+      errorToString(error, errorMessage, 256);
+      log_e("Error trying to execute getDataReadyFlag(): %s", errorMessage);
+    }
+    if (error || isDataReady) {
+      break;
+    }
+    delay(100);
+  }
+
+  if (isDataReady && !error) {
+    error = scd4x.readMeasurement(LocalSensors.i2c_co2sensor.co2, LocalSensors.i2c_co2sensor.temperature, LocalSensors.i2c_co2sensor.humidity);
+    if (error) {
+        errorToString(error, errorMessage, 256);
+        log_e("Error trying to execute readMeasurement(): %s", errorMessage);
+    } else if (LocalSensors.i2c_co2sensor.co2 == 0) {
+        log_e("Invalid sample detected, skipping.");
+    } else {
+        log_d("SCD4x CO2: %d ppm", LocalSensors.i2c_co2sensor.co2);
+        log_d("SCD4x Temperature: %4.1f °C", LocalSensors.i2c_co2sensor.temperature);
+        log_d("SCD4x Humidity: %3.1f %%rH", LocalSensors.i2c_co2sensor.humidity);
+        LocalSensors.i2c_co2sensor.valid = true;
+    }
+  }
+#endif
+
 }
 
 
@@ -1381,13 +1463,22 @@ void DisplayLocalWeather() {
   
   DisplayGeneralInfoSection();
   DisplayDateTime(90, 225);
-  display.drawBitmap(  5,  25, epd_bitmap_local, 220, 165, GxEPD_BLACK);
-  display.drawRect(    4,  24, 222, 167, GxEPD_BLACK);
-  display.drawBitmap(240,  45, epd_bitmap_temperatur_aussen, 64, 48, GxEPD_BLACK);
-  display.drawBitmap(438,  45, epd_bitmap_feuchte_aussen, 64, 48, GxEPD_BLACK);
-  display.drawBitmap(240, 178, epd_bitmap_temperatur_innen, 64, 48, GxEPD_BLACK);
-  display.drawBitmap(438, 178, epd_bitmap_feuchte_innen, 64, 48, GxEPD_BLACK);
-  display.drawBitmap(660,  20, epd_bitmap_barometer, 80, 64, GxEPD_BLACK);
+#ifdef SCD4X_EN    
+    const int y1 = 125;
+#else
+    const int y1 = 178;
+#endif
+    const int y2 = 210;
+    display.drawBitmap(5, 25, epd_bitmap_local, 220, 165, GxEPD_BLACK);
+    display.drawRect(4, 24, 222, 167, GxEPD_BLACK);
+    display.drawBitmap(240, 45, epd_bitmap_temperatur_aussen, 64, 48, GxEPD_BLACK);
+    display.drawBitmap(438, 45, epd_bitmap_feuchte_aussen, 64, 48, GxEPD_BLACK);
+    display.drawBitmap(240, y1, epd_bitmap_temperatur_innen, 64, 48, GxEPD_BLACK);
+    display.drawBitmap(438, y1, epd_bitmap_feuchte_innen, 64, 48, GxEPD_BLACK);
+    display.drawBitmap(660, 20, epd_bitmap_barometer, 80, 64, GxEPD_BLACK);
+#ifdef SCD4X_EN    
+    display.drawBitmap(240, y2, epd_bitmap_co2_innen, 48, 48, GxEPD_BLACK);
+#endif
 
   // Find min/max temperature in local history data
   float outdoorTMin = 0;
@@ -1418,23 +1509,35 @@ void DisplayLocalWeather() {
     display.drawBitmap(528,  47, epd_bitmap_bluetooth_disabled, 40, 40, GxEPD_BLACK);
   }
 
-  // Indoor sensor
-  if (LocalSensors.i2c_thpsensor[0].valid) {
-    DisplayLocalTemperatureSection(358, 156, 137, 100, "", true, LocalSensors.i2c_thpsensor[0].temperature, false, 0, 0);
-    //u8g2Fonts.setFont(u8g2_font_helvB24_tf);
-    //u8g2Fonts.setFont(u8g2_font_helvB18_tf);
-    u8g2Fonts.setFont(u8g2_font_helvR24_tf);
-    drawString(524, 208, String(LocalSensors.i2c_thpsensor[0].humidity, 0) + "%", CENTER);
-    drawString(660, 110, String(LocalSensors.i2c_thpsensor[0].pressure, 0) + "hPa", CENTER);
-  }
-  else {
-     // No indoor temperature 
-     display.drawBitmap(315,  180, epd_bitmap_bolt, 40, 40, GxEPD_BLACK);
-     // No indoor humidity
-     display.drawBitmap(523,  180, epd_bitmap_bolt, 40, 40, GxEPD_BLACK);
-     // No pressure
-     display.drawBitmap(670,   90, epd_bitmap_bolt, 40, 40, GxEPD_BLACK);
-  }
+    // Indoor sensor(s)
+    // Temperature, humidity, pressure
+    if (LocalSensors.i2c_thpsensor[0].valid) {
+      DisplayLocalTemperatureSection(358, y1-22, 137, 100, "", true, LocalSensors.i2c_thpsensor[0].temperature, false, 0, 0);
+      //u8g2Fonts.setFont(u8g2_font_helvB24_tf);
+      //u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+      u8g2Fonts.setFont(u8g2_font_helvR24_tf);
+      drawString(524, y1+30, String(LocalSensors.i2c_thpsensor[0].humidity, 0) + "%", CENTER);
+      drawString(660, 110, String(LocalSensors.i2c_thpsensor[0].pressure, 0) + "hPa", CENTER);
+    } else {
+      // No indoor temperature
+      display.drawBitmap(315, y1+2, epd_bitmap_bolt, 40, 40, GxEPD_BLACK);
+      // No indoor humidity
+      display.drawBitmap(523, y1+2, epd_bitmap_bolt, 40, 40, GxEPD_BLACK);
+      // No pressure
+      display.drawBitmap(670, 90, epd_bitmap_bolt, 40, 40, GxEPD_BLACK);
+    }
+
+#if defined(SCD4X_EN)
+    // CO2
+    if (LocalSensors.i2c_co2sensor.valid) {
+      u8g2Fonts.setFont(u8g2_font_helvR24_tf);
+      drawString(323, y2+30, String(LocalSensors.i2c_co2sensor.co2) + "ppm", CENTER);
+    } else {
+      // No CO2
+      display.drawBitmap(315, y2+2, epd_bitmap_bolt, 40, 40, GxEPD_BLACK);
+    }
+#endif
+  
   DisplayLocalHistory();
   DrawRSSI(705, 15, wifi_signal); // Wi-Fi signal strength
 }
