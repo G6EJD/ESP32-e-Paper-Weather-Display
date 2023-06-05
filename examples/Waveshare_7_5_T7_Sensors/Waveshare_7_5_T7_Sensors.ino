@@ -67,8 +67,6 @@
 #include "WeatherSymbols.h"       // Functions for drawing weather symbols at runtime
 #include "bitmap_icons.h"             // Icon bitmaps
 #include "bitmap_weather_report.h"    // Picture shown on ScreenStart
-#include "bitmap_local.h"             // Picture shown on ScreenLocal - replace by your own
-#include "bitmap_remote.h"            // Picture shown on ScreenMQTT  - replace by your own
 
 
 //#define SIMULATE_MQTT
