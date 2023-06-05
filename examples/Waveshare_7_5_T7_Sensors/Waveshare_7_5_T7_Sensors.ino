@@ -2309,30 +2309,28 @@ void DisplayMqttHistory() {
  */
 void DisplayConditionsSection(int x, int y, String IconName, bool IconSize) {
   log_d("Icon name: %s", IconName.c_str());
-  if      (IconName == "01d" || IconName == "01n")  Sunny(x, y, IconSize, IconName);
-  else if (IconName == "02d" || IconName == "02n")  MostlySunny(x, y, IconSize, IconName);
-  else if (IconName == "03d" || IconName == "03n")  Cloudy(x, y, IconSize, IconName);
-  else if (IconName == "04d" || IconName == "04n")  MostlyCloudy(x, y, IconSize, IconName);
-  else if (IconName == "09d" || IconName == "09n")  ChanceRain(x, y, IconSize, IconName);
-  else if (IconName == "10d" || IconName == "10n")  Rain(x, y, IconSize, IconName);
-  else if (IconName == "11d" || IconName == "11n")  Tstorms(x, y, IconSize, IconName);
-  else if (IconName == "13d" || IconName == "13n")  Snow(x, y, IconSize, IconName);
-  else if (IconName == "50d")                       Haze(x, y, IconSize, IconName);
-  else if (IconName == "50n")                       Fog(x, y, IconSize, IconName);
-  else                                              Nodata(x, y, IconSize, IconName);
+  if (IconName == "01d" || IconName == "01n") Sunny(x, y, IconSize, IconName);
+  else if (IconName == "02d" || IconName == "02n") MostlySunny(x, y, IconSize, IconName);
+  else if (IconName == "03d" || IconName == "03n") Cloudy(x, y, IconSize, IconName);
+  else if (IconName == "04d" || IconName == "04n") MostlyCloudy(x, y, IconSize, IconName);
+  else if (IconName == "09d" || IconName == "09n") ChanceRain(x, y, IconSize, IconName);
+  else if (IconName == "10d" || IconName == "10n") Rain(x, y, IconSize, IconName);
+  else if (IconName == "11d" || IconName == "11n") Tstorms(x, y, IconSize, IconName);
+  else if (IconName == "13d" || IconName == "13n") Snow(x, y, IconSize, IconName);
+  else if (IconName == "50d") Haze(x, y, IconSize, IconName);
+  else if (IconName == "50n") Fog(x, y, IconSize, IconName);
+  else Nodata(x, y, IconSize, IconName);
   if (IconSize == LargeIcon) {
     display.drawRect(x - 86, y - 131, 173, 228, GxEPD_BLACK);
     u8g2Fonts.setFont(u8g2_font_helvB08_tf);
     drawString(x, y - 125, TXT_CONDITIONS, CENTER);
     u8g2Fonts.setFont(u8g2_font_helvB14_tf);
-    drawString(x - 25, y + 70, String(WxConditions[0].Humidity, 0) + "%", CENTER);
+    drawString(x - 25, y + 70, String(WxConditions[0].Humidity, 0) + "% " + TXT_RELATIVE_HUMIDITY, CENTER);
     u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-    drawString(x + 35, y + 70, "RH", CENTER);
     if (WxConditions[0].Visibility > 0) Visibility(x - 62, y - 87, String(WxConditions[0].Visibility) + "M");
     if (WxConditions[0].Cloudcover > 0) CloudCover(x + 35, y - 87, WxConditions[0].Cloudcover);
   }
 }
-
 
 
 /**
