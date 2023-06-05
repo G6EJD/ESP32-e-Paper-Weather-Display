@@ -8,6 +8,7 @@
 * Local Sensor Data Display
     * [Theengs Decoder](https://github.com/theengs/decoder) Bluetooth Low Energy Sensors Integration
     * [BME280 Temperature/Humidity/Barometric Pressure Sensor](https://www.bosch-sensortec.com/products/environmental-sensors/humidity-sensors-bme280/) Integration
+    * [Sensirion SCD4x CO<sub>2</sub> Sensor](https://developer.sensirion.com/sensirion-products/scd4x-co2-sensors/) Integration
 * Remote Sensor Data Display
     * MQTT Client Integration (e.g. for [BresserWeatherSensorReceiver](https://github.com/matthias-bs/BresserWeatherSensorReceiver) or [BresserWeatherSensorTTN](https://github.com/matthias-bs/BresserWeatherSensorTTN))
 * Switching between virtual Screens via TTP223 Touch Sensors
