@@ -541,6 +541,8 @@ void setup() {
     
 #if (CORE_DEBUG_LEVEL >= ARDUHAL_LOG_LEVEL_INFO)
     int time_ok = SetupTime();
+#else
+    SetupTime();
 #endif
   
     log_i("WiFi o.k.: %d", wifi_ok);
