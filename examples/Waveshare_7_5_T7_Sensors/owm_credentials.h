@@ -71,3 +71,5 @@ int  daylightOffset_sec = 3600; // In the UK DST is +1hr or 3600-secs, other cou
 // Locations / Screen Titles
 #define LOCATIONS_TXT {"Forecast", "Local", "Remote", "Start"}
 
+#include "bitmap_local.h"             // Picture shown on ScreenLocal - replace by your own
+#include "bitmap_remote.h"            // Picture shown on ScreenMQTT  - replace by your own
