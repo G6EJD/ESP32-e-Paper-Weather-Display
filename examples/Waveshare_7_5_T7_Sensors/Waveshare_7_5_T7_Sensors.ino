@@ -57,6 +57,7 @@
 #include "owm_credentials.h"          // See 'owm_credentials' tab and enter your OWM API key and set the Wifi SSID and PASSWORD
 #include <ArduinoJson.h>              // https://github.com/bblanchon/ArduinoJson needs version v6 or above
 #include <WiFi.h>                     // Built-in
+#include <WiFiMulti.h>                // Built-in
 //#include <WiFiClientSecure.h>
 #include <time.h>                     // Built-in
 #include <SPI.h>                      // Built-in
@@ -361,6 +362,12 @@ RTC_DATA_ATTR time_t       LocalHistTStamp = 0;        //!< Last Local History U
 
 RTC_DATA_ATTR int   ScreenNo     = START_SCREEN; //!< Current Screen No.
 RTC_DATA_ATTR int   PrevScreenNo = -1;           //!< Previous Screen No.
+
+// WiFi connection to multiple alternative access points
+WiFiMulti wifiMulti;
+
+// WiFi connect timeout per AP. Increase when connecting takes longer.
+const uint32_t connectTimeoutMs = 10000;
 
 
 /**
@@ -2373,33 +2380,23 @@ uint8_t StartWiFi() {
   if (WiFi.status() == WL_CONNECTED) {
     return WL_CONNECTED;
   }
-  log_i("Connecting to: %s", ssid);
-  //IPAddress dns(8, 8, 8, 8); // Google DNS
-  //IPAddress dns(192, 168, 0, 1); // Local DNS
+  
   IPAddress dns(MY_DNS);
   WiFi.disconnect();
-  WiFi.mode(WIFI_STA); // switch off AP
+  WiFi.mode(WIFI_STA);  // switch off AP
   WiFi.setAutoConnect(true);
   WiFi.setAutoReconnect(true);
-  WiFi.begin(ssid, password);
-  unsigned long start = millis();
-  uint8_t connectionStatus;
-  bool AttemptConnection = true;
-  while (AttemptConnection) {
-    connectionStatus = WiFi.status();
-    if (millis() > start + 15000) { // Wait 15-secs maximum
-      AttemptConnection = false;
-    }
-    if (connectionStatus == WL_CONNECTED || connectionStatus == WL_CONNECT_FAILED) {
-      AttemptConnection = false;
-    }
-    delay(50);
-  }
+
+  uint8_t connectionStatus = wifiMulti.run();
+
   if (connectionStatus == WL_CONNECTED) {
-    wifi_signal = WiFi.RSSI(); // Get Wifi Signal strength now, because the WiFi will be turned off to save power!
+    String ssid = WiFi.SSID();
+    wifi_signal = WiFi.RSSI();  // Get Wifi Signal strength now, because the WiFi will be turned off to save power!
+    log_i("WiFi connected to '%s'", ssid.c_str());
     log_i("WiFi connected at: %s", WiFi.localIP().toString().c_str());
+  } else {
+    log_w("WiFi connection failed!");
   }
-  else log_w("WiFi connection failed!");
   return connectionStatus;
 }
 
