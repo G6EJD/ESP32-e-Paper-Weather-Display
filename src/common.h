@@ -55,7 +55,8 @@ bool DecodeWeather(WiFiClient& json, String Type) {
     WxConditions[0].Country     = root["sys"]["country"].as<const char*>();            Serial.println("Ctry: "+String(WxConditions[0].Country));
     WxConditions[0].Sunrise     = root["sys"]["sunrise"].as<int>();                    Serial.println("SRis: "+String(WxConditions[0].Sunrise));
     WxConditions[0].Sunset      = root["sys"]["sunset"].as<int>();                     Serial.println("SSet: "+String(WxConditions[0].Sunset));
-    WxConditions[0].Timezone    = root["timezone"].as<int>();                          Serial.println("TZon: "+String(WxConditions[0].Timezone));  }
+    WxConditions[0].Timezone    = root["timezone"].as<int>();                          Serial.println("TZon: "+String(WxConditions[0].Timezone));
+  }
   if (Type == "forecast") {
     //Serial.println(json);
     Serial.print(F("\nReceiving Forecast period - ")); //------------------------------------------------
