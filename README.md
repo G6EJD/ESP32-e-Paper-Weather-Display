@@ -43,6 +43,7 @@ Also see: https://www.arduino.cc/en/Guide/Libraries#toc4
 - [pocketBME280](https://github.com/angrest/pocketBME280) by Axel Grewe
 - [NimBLE-Arduino](https://github.com/h2zero/NimBLE-Arduino) by h2zero
 - [Theengs Decoder](https://github.com/theengs/decoder) by Florian Robert
+- [I2C SCD4x Arduino Library](https://github.com/Sensirion/arduino-i2c-scd4x) by Sensirion
 - [Arduino MQTT](https://github.com/256dpi/arduino-mqtt) by Joël Gähwiler
 - [cQueue](https://github.com/SMFSW/cQueue) by SMFSW
 
