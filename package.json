@@ -1,6 +1,6 @@
 {
   "name": "ESP32-e-Paper-Weather-Display",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "An ESP32 7.5in ePaper Display showing data from OpenWeather, local sensors and MQTT brokers",
   "main": "Waveshare_7_5_T7_Sensors.ino",
   "frameworks": "arduino",
