@@ -1,5 +1,6 @@
 # ESP32-e-Paper-Weather-Display
 [![CI](https://github.com/matthias-bs/ESP32-e-Paper-Weather-Display/actions/workflows/CI.yml/badge.svg)](https://github.com/matthias-bs/ESP32-e-Paper-Weather-Display/actions/workflows/CI.yml)
+[![GitHub release](https://img.shields.io/github/release/matthias-bs/ESP32-e-Paper-Weather-Display?maxAge=3600)](https://github.com/matthias-bs/ESP32-e-Paper-Weather-Display/releases)
 
 <img src="https://github.com/matthias-bs/ESP32-e-Paper-Weather-Display/blob/main/weather_station_architecture.png" alt="Weather Station Architecture Diagram" width="1080">
 
