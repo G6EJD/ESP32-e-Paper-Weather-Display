@@ -747,6 +747,8 @@ void setup() {
     SaveRainHrData();
   }
   SaveRainDayData();
+
+  MqttUplink(net, MqttClient, LocalSensors);
   StopWiFi();
   BeginSleep();
 }
@@ -911,6 +913,92 @@ bool MqttConnect(WiFiClient &net, MQTTClient &MqttClient) {
     log_i("MQTT subscription failed!");
     return false;
   }
+  return true;
+}
+
+bool MqttUplink(WiFiClient &net, MQTTClient &MqttClient, local_sensors_t &data) {
+  char payload[21];
+  char topic[41];
+
+  log_d("Checking wifi...");
+  if (StartWiFi() != WL_CONNECTED) {
+    return false;
+  }
+
+  log_i("MQTT (publishing) connecting...");
+  unsigned long start = millis();
+
+  MqttClient.begin(MQTT_HOST_P, MQTT_PORT_P, net);
+  MqttClient.setOptions(MQTT_KEEPALIVE /* keepAlive [s] */, MQTT_CLEAN_SESSION /* cleanSession */, MQTT_TIMEOUT * 1000 /* timeout [ms] */);
+
+  while (!MqttClient.connect(Hostname, MQTT_USER_P, MQTT_PASS_P)) {
+    log_d(".");
+    if (millis() > start + MQTT_CONNECT_TIMEOUT * 1000) {
+      log_i("Connect timeout!");
+      return false;
+    }
+    delay(1000);
+  }
+  log_i("Connected!");
+  
+  log_d("Publishing...");
+#if defined(SCD4X_EN)
+  if (data.i2c_co2sensor.valid) {
+    snprintf(payload, 20, "%u", data.i2c_co2sensor.co2);
+    snprintf(topic, 40, "%s/sdc4x/co2", Hostname);
+    MqttClient.publish(topic, payload);
+
+    snprintf(payload, 20, "%3.1f", data.i2c_co2sensor.temperature);
+    snprintf(topic, 40, "%s/sdc4x/temperature", Hostname);
+    MqttClient.publish(topic, payload);
+
+    snprintf(payload, 20, "%3.0f", data.i2c_co2sensor.humidity);
+    snprintf(topic, 40, "%s/sdc4x/humidity", Hostname);
+    MqttClient.publish(topic, payload);
+
+  }
+#endif
+
+#if defined(BME280_EN)
+  if (data.i2c_thpsensor[0].valid) {
+    snprintf(payload, 20, "%3.1f", data.i2c_thpsensor[0].temperature);
+    snprintf(topic, 40, "%s/bme280/temperature", Hostname);
+    MqttClient.publish(topic, payload);
+    
+    snprintf(payload, 20, "%3.0f", data.i2c_thpsensor[0].humidity);
+    snprintf(topic, 40, "%s/bme280/humidity", Hostname);
+    MqttClient.publish(topic, payload);
+
+    snprintf(payload, 20, "%4.0f", data.i2c_thpsensor[0].pressure);
+    snprintf(topic, 40, "%s/bme280/pressure", Hostname);
+    MqttClient.publish(topic, payload);
+  }
+#endif
+
+#if defined(THEENGSDECODER_EN) || defined(THEENGSDECODER_EN)
+  if (data.ble_thsensor[0].valid) {
+    snprintf(payload, 20, "%3.1f", data.ble_thsensor[0].temperature);
+    snprintf(topic, 40, "%s/ble/temperature", Hostname);
+    MqttClient.publish(topic, payload);
+
+    snprintf(payload, 20, "%3.0f", data.ble_thsensor[0].humidity);
+    snprintf(topic, 40, "%s/ble/humidity", Hostname);
+    MqttClient.publish(topic, payload);
+
+    snprintf(payload, 20, "%u", data.ble_thsensor[0].batt_level);
+    snprintf(topic, 40, "%s/ble/batt_level", Hostname);
+    MqttClient.publish(topic, payload);
+  }
+#endif
+ 
+  for (int i=0; i < 10; i++) {
+    MqttClient.loop();
+    delay(500);
+  }
+  
+  log_i("MQTT (publishing) disconnect.");
+  MqttClient.disconnect();
+
   return true;
 }
 
