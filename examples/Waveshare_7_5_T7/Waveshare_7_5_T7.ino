@@ -28,6 +28,7 @@
 #include <U8g2_for_Adafruit_GFX.h>
 #include "epaper_fonts.h"
 #include "forecast_record.h"
+#include "river_record.h"
 #include "lang.h"                     // Localisation (English)
 //#include "lang_cz.h"                  // Localisation (Czech)
 //#include "lang_fr.h"                  // Localisation (French)
@@ -86,9 +87,11 @@ long    StartTime = 0;
 //################ PROGRAM VARIABLES and OBJECTS ################
 
 #define max_readings 24
+#define max_gauge_readings 96
 
 Forecast_record_type  WxConditions[1];
 Forecast_record_type  WxForecast[max_readings];
+River_record_type     SxHindcast[max_gauge_readings];
 
 #include "common.h"
 
@@ -98,6 +101,9 @@ Forecast_record_type  WxForecast[max_readings];
 #define barchart_off  false
 #define lhs_yaxis     true
 #define rhs_yaxis     false
+
+float levels_readings[max_gauge_readings] = {0};
+String hour_readings[max_gauge_readings] = {"A"};
 
 float pressure_readings[max_readings]    = {0};
 float temperature_readings[max_readings] = {0};
@@ -118,13 +124,18 @@ void setup() {
     if ((CurrentHour >= WakeupTime && CurrentHour <= SleepTime) || DebugDisplayUpdate) {
       InitialiseDisplay(); // Give screen time to initialise by getting weather data!
       byte Attempts = 1;
-      bool RxWeather = false, RxForecast = false;
+      bool RxWeather = false, RxForecast = false, RxEA = false;
       WiFiClient client;   // wifi client object
       while ((RxWeather == false || RxForecast == false) && Attempts <= 2) { // Try up-to 2 time for Weather and Forecast data
         if (RxWeather  == false) RxWeather  = obtain_wx_data(client, "weather");
         if (RxForecast == false) RxForecast = obtain_wx_data(client, "forecast");
         Attempts++;
       }
+      Attempts = 1; // reset
+      while ((RxEA == false) && Attempts <= 2) { // Try up-to 2 time for EA data
+        RxEA = obtain_ea_data(client, "tide");
+        Attempts++;
+      }      
       if (RxWeather && RxForecast) { // Only if received both Weather or Forecast proceed
         StopWiFi(); // Reduces power consumption
         DisplayWeather();
@@ -934,6 +945,62 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
 }
 
 //#########################################################################################
+void DrawWaterLevelGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], String TimeArray[], int readings, boolean auto_scale, boolean barchart_mode, boolean lhs_flag) {
+#define auto_scale_margin 0 // Sets the autoscale increment, so axis steps up in units of e.g. 3
+#define y_minor_axis 4      // 4-1 y-axis division markers
+  float maxYscale = -10000;
+  float minYscale =  10000;
+  int last_x, last_y;
+  float x2, y2;
+  String xlab;
+  if (auto_scale == true) {
+    for (int i = 1; i < readings; i++ ) {
+      if (DataArray[i] >= maxYscale) maxYscale = DataArray[i];
+      if (DataArray[i] <= minYscale) minYscale = DataArray[i];
+    }
+    maxYscale = round(maxYscale + auto_scale_margin); // Auto scale the graph and round to the nearest value defined, default was Y1Max
+    Y1Max = round(maxYscale + 0.5);
+    if (minYscale != 0) minYscale = round(minYscale - auto_scale_margin); // Auto scale the graph and round to the nearest value defined, default was Y1Min
+    Y1Min = round(minYscale);
+  }
+  // Draw the graph
+  last_x = x_pos + gwidth;
+  last_y = y_pos + (Y1Max - constrain(DataArray[1], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight;
+  display.drawRect(x_pos, y_pos, gwidth + 3, gheight + 2, GxEPD_BLACK);
+  drawString(x_pos + gwidth / 2, y_pos - 13, title, CENTER);
+  // Draw the data
+  for (int gx = 0; gx < readings; gx++) {
+    y2 = y_pos + (Y1Max - constrain(DataArray[gx], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight + 1;
+    x2 = x_pos + gwidth - gx * gwidth / (readings - 1) + 1; // max_readings is the global variable that sets the maximum data that can be plotted. Increase time left to right
+    display.drawLine(last_x, last_y, x2, y2, GxEPD_BLACK);
+    if (TimeArray[gx].length() > 1) { 
+      xlab = TimeArray[gx].substring(8,16)+"Z";
+      }
+    else { xlab = ""; }
+    drawString(x2, y_pos + gheight + 3, xlab, CENTER); // String format: 2023-10-26T03:15:00Z
+    last_x = x2;
+    last_y = y2;
+  }
+  //Draw the Y-axis scale
+#define number_of_dashes 100 // dashes for y=constant guides
+  for (int spacing = 0; spacing <= y_minor_axis; spacing++) {
+    for (int j = 0; j < number_of_dashes; j++) { // Draw dashed graph grid lines
+      if (spacing < y_minor_axis) display.drawFastHLine((x_pos + 3 + j * gwidth / number_of_dashes), y_pos + (gheight * spacing / y_minor_axis), gwidth / (2 * number_of_dashes), GxEPD_BLACK);
+    }
+    if ((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing) < 5) {
+      drawString(x_pos - 1, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1), RIGHT);
+    }
+    else
+    {
+      if (Y1Min < 1 && Y1Max < 10)
+        drawString(x_pos - 1, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1), RIGHT);
+      else
+        drawString(x_pos - 2, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 0), RIGHT);
+    }
+  }
+  
+}
+//#########################################################################################
 void drawString(int x, int y, String text, alignment align) {
   int16_t  x1, y1; //the bounds of x,y and w and h of the variable 'text' in pixels.
   uint16_t w, h;
@@ -981,30 +1048,78 @@ void InitialiseDisplay() {
   display.setFullWindow();
 }
 //#########################################################################################
-/*String Translate_EN_DE(String text) {
-  if (text == "clear")            return "klar";
-  if (text == "sunny")            return "sonnig";
-  if (text == "mist")             return "Nebel";
-  if (text == "fog")              return "Nebel";
-  if (text == "rain")             return "Regen";
-  if (text == "shower")           return "Regenschauer";
-  if (text == "cloudy")           return "wolkig";
-  if (text == "clouds")           return "Wolken";
-  if (text == "drizzle")          return "Nieselregen";
-  if (text == "snow")             return "Schnee";
-  if (text == "thunderstorm")     return "Gewitter";
-  if (text == "light")            return "leichter";
-  if (text == "heavy")            return "schwer";
-  if (text == "mostly cloudy")    return "größtenteils bewölkt";
-  if (text == "overcast clouds")  return "überwiegend bewölkt";
-  if (text == "scattered clouds") return "aufgelockerte Bewölkung";
-  if (text == "few clouds")       return "ein paar Wolken";
-  if (text == "clear sky")        return "klarer Himmel";
-  if (text == "broken clouds")    return "aufgerissene Bewölkung";
-  if (text == "light rain")       return "leichter Regen";
-  return text;
+bool obtain_ea_data(WiFiClient& client, const String& RequestType) {
+  const String units = (Units == "M" ? "metric" : "imperial");
+  client.stop(); // close connection before sending a new request
+  HTTPClient http;
+  //String uri = "/data/2.5/" + RequestType + "?q=" + City + "," + Country + "&APPID=" + apikey + "&mode=json&units=" + units + "&lang=" + Language;
+  String uri = "/flood-monitoring/id/stations/E70124/readings?_sorted&_limit=96";  // 96 = 24hr at 15mins interval  
+  if(RequestType != "weather")
+  {
+    //uri += "&cnt=" + String(max_readings);
   }
-*/
+  //http.begin(uri,test_root_ca); //HTTPS example connection
+  http.begin(client, server_ea, 80, uri);
+  int httpCode = http.GET();
+  if(httpCode == HTTP_CODE_OK) {
+    if (!DecodeEA(http.getStream(), RequestType)) return false;
+    client.stop();
+    http.end();
+    return true;
+  }
+  else
+  {
+    Serial.printf("connection failed, error: %s", http.errorToString(httpCode).c_str());
+    client.stop();
+    http.end();
+    return false;
+  }
+  http.end();
+  return true;
+}
+//#########################################################################################
+// Problems with stucturing JSON decodes, see here: https://arduinojson.org/assistant/
+bool DecodeEA(WiFiClient& json, String Type) {
+  Serial.print(F("\nCreating object...and "));
+  // allocate the JsonDocument
+  DynamicJsonDocument doc(49152); // 24*4=96 calls. Calculated at: https://arduinojson.org/v6/assistant/#/step3;
+  // Deserialize the JSON document
+  DeserializationError error = deserializeJson(doc, json);
+  // Test if parsing succeeds.
+  if (error) {
+    Serial.print(F("deserializeJson() failed: "));
+    Serial.println(error.c_str());
+    return false;
+  }
+  // convert it to a JsonObject
+  JsonObject root = doc.as<JsonObject>();
+  Serial.println(" Decoding " + Type + " data");
+
+  if (Type == "tide") {
+    Serial.println(json);
+    Serial.print(F("\nReceiving EA data  - ")); //------------------------------------------------
+    JsonArray list                    = root["items"];
+    SxHindcast[0].Waterlevel      = list[0]["value"].as<float>();                            Serial.println("WaterLevel: "+String(SxHindcast[0].Waterlevel));
+    SxHindcast[1].Waterlevel      = list[1]["value"].as<float>();                            Serial.println("WaterLevel: "+String(SxHindcast[1].Waterlevel));
+    SxHindcast[0].Timestamp       = "";                                                      Serial.println("TimeStamp: "+String(SxHindcast[0].Timestamp));
+    for (byte r = 2; r < max_gauge_readings; r++) {
+      Serial.println("\nPeriod-" + String(r) + "--------------");
+      SxHindcast[r].Waterlevel      = list[r]["value"].as<float>();                          Serial.println("WaterLevel: "+String(SxHindcast[r].Waterlevel));
+      if (   (SxHindcast[r-1].Waterlevel > SxHindcast[r-2].Waterlevel) && (SxHindcast[r-1].Waterlevel > SxHindcast[r].Waterlevel) 
+          || (SxHindcast[r-1].Waterlevel < SxHindcast[r-2].Waterlevel) && (SxHindcast[r-1].Waterlevel < SxHindcast[r].Waterlevel)
+         ) {
+        SxHindcast[r-1].Timestamp      = list[r-1]["dateTime"].as<String>();                 Serial.println("TimeStamp: "+String(SxHindcast[r].Timestamp));
+      }
+      else { SxHindcast[r-1].Timestamp      = "";
+      }
+    }
+    SxHindcast[max_gauge_readings-1].Timestamp      = list[max_gauge_readings-1]["dateTime"].as<String>();
+    Serial.println("TimeStamp: "+String(SxHindcast[max_gauge_readings-1].Timestamp));
+  }
+  
+  return true;
+}
+
 /*
   Version 16.0 reformatted to use u8g2 fonts
    1.  Added ß to translations, eventually that conversion can move to the lang_xx.h file
@@ -1060,6 +1175,12 @@ void InitialiseDisplay() {
   Version 16.11
    1. Adjusted graph drawing for negative numbers
    2. Correct offset error for precipitation 
- 
+
+ Jan 2023
+   1. Add RHS y-axis labels option to Drawgraph().
+   2. Plot prob of precip (pop) on precip forecast graph
+
+Oct 2023
+   1. Add EA river gauge data
 */
 
