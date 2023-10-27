@@ -169,17 +169,27 @@ void DisplayWeather() {                        // 7.5" e-paper display is 800x48
   DisplayMainWeatherSection(300, 100);          // Centre section of display for Location, temperature, Weather report, current Wx Symbol and wind direction
   DisplayForecastSection(217, 245);            // 3hr forecast boxes
   DisplayAstronomySection(0, 245);             // Astronomy section Sun rise/set, Moon phase and Moon icon
-  DisplayStatusSection(690, 215, wifi_signal); // Wi-Fi signal strength and Battery voltage
+  //DisplayStatusSection(690, 215, wifi_signal); // Wi-Fi signal strength and Battery voltage
+  DisplayStatusSection(SCREEN_WIDTH * 5 / 6, 3, wifi_signal); // Wi-Fi signal strength and Battery voltage
 }
 //#########################################################################################
 void DisplayGeneralInfoSection() {
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(6, 2, "[Version: " + version + "]", LEFT); // Programme version
-  drawString(SCREEN_WIDTH / 2, 3, City, CENTER);
-  u8g2Fonts.setFont(u8g2_font_helvB14_tf);
-  drawString(487, 194, Date_str, CENTER);
+  //u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  //drawString(6, 2, "[Version: " + version + "]", LEFT); // Programme version
+  //drawString(SCREEN_WIDTH / 2, 3, City, CENTER);
+  
+  //u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+  //drawString(487, 194, Date_str, CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-  drawString(500, 225, Time_str, CENTER);
+  drawString(6, 3, Date_str, LEFT);
+
+  //u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  //drawString(500, 225, Time_str, CENTER);
+  
+  u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  drawString(SCREEN_WIDTH / 6, 3, Time_str, LEFT);
+  drawString(SCREEN_WIDTH / 2, 3, City, CENTER);
+  
   display.drawLine(0, 18, SCREEN_WIDTH - 3, 18, GxEPD_BLACK);
 }
 //#########################################################################################
@@ -190,7 +200,8 @@ void DisplayMainWeatherSection(int x, int y) {
   DisplayTemperatureSection(x + 154, y - 81, 137, 100);
   DisplayPressureSection(x + 281, y - 81, WxConditions[0].Pressure, WxConditions[0].Trend, 137, 100);
   DisplayPrecipitationSection(x + 411, y - 81, 137, 100);
-  DisplayForecastTextSection(x + 97, y + 20, 409, 65);
+  //DisplayForecastTextSection(x + 97, y + 20, 409, 65);
+  DisplayTideSection(x + 97, y + 20, 409, 65 + 61);
 }
 //#########################################################################################
 void DisplayDisplayWindSection(int x, int y, float angle, float windspeed, int Cradius) {
@@ -246,6 +257,25 @@ void DisplayTemperatureSection(int x, int y, int twidth, int tdepth) {
   drawString(x - 22, y + 53, String(WxConditions[0].Temperature, 1) + "°", CENTER); // Show current Temperature
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
   drawString(x + 43, y + 53, Units == "M" ? "C" : "F", LEFT);
+}
+//#########################################################################################
+void DisplayTideSection(int x, int y , int fwidth, int fdepth) {
+  display.drawRect(x - 6, y - 3, fwidth, fdepth, GxEPD_BLACK); // forecast text outline
+  
+  // Pre-load temporary arrays with with data - because C parses by reference
+  int r = 0;
+  do {
+    levels_readings[r] = SxHindcast[r].Waterlevel;
+    hour_readings[r] =   SxHindcast[r].Timestamp;
+    r++;
+  } while (r < max_gauge_readings);
+  int gwidth = fwidth - 30, gheight = fdepth - 40;
+  u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  //drawString(x + fwidth / 2, y, "Liverpool", CENTER);
+  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
+  DrawWaterLevelGraph(x + 16, y + 12, gwidth, gheight, 0, 10, "Liverpool (m)", levels_readings, hour_readings, max_gauge_readings, autoscale_on, barchart_off, lhs_yaxis);
+
 }
 //#########################################################################################
 void DisplayForecastTextSection(int x, int y , int fwidth, int fdepth) {
@@ -500,14 +530,14 @@ void StopWiFi() {
 }
 //#########################################################################################
 void DisplayStatusSection(int x, int y, int rssi) {
-  display.drawRect(x - 35, y - 32, 145, 61, GxEPD_BLACK);
-  display.drawLine(x - 35, y - 17, x - 35 + 145, y - 17, GxEPD_BLACK);
-  display.drawLine(x - 35 + 146 / 2, y - 18, x - 35 + 146 / 2, y - 32, GxEPD_BLACK);
+  //display.drawRect(x - 35, y - 32, 145, 61, GxEPD_BLACK);
+  //display.drawLine(x - 35, y - 17, x - 35 + 145, y - 17, GxEPD_BLACK);
+  //display.drawLine(x - 35 + 146 / 2, y - 18, x - 35 + 146 / 2, y - 32, GxEPD_BLACK);
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x, y - 29, TXT_WIFI, CENTER);
-  drawString(x + 68, y - 30, TXT_POWER, CENTER);
-  DrawRSSI(x - 10, y + 6, rssi);
-  DrawBattery(x + 58, y + 6);;
+  //drawString(x, y - 29, TXT_WIFI, CENTER);
+  //drawString(x + 68, y - 30, TXT_POWER, CENTER);
+  DrawRSSI(x - 12, y + 6, rssi);
+  DrawBattery(x + 30, y + 6);;
 }
 //#########################################################################################
 void DrawRSSI(int x, int y, int rssi) {
@@ -523,7 +553,8 @@ void DrawRSSI(int x, int y, int rssi) {
     xpos++;
   }
   display.fillRect(x, y - 1, 5, 1, GxEPD_BLACK);
-  drawString(x + 6,  y + 6, String(rssi) + "dBm", CENTER);
+//  drawString(x + 6,  y + 6, String(rssi) + "dBm", CENTER);
+  drawString(x + 30,  y - 8, String(rssi) + "dBm", LEFT);
 }
 //#########################################################################################
 boolean SetupTime() {
@@ -556,13 +587,15 @@ boolean UpdateLocalTime() {
       sprintf(day_output, "%s %02u-%s-%04u", weekday_D[timeinfo.tm_wday], timeinfo.tm_mday, month_M[timeinfo.tm_mon], (timeinfo.tm_year) + 1900);
     }
     strftime(update_time, sizeof(update_time), "%H:%M:%S", &timeinfo);  // Creates: '14:05:49'
-    sprintf(time_output, "%s %s", TXT_UPDATED, update_time);
+    //sprintf(time_output, "%s %s", TXT_UPDATED, update_time);
+    sprintf(time_output, "(%s)", update_time);
   }
   else
   {
     strftime(day_output, sizeof(day_output), "%a %b-%d-%Y", &timeinfo); // Creates  'Sat May-31-2019'
     strftime(update_time, sizeof(update_time), "%r", &timeinfo);        // Creates: '02:05:49pm'
-    sprintf(time_output, "%s %s", TXT_UPDATED, update_time);
+    //sprintf(time_output, "%s %s", TXT_UPDATED, update_time);
+    sprintf(time_output, "(%s)", update_time);
   }
   Date_str = day_output;
   Time_str = time_output;
