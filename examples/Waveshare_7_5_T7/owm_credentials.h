@@ -8,6 +8,7 @@ const char* password = "your_PASSWORD"; // WiFi password needed for the SSID
 // Use your own API key by signing up for a free developer account at https://openweathermap.org/
 String apikey       = "your_API_key";                      // See: https://openweathermap.org/  // It's free to get an API key, but don't take more than 60 readings/minute!
 const char server[] = "api.openweathermap.org";
+const char server_ea[] = "environment.data.gov.uk";
 //http://api.openweathermap.org/data/2.5/weather?q=Melksham,UK&APPID=your_OWM_API_key&mode=json&units=metric&cnt=1   // Example API call for weather data
 //http://api.openweathermap.org/data/2.5/forecast?q=Melksham,UK&APPID=your_OWM_API_key&mode=json&units=metric&cnt=40 // Example API call for forecast data
 //Set your location according to OWM locations
@@ -29,6 +30,10 @@ const char* ntpServer   = "0.uk.pool.ntp.org";             // Or, choose a time 
                                                            // See: https://www.ntppool.org/en/                                                           
 int   gmtOffset_sec     = 0;    // UK normal time is GMT, so GMT Offset is 0, for US (-5Hrs) is typically -18000, AU is typically (+8hrs) 28800
 int  daylightOffset_sec = 3600; // In the UK DST is +1hr or 3600-secs, other countries may use 2hrs 7200 or 30-mins 1800 or 5.5hrs 19800 Ahead of GMT use + offset behind - offset
+
+// Set Environment Agency gauge locations
+String gauge_id_lhs = "E70124";                              // EA gauge for Liverpool: https://environment.data.gov.uk/flood-monitoring/id/stations/E70124
+String gauge_id_rhs = "3319SE";                              // EA gauge for Southampton: https://environment.data.gov.uk/flood-monitoring/id/stations/3319SE
 
 // Example time zones
 //const char* Timezone = "MET-1METDST,M3.5.0/01,M10.5.0/02"; // Most of Europe
