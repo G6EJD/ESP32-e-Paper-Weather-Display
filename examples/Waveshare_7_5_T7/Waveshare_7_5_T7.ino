@@ -104,9 +104,9 @@ Gauge_record_type     RhsGauge[max_gauge_readings];
 #define rhs_yaxis     false
 
 float g_lhs_readings[max_gauge_readings] = {0};
-String g_lhs_timings[max_gauge_readings] = {"A"}; // liverpool
+long  g_lhs_timings[max_gauge_readings]  = {0}; // Liverpool
 float g_rhs_readings[max_gauge_readings] = {0};
-String g_rhs_timings[max_gauge_readings] = {"A"}; // Soton
+long  g_rhs_timings[max_gauge_readings]  = {0}; // Southampton
 
 float pressure_readings[max_readings]    = {0};
 float temperature_readings[max_readings] = {0};
@@ -259,7 +259,7 @@ void DisplayTemperatureSection(int x, int y, int twidth, int tdepth) {
   drawString(x + 10, y + 82, String(WxConditions[0].High, 0) + "° | " + String(WxConditions[0].Low, 0) + "°", CENTER); // Show forecast high and Low
   u8g2Fonts.setFont(u8g2_font_helvB24_tf);
   drawString(x - 22, y + 53, String(WxConditions[0].Temperature, 1) + "°", CENTER); // Show current Temperature
-  u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB24_tf);
   drawString(x + 43, y + 53, Units == "M" ? "C" : "F", LEFT);
 }
 //#########################################################################################
@@ -277,11 +277,11 @@ void DisplayGaugeSection(int x, int y , int fwidth, int fdepth) {
   } while (r < max_gauge_readings);
   int gwidth = fwidth - 30, gheight = fdepth - 40;
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-  //drawString(x + fwidth / 2, y, "Liverpool", CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
-  DrawWaterLevelGraph(x + 16, y + 12, gwidth, gheight, 0, 10, "Liverpool / Chester (m)", g_lhs_readings, g_lhs_timings, max_gauge_readings, autoscale_on, barchart_off, lhs_yaxis);
-  DrawWaterLevelGraph(x + 16, y + 12, gwidth, gheight, 0, 10, "Liverpool / Chester (m)", g_rhs_readings, g_rhs_timings, max_gauge_readings, autoscale_on, barchart_off, rhs_yaxis);
+  String title = gauge_label_lhs+" / "+gauge_label_rhs+" (m)";
+  DrawWaterLevelGraph(x + 16, y + 12, gwidth, gheight, 0, 10, title, g_lhs_readings, g_lhs_timings, max_gauge_readings, autoscale_on, barchart_off, lhs_yaxis);
+  DrawWaterLevelGraph(x + 16, y + 12, gwidth, gheight, 0, 10, title, g_rhs_readings, g_rhs_timings, max_gauge_readings, autoscale_on, barchart_off, rhs_yaxis);
 
 }
 //#########################################################################################
@@ -544,7 +544,7 @@ void DisplayStatusSection(int x, int y, int rssi) {
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   //drawString(x, y - 29, TXT_WIFI, CENTER);
   //drawString(x + 68, y - 30, TXT_POWER, CENTER);
-  DrawRSSI(x - 12, y + 6, rssi);
+  DrawRSSI(x - 12, y + 10, rssi);
   DrawBattery(x + 30, y + 6);;
 }
 //#########################################################################################
@@ -986,11 +986,15 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
 }
 
 //#########################################################################################
-void DrawWaterLevelGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], String TimeArray[], int readings, boolean auto_scale, boolean barchart_mode, boolean lhs_flag) {
+void DrawWaterLevelGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], long TimeArray[], int readings, boolean auto_scale, boolean barchart_mode, boolean lhs_flag) {
 #define auto_scale_margin 0 // Sets the autoscale increment, so axis steps up in units of e.g. 3
 #define y_minor_axis 4      // 4-1 y-axis division markers
+#define number_of_dashes_across 100 // dashes for y=constant guides
+#define number_of_dashes_up 40 // dashes for max/min vertical construction lines
+
   float maxYscale = -10000;
   float minYscale =  10000;
+  long X1Min, X1Max, dX;
   int last_x, last_y;
   float x2, y2;
   String xlab;
@@ -1004,52 +1008,61 @@ void DrawWaterLevelGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1
     if (minYscale != 0) minYscale = round(minYscale - 0.5 - auto_scale_margin); // Auto scale the graph and round to the nearest value defined, default was Y1Min
     Y1Min = round(minYscale);
   }
+  // Set x-limits time as now and now-24hrs
+  X1Max = NowUnixTime();
+  dX = 24*60*60;  // 24hrs in minutes. Needs to be consistent with "#define max_gauge_readings 96", where 24*4=96
+  X1Min = X1Max - dX;
+  
   // Draw the graph
-  last_x = x_pos + gwidth;
-  last_y = y_pos + (Y1Max - constrain(DataArray[1], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight;
   display.drawRect(x_pos, y_pos, gwidth + 3, gheight + 2, GxEPD_BLACK);
   drawString(x_pos + gwidth / 2, y_pos - 13, title, CENTER);
   // Draw the data
-  for (int gx = 0; gx < readings; gx++) {
-    y2 = y_pos + (Y1Max - constrain(DataArray[gx], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight + 1;
-    x2 = x_pos + gwidth - gx * gwidth / (readings - 1) + 1; // max_readings is the global variable that sets the maximum data that can be plotted. Increase time left to right
-    display.drawLine(last_x, last_y, x2, y2, GxEPD_BLACK);
-    display.drawLine(last_x, last_y-1, x2, y2-1, GxEPD_BLACK);
-    display.drawLine(last_x, last_y-2, x2, y2-2, GxEPD_BLACK);
+  last_x = x_pos + (TimeArray[0] - X1Min) * gwidth / dX;
+  last_y = y_pos + (Y1Max - constrain(DataArray[0], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight;
+  for (int gx = 1; gx < readings; gx++) {
+    if ((TimeArray[gx] >= X1Min) && (TimeArray[gx] <= X1Max)) { // Only draw if in [X1Min,X1Max] bounds
+      y2 = y_pos + (Y1Max - constrain(DataArray[gx], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight;
+      //x2 = x_pos + gwidth - gx * gwidth / (readings - 1) + 1; // max_readings is the global variable that sets the maximum data that can be plotted. Increase time left to right
+      x2 = x_pos + (TimeArray[gx] - X1Min) * gwidth / dX; //  Time goes backwards with increasing index.
+      
+      display.drawLine(last_x, last_y,   x2, y2,   GxEPD_BLACK);
+      display.drawLine(last_x, last_y-1, x2, y2-1, GxEPD_BLACK);
+      display.drawLine(last_x, last_y-2, x2, y2-2, GxEPD_BLACK);
 
-    //if (TimeArray[gx].length() > 1) { 
-    //  xlab = TimeArray[gx].substring(8,16)+"Z";
-    //  }
-    //else { xlab = ""; }
-    //drawString(x2, y_pos + gheight + 3, xlab, CENTER); // String format: 2023-10-26T03:15:00Z
-    
-    // draw x-axis values. String format: 2023-10-26T03:15:00Z. Only if string is not empty. Add vertical construction lines
-    if (TimeArray[gx].length() > 1) { 
-      if (lhs_flag) { // below x-axis
-        for (int j = 0; j < number_of_dashes; j++) { // Draw dashed graph grid lines
-          display.drawFastVLine(x2, (y_pos + j * gheight / (number_of_dashes - 1)), gheight / (2 * number_of_dashes), GxEPD_BLACK);
+      // draw x-axis values for extrema, with vertical construction lines.
+      if (lhs_flag) { // display time labels:1) below x-axis, 2) for max/min, 3) with date 
+
+        if (   (DataArray[gx] > DataArray[gx-1]) && (DataArray[gx] > DataArray[gx+1]) 
+            || (DataArray[gx] < DataArray[gx-1]) && (DataArray[gx] < DataArray[gx+1])
+           )
+        {  // maxima or minima, display times below x-axis
+          
+              for (int j = 0; j < number_of_dashes_up; j++) { // Draw dashed graph grid lines
+                display.drawFastVLine(x2, (y_pos + j * gheight / (number_of_dashes_up - 1)), gheight / (2 * number_of_dashes_up), GxEPD_BLACK);
+              }
+              display.drawLine(x2, y_pos + gheight + 2, x2, (y_pos + gheight + 2) + 2, GxEPD_BLACK);
+              drawString(x2, y_pos + gheight + 5, ConvertUnixTimeToAxisLabel(TimeArray[gx], true), CENTER); // 26T03:15Z. Add date
         }
-        display.drawLine(x2, y_pos + gheight + 2, x2, (y_pos + gheight + 2) + 2, GxEPD_BLACK);
-        //display.drawLine(x2, y_pos, x2, (y_pos + gheight + 2) + 2, GxEPD_BLACK);
-        drawString(x2, y_pos + gheight + 5, TimeArray[gx].substring(8,16)+"Z", CENTER); // 26T03:15Z
+      }
+      else { // display time labels:1) above x-axis, 2) for max only, 3) without date
+
+        if (   (DataArray[gx] > DataArray[gx-1]) && (DataArray[gx] > DataArray[gx+1]) )
+        {  // find maxima only and display times above x-axis
+              for (int j = 0; j < number_of_dashes_up; j++) { // Draw dashed graph grid lines
+                display.drawFastVLine(x2, (y_pos + j * gheight / (number_of_dashes_up - 1)), gheight / (2 * number_of_dashes_up), GxEPD_BLACK);
+              }
+              display.drawLine(x2, y_pos + gheight + 2, x2, (y_pos + gheight +2) - 2, GxEPD_BLACK);
+              drawString(x2, y_pos + gheight - 10, ConvertUnixTimeToAxisLabel(TimeArray[gx], false), CENTER); // 03:15Z. Don't add date
         }
-      else { // above x-axis
-        for (int j = 0; j < number_of_dashes; j++) { // Draw dashed graph grid lines
-          display.drawFastVLine(x2, (y_pos + j * gheight / (number_of_dashes - 1)), gheight / (2 * number_of_dashes), GxEPD_BLACK);
-        }
-        display.drawLine(x2, y_pos + gheight + 2, x2, (y_pos + gheight +2) - 2, GxEPD_BLACK);
-        //display.drawLine(x2, y_pos, x2, (y_pos + gheight + 2) - 2, GxEPD_BLACK);
-        drawString(x2, y_pos + gheight - 10, TimeArray[gx].substring(11,16)+"Z", CENTER); // 03:15Z
-        }
+      }
+      last_x = x2;
+      last_y = y2;
     }
-    last_x = x2;
-    last_y = y2;
   }
   //Draw the Y-axis scale
-#define number_of_dashes 100 // dashes for y=constant guides
   for (int spacing = 0; spacing <= y_minor_axis; spacing++) {
-    for (int j = 0; j < number_of_dashes; j++) { // Draw dashed graph grid lines
-      if (spacing < y_minor_axis) display.drawFastHLine((x_pos + 3 + j * gwidth / number_of_dashes), y_pos + (gheight * spacing / y_minor_axis), gwidth / (2 * number_of_dashes), GxEPD_BLACK);
+    for (int j = 0; j < number_of_dashes_across; j++) { // Draw dashed graph grid lines
+      if (spacing < y_minor_axis) display.drawFastHLine((x_pos + 3 + j * gwidth / number_of_dashes_across), y_pos + (gheight * spacing / y_minor_axis), gwidth / (2 * number_of_dashes_across), GxEPD_BLACK);
     }
     if (lhs_flag) {  // Draw left hand y-axis labels
 
@@ -1175,47 +1188,150 @@ bool DecodeEA(WiFiClient& json, String Type) {
     Serial.println(json);
     Serial.print(F("\nReceiving EA data  - ")); //------------------------------------------------
     JsonArray list                    = root["items"];
-    LhsGauge[0].Waterlevel      = list[0]["value"].as<float>();                            Serial.println("WaterLevel: "+String(LhsGauge[0].Waterlevel));
-    LhsGauge[1].Waterlevel      = list[1]["value"].as<float>();                            Serial.println("WaterLevel: "+String(LhsGauge[1].Waterlevel));
-    // Extract times for local extreme water levels only
-    LhsGauge[0].Timestamp       = "";                                                      Serial.println("TimeStamp: "+String(LhsGauge[0].Timestamp));
-    for (byte r = 2; r < max_gauge_readings; r++) {
-      Serial.println("\nPeriod-" + String(r) + "--------------");
-      LhsGauge[r].Waterlevel      = list[r]["value"].as<float>();                          Serial.println("WaterLevel: "+String(LhsGauge[r].Waterlevel));
-      if (   (LhsGauge[r-1].Waterlevel > LhsGauge[r-2].Waterlevel) && (LhsGauge[r-1].Waterlevel > LhsGauge[r].Waterlevel) 
-          || (LhsGauge[r-1].Waterlevel < LhsGauge[r-2].Waterlevel) && (LhsGauge[r-1].Waterlevel < LhsGauge[r].Waterlevel)
-         ) {  // maxima or minima
-        LhsGauge[r-1].Timestamp      = list[r-1]["dateTime"].as<String>();                 Serial.println("TimeStamp: "+String(LhsGauge[r-1].Timestamp));
-      }
-      else { LhsGauge[r-1].Timestamp      = "";
-      }
+
+    for (byte r = 0; r < max_gauge_readings; r++) {
+    Serial.println("\nPeriod-" + String(r) + "--------------");
+    LhsGauge[r].Waterlevel    = list[r]["value"].as<float>();                     Serial.println("WaterLevel: "+String(LhsGauge[r].Waterlevel));
+    LhsGauge[r].Timestamp     = ConvertStringToUnixTime(list[r]["dateTime"].as<String>(), "yyy-mm-ddTHH:MM:SSZ");
+    Serial.println("TimeStamp: " +String(LhsGauge[r].Timestamp) + list[r]["dateTime"].as<String>());
+
+      
+    //LhsGauge[0].Waterlevel      = list[0]["value"].as<float>();                            Serial.println("WaterLevel: "+String(LhsGauge[0].Waterlevel));
+    //LhsGauge[1].Waterlevel      = list[1]["value"].as<float>();                            Serial.println("WaterLevel: "+String(LhsGauge[1].Waterlevel));
+    //// Extract times for local extreme water levels only
+    //LhsGauge[0].Timestamp       = "";                                                      Serial.println("TimeStamp: "+String(LhsGauge[0].Timestamp));
+    //for (byte r = 2; r < max_gauge_readings; r++) {
+    //  Serial.println("\nPeriod-" + String(r) + "--------------");
+    //  LhsGauge[r].Waterlevel      = list[r]["value"].as<float>();                          Serial.println("WaterLevel: "+String(LhsGauge[r].Waterlevel));
+    //  if (   (LhsGauge[r-1].Waterlevel > LhsGauge[r-2].Waterlevel) && (LhsGauge[r-1].Waterlevel > LhsGauge[r].Waterlevel) 
+    //      || (LhsGauge[r-1].Waterlevel < LhsGauge[r-2].Waterlevel) && (LhsGauge[r-1].Waterlevel < LhsGauge[r].Waterlevel)
+    //     ) {  // maxima or minima
+    //    LhsGauge[r-1].Timestamp      = list[r-1]["dateTime"].as<String>();                 Serial.println("TimeStamp: "+String(LhsGauge[r-1].Timestamp));
+    //  }
+    //  else { LhsGauge[r-1].Timestamp      = "";
+    //  }
     }
-    //LhsGauge[max_gauge_readings-1].Timestamp      = list[max_gauge_readings-1]["dateTime"].as<String>();
-    //Serial.println("TimeStamp: "+String(LhsGauge[max_gauge_readings-1].Timestamp));
+
   }
 
   if (Type == "river") {
     Serial.println(json);
     Serial.print(F("\nReceiving EA data  - ")); //------------------------------------------------
     JsonArray list                    = root["items"];
-    RhsGauge[0].Waterlevel      = list[0]["value"].as<float>();                            Serial.println("WaterLevel: "+String(RhsGauge[0].Waterlevel));
-    RhsGauge[1].Waterlevel      = list[1]["value"].as<float>();                            Serial.println("WaterLevel: "+String(RhsGauge[1].Waterlevel));
-    // Extract times for local extreme water levels only
-    RhsGauge[0].Timestamp       = "";                                                      Serial.println("TimeStamp: "+String(RhsGauge[0].Timestamp));
-    for (byte r = 2; r < max_gauge_readings; r++) {
+    for (byte r = 0; r < max_gauge_readings; r++) {
       Serial.println("\nPeriod-" + String(r) + "--------------");
-      RhsGauge[r].Waterlevel      = list[r]["value"].as<float>();                          Serial.println("WaterLevel: "+String(RhsGauge[r].Waterlevel));
-      if ( (RhsGauge[r-1].Waterlevel > RhsGauge[r-2].Waterlevel) && (RhsGauge[r-1].Waterlevel > RhsGauge[r].Waterlevel) ) {  // maxima only
-        RhsGauge[r-1].Timestamp      = list[r-1]["dateTime"].as<String>();                 Serial.println("TimeStamp: "+String(RhsGauge[r-1].Timestamp));
-      }
-      else { RhsGauge[r-1].Timestamp      = "";
-      }
+      RhsGauge[r].Waterlevel    = list[r]["value"].as<float>();                     Serial.println("WaterLevel: "+String(RhsGauge[r].Waterlevel));
+      RhsGauge[r].Timestamp     = ConvertStringToUnixTime(list[r]["dateTime"].as<String>(), "yyy-mm-ddTHH:MM:SSZ");
+      Serial.println("TimeStamp: " +String(RhsGauge[r].Timestamp) + list[r]["dateTime"].as<String>());
+     
     }
-    //RhsGauge[max_gauge_readings-1].Timestamp      = list[max_gauge_readings-1]["dateTime"].as<String>();
-    //Serial.println("TimeStamp: "+String(RhsGauge[max_gauge_readings-1].Timestamp));    
+    
   }
   
   return true;
+}
+//#########################################################################################
+time_t ConvertStringToUnixTime(String formatted_time, String format) {
+  /*   Convert to unix time (int) from formatted string data.
+   *   "Unix time" is used in OpenWeather API. 
+   *   Create conversion based on a control identity extracted from OpenWeather:
+   *      "dt":1698235200 <--> "2023-10-25 12:00:00"
+   *   
+   *  Example usage:
+   * ConvertStringToUnixTime("2023-10-25T12:00:00Z", "yyy-mm-ddTHH:MM:SSZ") --> 1698235200
+   * ConvertUnixTime(1698235200)  --> 2023-10-25T12:00:00Z, though in different format
+  */
+  time_t t_of_day; 
+  
+  if (format != "yyy-mm-ddTHH:MM:SSZ") {
+    Serial.println("Unexpected date format. Things are probably broken...");
+    return t_of_day;
+  }
+  else {
+
+    //String formatted_time = "2023-10-25T12:00:00Z";
+    
+    struct tm t;                         //Prepare time structure
+    t.tm_year = formatted_time.substring(0, 4).toInt() - 1900; // Year - 1900
+    t.tm_mon  = formatted_time.substring(5, 7).toInt() - 1;     // Month, where 0 = jan
+    t.tm_mday = formatted_time.substring(8, 10).toInt();      // Day of the month
+    t.tm_hour = formatted_time.substring(11, 13).toInt();
+    t.tm_min  = formatted_time.substring(14, 16).toInt();
+    t.tm_sec  = formatted_time.substring(17, 19).toInt();
+  
+    //Serial.print(formatted_time.substring(0, 4)); Serial.print(': ');
+    //Serial.print(t.tm_mon);  Serial.print(' ');
+    //Serial.print(t.tm_year); Serial.print(' ');
+    //Serial.print(t.tm_mon);  Serial.print(' ');
+    //Serial.print(t.tm_mday); Serial.print(' ');
+    //Serial.print(t.tm_hour);
+    //Serial.println();
+    
+    t.tm_isdst = 0;         // Is DST on? 1 = yes, 0 = no, -1 = unknown
+    t_of_day = mktime(&t);
+    
+    //Serial.print("t_of_day: ");
+    //Serial.println(t_of_day);
+
+    return t_of_day;
+  }
+   
+}
+//#########################################################################################
+String ConvertUnixTimeToAxisLabel(int unix_time, bool bool_add_day) {
+  // Returns either 09T13:15 or 13:15 depending on boolean flag
+  time_t tm = unix_time;
+  struct tm *now_tm = gmtime(&tm);
+  char output[40];
+  if (bool_add_day) {
+    strftime(output, sizeof(output), "%dT%H:%MZ", now_tm);
+  }
+  else {
+    strftime(output, sizeof(output), "%H:%MZ", now_tm);
+  }
+  return output;
+}
+//#########################################################################################
+
+long NowUnixTime() {
+  /*   Convert time now to unix time (int).
+   *   "Unix time" is used in OpenWeather API. 
+   *   Create conversion based on a control identity extracted from OpenWeather:
+   *      "dt":1698235200 <--> "2023-10-25 12:00:00"
+   *   
+   *  Example usage:
+   * NowToUnixTime() --> 1698235200
+   * ConvertUnixTime(1698235200)  --> 2023-10-25T12:00:00Z, though in different format
+  */
+
+  struct tm now_utc;
+  while (!getLocalTime(&now_utc, 10000)) { // Wait for 10-sec for time to synchronise
+    Serial.println("Failed to obtain time");
+    return false;
+  }
+
+  //sec_utc = now_utc.tm_sec;
+  //min_utc = now_utc.tm_min;
+  //hr_utc = now_utc.tm_hour;
+  //day_utc = now_utc.tm_mday;
+  //month_utc = now_utc.tm_mon + 1;
+  //year_utc = now_utc.tm_year + 1900;
+  
+  //Serial.println (&now_utc, "%m %d %Y / %H:%M:%S");
+
+  //Serial.println( ConvertStringToUnixTime( String(year_utc)+"-"+String(month_utc)+"-"+String(day_utc)+"T"+String(hr_utc)+":"+String(min_utc)+":"+String(sec_utc)+"Z", \ 
+  //                        "yyy-mm-ddTHH:MM:SSZ") );
+  //Serial.println(  String(year_utc)+"-"+String(month_utc)+"-"+String(day_utc)+"T"+String(hr_utc)+":"+String(min_utc)+":"+String(sec_utc)+"Z" );
+  //Serial.print(year_utc);
+  //Serial.print(month_utc);
+  //Serial.print(day_utc);
+  //Serial.print(hr_utc);
+  //Serial.print(min_utc);
+  //Serial.println(sec_utc);
+  
+  //Serial.println( ConvertUnixTime( mktime(&now_utc) ) );
+
+  return mktime(&now_utc); 
 }
 
 /*
@@ -1281,5 +1397,8 @@ bool DecodeEA(WiFiClient& json, String Type) {
  Oct 2023
    1. Add EA gauge data for two stations.
    2. Make layout adjustments to accommodate gauge timeseries
-*/
 
+ Nov 2023
+   1. Write ConvertStringToUnixTime(), NowUnixTime(), ConvertUnixTimeToAxisLabel() methods
+   2. Store gauge time data in unixseconds. Plot on harmonised time axis  
+*/
