@@ -135,9 +135,29 @@ void setup() {
 void loop() { // this will never run!
 }
 //#########################################################################################
-void BeginSleep() {
+/* List of Touch Pins and their names
+TOUCH0 (T0) – GPIO4
+TOUCH2 (T2) – GPIO2
+TOUCH3 (T3) – GPIO15
+TOUCH4 (T4) – GPIO13
+TOUCH5 (T5) – GPIO12
+TOUCH6 (T6) – GPIO14
+TOUCH7 (T7) – GPIO27
+TOUCH8 (T8) – GPIO33
+TOUCH9 (T9) – GPIO32
+*/
+touch_pad_t touchPin;
+
+void callback(){
+  // Empty placeholder callback function
+}
+
+void BeginSleep() { // Wake up with a Touch pin to refresh the weather data, just needs a wire on the chosen pin
   display.powerOff();
   long SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)); //Some ESP32 are too fast to maintain accurate time
+  int Threshold = 50;  // The higher the umber, the more sensitive is the touch function
+  touchAttachInterrupt(T3, callback, Threshold); // T3 is Touch-3 and is GPIO-15 see list
+  esp_sleep_enable_touchpad_wakeup();
   esp_sleep_enable_timer_wakeup((SleepTimer+20) * 1000000LL); // Added +20 seconnds to cover ESP32 RTC timer source inaccuracies
 #ifdef BUILTIN_LED
   pinMode(BUILTIN_LED, INPUT); // If it's On, turn it off and some boards use GPIO-5 for SPI-SS, which remains low after screen use

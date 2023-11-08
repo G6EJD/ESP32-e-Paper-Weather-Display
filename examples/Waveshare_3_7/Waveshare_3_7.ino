@@ -109,9 +109,9 @@ float humidity_readings[max_readings]    = {0};
 float rain_readings[max_readings]        = {0};
 float snow_readings[max_readings]        = {0};
 
-long SleepDuration = 60; // Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
-int  WakeupTime    = 7;  // Don't wakeup until after 07:00 to save battery power
-int  SleepTime     = 23; // Sleep after 11pm to save battery power
+const long SleepDuration = 60; // Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
+const int  WakeupTime    = 7;  // Don't wakeup until after 07:00 to save battery power
+const int  SleepTime     = 23; // Sleep after 11pm to save battery power
 
 //#########################################################################################
 void setup() {
@@ -156,8 +156,7 @@ void loop() { // this will never run!
 //#########################################################################################
 void BeginSleep() {
   long SleepSeconds;
-  bool long_slumber = false;
-  long tmpWake = WakeupTime;
+  long number_of_hours;
 
   //Even though the firebeetle has a 32.768KHz xtal installed on the board, you have to enable
   // CONFIG_ESP32_RTC_CLK_SRC in the esp32 SDK library build to enable it, and there is afaik no
@@ -165,33 +164,48 @@ void BeginSleep() {
 
   display.powerOff();
 
-  //We have to cater for if the wakeup time is before (i.e. tomorrow), or after (i.e. today) the sleeptime
-  if (WakeupTime < SleepTime ) {  //Wake up tomorrow
-    if( (CurrentHour >= SleepTime) || (CurrentHour < WakeupTime) ) {
-      long_slumber = true;
-      if (DEBUG) Serial.println("Long nap due. Wake time is tomorrow, so fudge the math");
-      tmpWake += 24;
+  // There are two 'versions' of the sleep/wake times - one which covers a day change (so SleepTime>WakeTime),
+  // and one that is during the same day (so SleepTime<WakeTime). To help figure this out, here is a visual
+  // representation of the two types:
+
+  //Day             |          Day 0                                 |          Day 1                                 |
+  //Hour            |000102030405060708091011121314151617181920212223|000102030405060708091011121314151617181920212223|
+  //Sleep 11pm-7am  |SSSSSSSSSSSSSSSS                              SS|SSSSSSSSSSSSSSSS                              SS|
+  //Sleep 1am-8am   |  SSSSSSSSSSSSSSSS                              |  SSSSSSSSSSSSSSSS                              |
+
+  //Check which type of sleep range we have, as we have to cater for the extra day changeover in the sleep math.
+  if ( SleepTime > WakeupTime ) {
+    // The sleep period covers midnight, and thus 'two days'
+
+    // When the sleep period spans two days, over midnight, the easiest way to check if we need a long nap is... to actually check if we are in a short sleep
+    // period. Note, we only do a check of the Hour - just makes things much easier to code up
+    if ( (CurrentHour >= WakeupTime) && (CurrentHour < SleepTime) ) {
+      //Short sleep
+      SleepSeconds = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec));
+    } else {
+      //Long sleep
+
+      //Cater for the possibility of the current hour being before or after midnight...
+      if (CurrentHour >= SleepTime ) //Still in the first day
+        number_of_hours = (24 - CurrentHour) + WakeupTime;  //How many hours until we are meant to next awake
+      else
+        number_of_hours = WakeupTime - CurrentHour;  //How many hours until we are meant to next awake
+
+      SleepSeconds = (number_of_hours * 60 * 60) - (((CurrentMin % 60) * 60) + CurrentSec);
     }
-  }
-
-  if (WakeupTime > SleepTime ) {  //Wake up later today
-    if( (CurrentHour >= SleepTime) && (CurrentHour < WakeupTime) ) {
-      long_slumber = true;
-      if (DEBUG) Serial.println("Long nap due. Wake time is later today");
-    }
-  }
-
-  if( long_slumber ) {
-    long number_of_hours;
-
-    if (DEBUG) Serial.println("In 'long sleep' zone");
-    number_of_hours = tmpWake - CurrentHour;  //How many hours until we are meant to next awake
-    SleepSeconds = (number_of_hours * 60 * 60) - (((CurrentMin % 60) * 60) + CurrentSec);
-    if (DEBUG) Serial.println("Sleeping for " + String(number_of_hours) + " hours, give or take");
   } else {
-    if (DEBUG) Serial.println("Normal sleep...");
-    //Normal between-update nap period
-    SleepSeconds = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)); //Some ESP32 are too fast to maintain accurate time
+    // The sleep period is all in the same day - presumably then, SleepTime is 'after midnight', and always
+    // smaller than WakeupTime, which makes the math easier.
+
+    // Check if we are in the deep sleep period
+    if ( (CurrentHour >= SleepTime) && (CurrentHour < WakeupTime) ) {
+      //Long sleep
+      number_of_hours = WakeupTime - CurrentHour;  //How many hours until we are meant to next awake
+      SleepSeconds = (number_of_hours * 60 * 60) - (((CurrentMin % 60) * 60) + CurrentSec);
+    } else {
+      //Short sleep
+      SleepSeconds = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec));
+    }
   }
 
   //I tried to check what the longest we can sleep is for. The API docs say this function can return an error, but if you look in
@@ -202,6 +216,7 @@ void BeginSleep() {
   // Well, there are about 31.5million seconds a year - which indicates to me we can sleep for... >59 years???
   // If somebody would like to check that math - please let's update this if we need to ;-)
   esp_sleep_enable_timer_wakeup((SleepSeconds+20) * 1000000LL); // Added +20 seconnds to cover ESP32 RTC timer source inaccuracies
+
 #ifdef BUILTIN_LED
   pinMode(BUILTIN_LED, INPUT); // If it's On, turn it off and some boards use GPIO-5 for SPI-SS, which remains low after screen use
   digitalWrite(BUILTIN_LED, HIGH);
