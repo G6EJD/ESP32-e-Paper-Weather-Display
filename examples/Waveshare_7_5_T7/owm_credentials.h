@@ -34,7 +34,7 @@ int  daylightOffset_sec = 3600; // In the UK DST is +1hr or 3600-secs, other cou
 // Set Environment Agency gauge locations
 String gauge_id_lhs = "E70124";                              // EA gauge for Liverpool: https://environment.data.gov.uk/flood-monitoring/id/stations/E70124
 String gauge_label_lhs = "Liverpool";
-//String gauge_id_rhs = "3319SE";                            // EA gauge for Southampton: https://environment.data.gov.uk/flood-monitoring/id/stations/3319SE
+//String gauge_id_rhs = "E12660";                            // EA gauge for Woolston, Southampton: https://environment.data.gov.uk/flood-monitoring/id/stations/E12660
 //String gauge_label_rhs = "Southampton";
 
 // Example time zones
