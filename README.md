@@ -1,4 +1,10 @@
-# ESP32-e-Paper-Weather-Display
+Modifications to parent respository include
+<img width="1081" alt="Screenshot 2023-11-18 at 20 33 03" src="https://github.com/jpolton/ESP32-e-Paper-Weather-Display/assets/22616872/42e3b4b5-282e-4311-ad63-d12a3fd8a248">
+
+
+
+# Original Readme
+## ESP32-e-Paper-Weather-Display
 An ESP32 and an ePaper Display reads [Open Weather Map](https://openweathermap.org/) and displays the weather
 
 For standalone use, download the ZIP file to your desktop.
