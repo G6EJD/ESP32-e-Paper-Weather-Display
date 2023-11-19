@@ -83,7 +83,7 @@ The Battery monitor assumes the use of a Lolin D32 board which uses GPIO-35 as a
 8. Optional: Personalize your display
    * change the text on the start screen (define `TXT_START` in `owm_credentials.h`)
    * change the screen titles (string `LOCATIONS_TXT` in `owm_credentials.h`)
-   * replace the bitmap images on the local/remote screens (`bitmap_local.h` and `bitmap_remote.h)
+   * replace the bitmap images on the local/remote screens (`bitmap_local.h` and `bitmap_remote.h`)
      
      see [Image to C++ - Conversion to Bitmap](https://javl.github.io/image2cpp/)
 
