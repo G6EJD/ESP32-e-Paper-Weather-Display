@@ -256,11 +256,11 @@ void DisplayTemperatureSection(int x, int y, int twidth, int tdepth) {
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   drawString(x, y + 5, TXT_TEMPERATURES, CENTER);
   u8g2Fonts.setFont(u8g2_font_helvB10_tf);
-  drawString(x + 10, y + 82, String(WxConditions[0].High, 0) + "° | " + String(WxConditions[0].Low, 0) + "°", CENTER); // Show forecast high and Low
+  drawString(x + 10, y + 82, String(WxConditions[0].High, 0) + " | " + String(WxConditions[0].Low, 0), CENTER); // Show forecast high and Low
   u8g2Fonts.setFont(u8g2_font_helvB24_tf);
-  drawString(x - 22, y + 53, String(WxConditions[0].Temperature, 1) + "°", CENTER); // Show current Temperature
+  drawString(x - 22, y + 53, String(WxConditions[0].Temperature, 1), CENTER); // Show current Temperature
   u8g2Fonts.setFont(u8g2_font_helvB24_tf);
-  drawString(x + 43, y + 53, Units == "M" ? "C" : "F", LEFT);
+  drawString(x + 43, y + 53, Units == "M" ? "°C" : "°F", LEFT);
 }
 //#########################################################################################
 void DisplayGaugeSection(int x, int y , int fwidth, int fdepth) {
