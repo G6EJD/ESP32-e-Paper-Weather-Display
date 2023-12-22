@@ -219,7 +219,10 @@ RTC_DATA_ATTR bool touchPrevTrig = false;  //!< Flag: Left   touch sensor has be
 RTC_DATA_ATTR bool touchNextTrig = false;  //!< Flag: Right  touch sensor has been triggered
 RTC_DATA_ATTR bool touchMidTrig = false;   //!< Flag: Middle touch sensor has been triggered
 
+#if defined(MITHERMOMETER_EN) || defined(THEENGSDECODER_EN)
 NimBLEScan *pBLEScan;
+#endif
+
 bool mqttMessageReceived = false;  //!< Flag: MQTT message has been received
 
 //################ PROGRAM VARIABLES and OBJECTS ################
