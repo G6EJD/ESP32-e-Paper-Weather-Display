@@ -239,7 +239,7 @@ Forecast_record_type WxForecast[max_readings];       //!< OWM Weather Forecast
 #define barchart_on true
 #define barchart_off false
 
-const String [] = LOCATIONS_TXT;  //!< /Screen Titles
+const String Locations[] = LOCATIONS_TXT;  //!< /Screen Titles
 
 // OWM Forecast Data
 float pressure_readings[max_readings] = { 0 };     //!< OWM pressure readings
@@ -1164,7 +1164,7 @@ void GetMqttData(WiFiClient &net, MQTTClient &MqttClient) {
   MqttSensors.wind_direction_deg = payload["wind_direction_deg"];
   MqttSensors.wind_gust_meter_sec = payload["wind_gust_meter_sec"];
 
-  MqttSensors.status = { false };
+  MqttSensors.status = { false, false, false, false, false };
   
   JsonObject status = payload["status"];
   MqttSensors.status.ble_ok = status["ble_ok"];
