@@ -239,7 +239,7 @@ Forecast_record_type WxForecast[max_readings];       //!< OWM Weather Forecast
 #define barchart_on true
 #define barchart_off false
 
-const String [] = _TXT;  //!< /Screen Titles
+const String [] = LOCATIONS_TXT;  //!< /Screen Titles
 
 // OWM Forecast Data
 float pressure_readings[max_readings] = { 0 };     //!< OWM pressure readings
