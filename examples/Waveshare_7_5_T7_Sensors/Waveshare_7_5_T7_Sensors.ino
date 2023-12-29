@@ -239,7 +239,7 @@ Forecast_record_type WxForecast[max_readings];       //!< OWM Weather Forecast
 #define barchart_on true
 #define barchart_off false
 
-const String Locations[] = LOCATIONS_TXT;  //!< Locations/Screen Titles
+const String [] = _TXT;  //!< /Screen Titles
 
 // OWM Forecast Data
 float pressure_readings[max_readings] = { 0 };     //!< OWM pressure readings
@@ -1729,7 +1729,8 @@ void DisplayGeneralInfoSection(void) {
   uint16_t w = 0;
   
   // Print page heading
-  for (int i = 0; i <= 2; i++) {
+  int i_max = sizeof(Locations) / sizeof(Locations[0]) - 2;
+  for (int i = 0; i <= i_max; i++) {
     if (i == 0) {
       // Current menu item, centered
       u8g2Fonts.setFont(u8g2_font_helvB14_tf);
