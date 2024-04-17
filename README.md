@@ -1,4 +1,13 @@
 # ESP32-e-Paper-Weather-Display
+
+### NOTE: ####
+From June 2024, Openweathermap will require a registered account for some of their API calls, API 2.5 will be dicontinued and be replaced by a chargable service.
+
+You will still be able to 1000 calls/day for free and you can set an upper usage limit, but exceed that and you will have to pay!
+
+Notably the use of the One Call API 3.0 is the same as the One Call API 2.5, so it won't require any code changes, it will only affect your pocket!
+#######
+
 An ESP32 and an ePaper Display reads [Open Weather Map](https://openweathermap.org/) and displays the weather
 
 For standalone use, download the ZIP file to your desktop.
