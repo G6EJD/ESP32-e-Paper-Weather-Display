@@ -1,4 +1,10 @@
 # ESP32-e-Paper-Weather-Display
+
+### NOTE: ###
+
+From June 2024 you may have to pay for API (Wx Data) access. You will need to add a payment method to your account, so that OWM can charge you should you exceed 1000 calls/day.
+
+#############
 An ESP32 and an ePaper Display reads [Open Weather Map](https://openweathermap.org/) and displays the weather
 
 For standalone use, download the ZIP file to your desktop.
