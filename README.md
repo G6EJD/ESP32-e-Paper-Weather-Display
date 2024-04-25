@@ -8,7 +8,7 @@ http://api.openweathermap.org/data/2.5/weather?q=Melksham,UK&APPID=your_OWM_API_
 Becomes:
 http://api.openweathermap.org/data/**3.0**/weather?q=Melksham,UK&APPID=your_OWM_API_key&mode=json&units=metric&cnt=1
 
-############# April 2024
+**############# April 2024**
 
 OpenWeatherMap have depreciated City names and now calls to their API need to includeLatitude and Longitude data.
 The examples have been updated to include LAT and LON variables in the credentials file and the associate API Call in Common.h has been modified to use the new format.
