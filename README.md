@@ -1,6 +1,7 @@
 # ESP32-e-Paper-Weather-Display
 
 ### NOTE: ### April 2024
+
 From June 2024 you may have to pay for API (Wx Data) access. You will need to add a payment method to your account, so that OWM can charge you should you exceed 1000 calls/day.
 Also the API call in the source code may need to be changed from /2.5/ to /3.0/ as yet details are unknown, my best guess is:
 http://api.openweathermap.org/data/2.5/weather?q=Melksham,UK&APPID=your_OWM_API_key&mode=json&units=metric&cnt=1
@@ -8,6 +9,7 @@ Becomes:
 http://api.openweathermap.org/data/**3.0**/weather?q=Melksham,UK&APPID=your_OWM_API_key&mode=json&units=metric&cnt=1
 
 ############# April 2024
+
 OpenWeatherMap have depreciated City names and now calls to their API need to includeLatitude and Longitude data.
 The examples have been updated to include LAT and LON variables in the credentials file and the associate API Call in Common.h has been modified to use the new format.
 This is the new format:
@@ -15,6 +17,7 @@ https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API k
 #############
 
 ### FONTS ### Apri 2024
+
 If you wish to use extended font characters for language accents, then simply change all instances of a Font selection in the source code from:
 u8g2_font_helvB08_tf
 to:
