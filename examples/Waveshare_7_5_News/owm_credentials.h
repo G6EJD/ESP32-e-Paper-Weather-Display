@@ -14,6 +14,9 @@ String NewsServer = "newsapi.org";
 String NewsSource = "bbc-news";  // https://newsapi.org/sources forfull list of news sources available
 String NewsApiKey = "your News API key";
 
+String LAT              = "51.38";                         // Home location Latitude
+String LON              = "-2.36";                         // Home location Longitude
+
 String Latitude         = "51.4";                          // Your locations Latitude
 String Longitude        = "-2.14";                         // Your locations Longitude
 String City             = "MELKSHAM";                      // Your home city See: http://bulk.openweathermap.org/sample/
