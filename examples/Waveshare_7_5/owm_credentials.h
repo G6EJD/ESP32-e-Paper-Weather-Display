@@ -8,6 +8,8 @@ const char server[] = "api.openweathermap.org";
 //http://api.openweathermap.org/data/2.5/weather?q=Melksham,UK&APPID=your_OWM_API_key&mode=json&units=metric&cnt=1   // Example API call for weather data
 //http://api.openweathermap.org/data/2.5/forecast?q=Melksham,UK&APPID=your_OWM_API_key&mode=json&units=metric&cnt=40 // Example API call for forecast data
 //Set your location according to OWM locations
+String LAT              = "51.38";                         // Home location Latitude
+String LON              = "-2.36";                         // Home location Longitude
 
 String City             = "MELKSHAM";                      // Your home city See: http://bulk.openweathermap.org/sample/
 String Country          = "GB";                            // Your _ISO-3166-1_two-letter_country_code country code, on OWM find your nearest city and the country code is displayed
