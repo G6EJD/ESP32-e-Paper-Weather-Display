@@ -114,9 +114,7 @@ String ConvertUnixTime(int unix_time) {
 bool obtain_wx_data(WiFiClient& client, const String& RequestType) {
   const String units = (Units == "M" ? "metric" : "imperial");
   client.stop(); // close connection before sending a new request
-  HTTPClient http;
-  ?lat={lat}&lon={lon}
-    
+  HTTPClient http;    
   String uri = "/data/2.5/" + RequestType + "?lat=" + LAT + "&lon=" + LON + "&APPID=" + apikey + "&mode=json&units=" + units + "&lang=" + Language;
   if(RequestType != "weather")
   {
