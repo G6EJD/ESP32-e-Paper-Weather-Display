@@ -39,3 +39,51 @@ int  daylightOffset_sec = 3600; // In the UK DST is +1hr or 3600-secs, other cou
 //const char* Timezone = "NZST-12NZDT,M9.5.0,M4.1.0/3";      // Auckland
 //const char* Timezone = "EET-2EEST,M3.5.5/0,M10.5.5/0";     // Asia
 //const char* Timezone = "ACST-9:30ACDT,M10.1.0,M4.1.0/3":   // Australia
+/*
+af Afrikaans
+al Albanian
+ar Arabic
+az Azerbaijani
+bg Bulgarian
+ca Catalan
+cz Czech
+da Danish
+de German
+el Greek
+en English
+eu Basque
+fa Persian (Farsi)
+fi Finnish
+fr French
+gl Galician
+he Hebrew
+hi Hindi
+hr Croatian
+hu Hungarian
+id Indonesian
+it Italian
+ja Japanese
+kr Korean
+la Latvian
+lt Lithuanian
+mk Macedonian
+no Norwegian
+nl Dutch
+pl Polish
+pt Portuguese
+pt_br Português Brasil
+ro Romanian
+ru Russian
+sv, se Swedish
+sk Slovak
+sl Slovenian
+sp, es Spanish
+sr Serbian
+th Thai
+tr Turkish
+ua, uk Ukrainian
+vi Vietnamese
+zh_cn Chinese Simplified
+zh_tw Chinese Traditional
+zu Zulu
+*/
