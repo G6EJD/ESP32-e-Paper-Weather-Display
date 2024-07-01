@@ -27,7 +27,7 @@
     "cQueue": "SMFSW/cQueue#semver:^1.9.0",
     "TheengsDecoder": "theengs/decoder#semver:^1.5.7",
     "arduino-mqtt": "256dpi/arduino-mqtt#semver:^2.5.1",
-    "ArduinoJson": "bblanchon/ArduinoJson#semver:^6.21.4",
+    "ArduinoJson": "bblanchon/ArduinoJson#semver:^7.1.0",
     "pocketBME280": "angrest/pocketBME280#semver:^1.2.4",
     "NimBLE-Arduino": "h2zero/NimBLE-Arduino#semver:^1.4.1",
     "Sensirion I2C SCD4x": "Sensirion/arduino-i2c-scd4x#semver:^0.4.0",
