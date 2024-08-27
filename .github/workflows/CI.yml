@@ -59,16 +59,16 @@ jobs:
         run:
           |
           declare -a required_libs=(
-            "MQTT@2.5.1"
-            "GxEPD2@1.5.2"
+            "MQTT@2.5.2"
+            "GxEPD2@1.5.8"
             "U8g2_for_Adafruit_GFX@1.8.0"
             "cQueue@2.0"
-            "TheengsDecoder@1.6.8"
-            "ArduinoJson@7.0.2"
+            "TheengsDecoder@1.7.8"
+            "ArduinoJson@7.1.0"
             "pocketBME280@1.2.4"
-            "NimBLE-Arduino@1.4.1"
+            "NimBLE-Arduino@1.4.2"
             "Sensirion I2C SCD4x@0.4.0"
-            "Sensirion Core@0.6.0"
+            "Sensirion Core@0.7.1"
           )
           for i in "${required_libs[@]}"
           do
