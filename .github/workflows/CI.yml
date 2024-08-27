@@ -62,7 +62,7 @@ jobs:
             "MQTT@2.5.1"
             "GxEPD2@1.5.2"
             "U8g2_for_Adafruit_GFX@1.8.0"
-            "cQueue@1.9.0"
+            "cQueue@2.0"
             "TheengsDecoder@1.6.8"
             "ArduinoJson@7.0.2"
             "pocketBME280@1.2.4"
