@@ -20,8 +20,8 @@ void Convert_Readings_to_Imperial() {
 bool DecodeWeather(WiFiClient& json, String Type) {
   log_d("Creating JSON object");
   // allocate the JsonDocument
-  DynamicJsonDocument doc(25 * 1024);
-  //StaticJsonDocument<25 * 1024> doc;
+  JsonDocument doc;
+  
   // Deserialize the JSON document
   DeserializationError error = deserializeJson(doc, json);
   // Test if parsing succeeds.
