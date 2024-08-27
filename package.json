@@ -22,15 +22,15 @@
   },
   "homepage": "https://github.com/matthias-bs/ESP32-e-Paper-Weather-Display#README",
   "dependencies": {
-    "GxEPD2": "ZinggJM/GxEPD2#semver:^1.5.2",
+    "GxEPD2": "ZinggJM/GxEPD2#semver:^1.5.8",
     "U8g2_for_Adafruit_GFX": "olikraus/U8g2_for_Adafruit_GFX#semver:^1.8.0",
     "cQueue": "SMFSW/cQueue#semver:^2.0",
-    "TheengsDecoder": "theengs/decoder#semver:^1.5.7",
-    "arduino-mqtt": "256dpi/arduino-mqtt#semver:^2.5.1",
+    "TheengsDecoder": "theengs/decoder#semver:^1.7.8",
+    "arduino-mqtt": "256dpi/arduino-mqtt#semver:^2.5.2",
     "ArduinoJson": "bblanchon/ArduinoJson#semver:^7.1.0",
     "pocketBME280": "angrest/pocketBME280#semver:^1.2.4",
-    "NimBLE-Arduino": "h2zero/NimBLE-Arduino#semver:^1.4.1",
+    "NimBLE-Arduino": "h2zero/NimBLE-Arduino#semver:^1.4.2",
     "Sensirion I2C SCD4x": "Sensirion/arduino-i2c-scd4x#semver:^0.4.0",
-    "Sensirion Core": "Sensirion/arduino-core#semver:^0.6.0"
+    "Sensirion Core": "Sensirion/arduino-core#semver:^0.7.1"
   }
 }
