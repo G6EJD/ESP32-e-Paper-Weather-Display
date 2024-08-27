@@ -2526,8 +2526,7 @@ uint8_t StartWiFi() {
   IPAddress dns(MY_DNS);
   WiFi.disconnect();
   WiFi.mode(WIFI_STA);  // switch off AP
-  WiFi.setAutoConnect(true);
-  WiFi.setAutoReconnect(true);
+  //WiFi.setAutoReconnect(false); // default: true
   
   uint8_t connectionStatus = wifiMulti.run();
  
