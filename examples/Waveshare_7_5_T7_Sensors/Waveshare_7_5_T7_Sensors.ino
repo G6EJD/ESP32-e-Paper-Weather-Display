@@ -410,7 +410,7 @@ class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
     TheengsDecoder decoder;
     bool device_found = false;
     unsigned idx;
-    StaticJsonDocument<512> doc;
+    JsonDocument doc;
 
     log_v("Advertised Device: %s", advertisedDevice->toString().c_str());
     JsonObject BLEdata = doc.to<JsonObject>();
@@ -1124,8 +1124,7 @@ void GetMqttData(WiFiClient &net, MQTTClient &MqttClient) {
   log_d("Creating JSON object...");
 
   // allocate the JsonDocument
-  //StaticJsonDocument<MQTT_PAYLOAD_SIZE> doc;
-  DynamicJsonDocument doc(MQTT_PAYLOAD_SIZE);
+  JsonDocument doc;
 
   // Deserialize the JSON document
   DeserializationError error = deserializeJson(doc, MqttBuf, MQTT_PAYLOAD_SIZE);
