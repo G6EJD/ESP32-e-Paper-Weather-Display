@@ -239,7 +239,7 @@ Forecast_record_type WxForecast[max_readings];       //!< OWM Weather Forecast
 #define barchart_on true
 #define barchart_off false
 
-const String Locations[] = LOCATIONS_TXT;  //!< Locations/Screen Titles
+const String Locations[] = LOCATIONS_TXT;  //!< /Screen Titles
 
 // OWM Forecast Data
 float pressure_readings[max_readings] = { 0 };     //!< OWM pressure readings
@@ -1139,14 +1139,13 @@ void GetMqttData(WiFiClient &net, MQTTClient &MqttClient) {
   MqttSensors.valid = true;
 
   const char *received_at = doc["received_at"];
-  strncpy(MqttSensors.received_at, received_at, 30);
-  //MqttSensors.received_at   = received_at;
-  //MqttSensors.received_at   = doc["received_at"].as<String>();
-  JsonObject uplink_message = doc["uplink_message"];
+  if (received_at) {
+    strncpy(MqttSensors.received_at, received_at, 30);
+  }
+  
+  JsonObject payload = doc["uplink_message"]["decoded_payload"]["bytes"];
 
-  // uplink_message_decoded_payload_bytes -> payload
-  JsonObject payload = uplink_message["decoded_payload"]["bytes"];
-
+  // If an item is not found, its previous value is preserved
   MqttSensors.air_temp_c = payload["air_temp_c"];
   MqttSensors.humidity = payload["humidity"];
   MqttSensors.indoor_temp_c = payload["indoor_temp_c"];
@@ -1164,13 +1163,15 @@ void GetMqttData(WiFiClient &net, MQTTClient &MqttClient) {
   MqttSensors.wind_direction_deg = payload["wind_direction_deg"];
   MqttSensors.wind_gust_meter_sec = payload["wind_gust_meter_sec"];
 
+  MqttSensors.status = { false, false, false, false, false };
+  
   JsonObject status = payload["status"];
   MqttSensors.status.ble_ok = status["ble_ok"];
   MqttSensors.status.s1_batt_ok = status["s1_batt_ok"];
   MqttSensors.status.s1_dec_ok = status["s1_dec_ok"];
   MqttSensors.status.ws_batt_ok = status["ws_batt_ok"];
   MqttSensors.status.ws_dec_ok = status["ws_dec_ok"];
-
+      
   // Sanity checks
   if (MqttSensors.humidity == 0) {
     MqttSensors.status.ws_dec_ok = false;
@@ -1727,7 +1728,8 @@ void DisplayGeneralInfoSection(void) {
   uint16_t w = 0;
   
   // Print page heading
-  for (int i = 0; i <= 2; i++) {
+  int i_max = sizeof(Locations) / sizeof(Locations[0]) - 2;
+  for (int i = 0; i <= i_max; i++) {
     if (i == 0) {
       // Current menu item, centered
       u8g2Fonts.setFont(u8g2_font_helvB14_tf);
