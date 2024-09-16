@@ -1382,9 +1382,6 @@ void GetLocalData(void) {
 #endif
 
 #ifdef SCD4X_EN
-  // To Do:
-  // - Move after BME280 code
-  // - Add barometric pressure compansation
   SensirionI2CScd4x scd4x;
 
   uint16_t error;
@@ -1392,7 +1389,7 @@ void GetLocalData(void) {
 
   scd4x.begin(myWire);
 
-  // stop potentially previously started measurement
+  // stop potential previously started measurement
   error = scd4x.stopPeriodicMeasurement();
   if (error) {
     errorToString(error, errorMessage, 256);
