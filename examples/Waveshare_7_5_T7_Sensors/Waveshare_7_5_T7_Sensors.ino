@@ -1085,7 +1085,6 @@ void convertUtcTimestamp(String time_str_utc, struct tm *ti_local, int tz_offset
  * \param net         network connection
  * \param MqttClient  MQTT client object
  */
-// FIXME: Check for expected f_port == 1 and continue waiting if not
 void GetMqttData(WiFiClient &net, MQTTClient &MqttClient) {
   MqttSensors.valid = false;
 
