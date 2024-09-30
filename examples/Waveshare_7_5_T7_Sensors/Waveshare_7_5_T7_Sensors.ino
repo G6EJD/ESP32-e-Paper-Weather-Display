@@ -95,8 +95,8 @@
 //#define WATERTEMP_EN               //!< Enable Wather Temperature Display (MQTT)
 #define MITHERMOMETER_BATTALERT 6  //!< Low battery alert threshold [%]
 #define WATER_TEMP_INVALID -30.0   //!< Water temperature invalid marker [°C]
-#define I2C_SDA 21                 //!< I2C Serial Data
-#define I2C_SCL 22                 //!< I2C Serial Clock
+#define I2C_SDA 21                 //!< I2C Serial Data Pin
+#define I2C_SCL 22                 //!< I2C Serial Clock Pin
 
 #define ENABLE_GxEPD2_display 1
 #include <GxEPD2_BW.h>  //!< https://github.com/ZinggJM/GxEPD2
@@ -110,6 +110,15 @@
 //#include "src/lang_it.h"         // Localisation (Italian)
 //#include "src/lang_nl.h"         // Localization (Dutch)
 //#include "src/lang_pl.h"         // Localisation (Polish)
+
+// Encoding of invalid values
+// for floating point, see
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/NaN
+#define INV_FLOAT NAN
+#define INV_UINT32 0xFFFFFFFF
+#define INV_UINT16 0xFFFF
+#define INV_UINT8 0xFF
+#define INV_TEMP 327.67
 
 #ifdef MITHERMOMETER_EN
 // BLE Temperature/Humidity Sensor
@@ -876,6 +885,7 @@ void DisplayOWMWeather(const unsigned char *status_bitmap) {
       display.drawBitmap(x, y, status_bitmap, 48, 48, GxEPD_BLACK);
     }
   } while (display.nextPage());
+  display.display(false);
   //display.display(true);
 }
 
@@ -1079,99 +1089,112 @@ void GetMqttData(WiFiClient &net, MQTTClient &MqttClient) {
   MqttSensors.valid = false;
 
   log_i("Waiting for MQTT message...");
-#ifndef SIMULATE_MQTT
-  unsigned long start = millis();
-  int count = 0;
-  while (!mqttMessageReceived) {
-    MqttClient.loop();
-    delay(10);
-    if (count++ == 1000) {
-      log_d(".");
-      count = 0;
-    }
-    if (mqttMessageReceived)
-      break;
-    if (!MqttClient.connected()) {
-      MqttConnect(net, MqttClient);
-    }
-    if (TouchTriggered()) {
-      log_i("Touch interrupt!");
-      return;
-    }
-    if (millis() > start + MQTT_DATA_TIMEOUT * 1000) {
-      log_i("Timeout!");
-      MqttClient.disconnect();
-      return;
-    }
-    // During this time-consuming loop, updating local history could be due
-    if (HistoryUpdateDue()) {
-      time_t now = time(NULL);
-      if (now - LocalHistTStamp >= (HIST_UPDATE_RATE - HIST_UPDATE_TOL) * 60) {
-        LocalHistTStamp = now;
-        SaveLocalData();
-      }
-    }
-  }
-#else
-  log_i("(Simulated MQTT incoming message)");
-  MqttSensors.valid = true;
-#endif
-
-  log_i("done!");
-  MqttClient.disconnect();
-  log_d("%s", MqttBuf);
-
-  log_d("Creating JSON object...");
 
   // allocate the JsonDocument
   JsonDocument doc;
-
-  // Deserialize the JSON document
-  DeserializationError error = deserializeJson(doc, MqttBuf, MQTT_PAYLOAD_SIZE);
-
-  // Test if parsing succeeds.
-  if (error) {
-    log_i("deserializeJson() failed: %s", error.c_str());
-    return;
-  } else {
-    log_d("Done!");
-  }
-  MqttSensors.valid = true;
-
-  const char *received_at = doc["received_at"];
-  if (received_at) {
-    strncpy(MqttSensors.received_at, received_at, 30);
-  }
   
-  JsonObject payload = doc["uplink_message"]["decoded_payload"]["bytes"];
+  // LoRaWAN fPort
+  unsigned char f_port;
 
-  // If an item is not found, its previous value is preserved
-  MqttSensors.air_temp_c = payload["air_temp_c"];
-  MqttSensors.humidity = payload["humidity"];
-  MqttSensors.indoor_temp_c = payload["indoor_temp_c"];
-  MqttSensors.indoor_humidity = payload["indoor_humidity"];
-  MqttSensors.battery_v = payload["battery_v"];
-  MqttSensors.rain_day = payload["rain_day"];
-  MqttSensors.rain_hr = payload["rain_hr"];
-  MqttSensors.rain_mm = payload["rain_mm"];
-  MqttSensors.rain_month = payload["rain_mon"];
-  MqttSensors.rain_week = payload["rain_week"];
-  MqttSensors.soil_moisture = payload["soil_moisture"];
-  MqttSensors.soil_temp_c = payload["soil_temp_c"];
-  MqttSensors.water_temp_c = payload["water_temp_c"];
-  MqttSensors.wind_avg_meter_sec = payload["wind_avg_meter_sec"];
-  MqttSensors.wind_direction_deg = payload["wind_direction_deg"];
-  MqttSensors.wind_gust_meter_sec = payload["wind_gust_meter_sec"];
+  do {
+#ifndef SIMULATE_MQTT
+    unsigned long start = millis();
+    int count = 0;
+    while (!mqttMessageReceived) {
+      MqttClient.loop();
+      delay(10);
+      if (count++ == 1000) {
+        log_d(".");
+        count = 0;
+      }
+      if (mqttMessageReceived)
+        break;
+      if (!MqttClient.connected()) {
+        MqttConnect(net, MqttClient);
+      }
+      if (TouchTriggered()) {
+        log_i("Touch interrupt!");
+        return;
+      }
+      if (millis() > start + MQTT_DATA_TIMEOUT * 1000) {
+        log_i("Timeout!");
+        MqttClient.disconnect();
+        return;
+      }
+      // During this time-consuming loop, updating local history could be due
+      if (HistoryUpdateDue()) {
+        time_t now = time(NULL);
+        if (now - LocalHistTStamp >= (HIST_UPDATE_RATE - HIST_UPDATE_TOL) * 60) {
+          LocalHistTStamp = now;
+          SaveLocalData();
+        }
+      }
+    }
+  #else
+    log_i("(Simulated MQTT incoming message)");
+    MqttSensors.valid = true;
+  #endif
 
-  MqttSensors.status = { false, false, false, false, false };
-  
+    log_i("done!");
+    log_d("%s", MqttBuf);
+
+    log_d("Creating JSON object...");
+
+    // Deserialize the JSON document
+    DeserializationError error = deserializeJson(doc, MqttBuf, MQTT_PAYLOAD_SIZE);
+
+    // Test if parsing succeeds.
+    if (error) {
+      log_i("deserializeJson() failed: %s", error.c_str());
+      return;
+    } else {
+      log_d("Done!");
+    }
+
+    MqttClient.disconnect();
+    MqttSensors.valid = true;
+
+    const char *received_at = doc["received_at"];
+    if (received_at) {
+      strncpy(MqttSensors.received_at, received_at, 30);
+    }
+    f_port = doc["uplink_message"]["f_port"];
+  } while (f_port != 1);
+  JsonVariant payload = doc["uplink_message"]["decoded_payload"]["bytes"];
+
+  MqttSensors.air_temp_c = payload[WS_TEMP_C].isNull() ?  INV_TEMP : payload[WS_TEMP_C];
+  MqttSensors.humidity = payload[WS_HUMIDITY].isNull() ? INV_UINT8 : payload[WS_HUMIDITY];
+  MqttSensors.indoor_temp_c = payload[TH1_TEMP_C].isNull() ? INV_TEMP : payload[TH1_TEMP_C];
+  MqttSensors.indoor_humidity = payload[TH1_HUMIDITY].isNull() ? INV_UINT8 : payload[TH1_HUMIDITY];
+  MqttSensors.battery_v = payload[A0_VOLTAGE_MV].isNull() ? INV_UINT16 : payload[A0_VOLTAGE_MV];
+  MqttSensors.rain_day = payload[WS_RAIN_DAILY_MM].isNull() ? INV_FLOAT : payload[WS_RAIN_DAILY_MM];
+  MqttSensors.rain_hr = payload[WS_RAIN_HOURLY_MM].isNull() ? INV_FLOAT : payload[WS_RAIN_HOURLY_MM];
+  MqttSensors.rain_mm = payload[WS_RAIN_MM].isNull() ? INV_FLOAT : payload[WS_RAIN_MM];
+  MqttSensors.rain_month = payload[WS_RAIN_MONTHLY_MM].isNull() ? INV_FLOAT : payload[WS_RAIN_MONTHLY_MM];
+  MqttSensors.rain_week = payload[WS_RAIN_WEEKLY_MM].isNull() ? INV_FLOAT : payload[WS_RAIN_WEEKLY_MM];
+  MqttSensors.soil_moisture = payload[SOIL1_MOISTURE].isNull() ? INV_UINT8 : payload[SOIL1_MOISTURE];
+  MqttSensors.soil_temp_c = payload[SOIL1_TEMP_C].isNull() ? INV_TEMP : payload[SOIL1_TEMP_C];
+  MqttSensors.water_temp_c = payload[OW0_TEMP_C].isNull() ? INV_TEMP : payload[OW0_TEMP_C];
+  MqttSensors.wind_avg_meter_sec = payload[WS_WIND_AVG_MS].isNull() ? INV_FLOAT : payload[WS_WIND_AVG_MS];
+  MqttSensors.wind_direction_deg = payload[WS_WIND_DIR_DEG].isNull() ? INV_UINT16 : payload[WS_WIND_DIR_DEG];
+  MqttSensors.wind_gust_meter_sec = payload[WS_WIND_GUST_MS].isNull() ? INV_FLOAT : payload[WS_WIND_GUST_MS];
+
+  // FIXME: This is a workaround for the time being
   JsonObject status = payload["status"];
-  MqttSensors.status.ble_ok = status["ble_ok"];
+  bool ble_ok = MqttSensors.indoor_temp_c != INV_TEMP && MqttSensors.indoor_humidity != INV_UINT8;
+  //MqttSensors.status.ble_ok = status["ble_ok"] | ble_ok;
+  MqttSensors.status.ble_ok = ble_ok;
+  bool s1_dec_ok = MqttSensors.soil_temp_c != INV_TEMP && MqttSensors.soil_moisture != INV_UINT8;
+  //MqttSensors.status.s1_dec_ok = status["s1_dec_ok"] | s1_dec_ok;
+  MqttSensors.status.s1_dec_ok = s1_dec_ok;
+  bool ws_dec_ok = MqttSensors.air_temp_c != INV_TEMP && MqttSensors.rain_mm != INV_FLOAT;
+  //MqttSensors.status.ws_dec_ok = status["ws_dec_ok"] | ws_dec_ok;
+  MqttSensors.status.ws_dec_ok = ws_dec_ok;
+
   MqttSensors.status.s1_batt_ok = status["s1_batt_ok"];
-  MqttSensors.status.s1_dec_ok = status["s1_dec_ok"];
   MqttSensors.status.ws_batt_ok = status["ws_batt_ok"];
-  MqttSensors.status.ws_dec_ok = status["ws_dec_ok"];
-      
+
+
   // Sanity checks
   if (MqttSensors.humidity == 0) {
     MqttSensors.status.ws_dec_ok = false;
@@ -1523,6 +1546,7 @@ void GetLocalData(void) {
         LocalSensors.i2c_co2sensor.valid = true;
     }
   }
+  scd4x.powerDown();
 #endif
 
 }
@@ -1689,9 +1713,8 @@ void DisplayLocalWeather(const unsigned char *status_bitmap) {
 
 
 /**
- * \brief Display local sensor data
- * 
- * Playground for testing without the need to wait for real data.
+ * \brief Display start screen
+ *
  */
 void DisplayStartScreen(void) {
   u8g2Fonts.setFont(u8g2_font_helvB24_tf);
@@ -2524,6 +2547,7 @@ uint8_t StartWiFi() {
   IPAddress dns(MY_DNS);
   WiFi.disconnect();
   WiFi.mode(WIFI_STA);  // switch off AP
+  //WiFi.setAutoConnect(true); // no longer valid
   //WiFi.setAutoReconnect(false); // default: true
   
   uint8_t connectionStatus = wifiMulti.run();

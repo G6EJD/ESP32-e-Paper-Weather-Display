@@ -24,6 +24,45 @@ const char *MQTT_USER = "your_user";   // leave blank if no credentials used
 const char *MQTT_PASS = "your_passwd"; // leave blank if no credentials used
 const char *MQTT_SUB_IN = "your/subscribe/topic";
 
+// TOPICS_NEW: BresserWeatherSensorLW
+#define TOPICS_NEW
+
+#ifdef TOPICS_NEW
+  #define WS_TEMP_C "ws_temp_c"
+  #define WS_HUMIDITY "ws_humidity"
+  #define TH1_TEMP_C "th1_temp_c"
+  #define TH1_HUMIDITY "th1_humidity"
+  #define A0_VOLTAGE_MV "a0_voltage_mv"
+  #define WS_RAIN_DAILY_MM "ws_rain_daily_mm"
+  #define WS_RAIN_HOURLY_MM "ws_rain_hourly_mm"
+  #define WS_RAIN_MM "ws_rain_mm"
+  #define WS_RAIN_MONTHLY_MM "ws_rain_monthly_mm"
+  #define WS_RAIN_WEEKLY_MM "ws_rain_weekly_mm"
+  #define SOIL1_MOISTURE "soil1_moisture"
+  #define SOIL1_TEMP_C "soil1_temp_c"
+  #define OW0_TEMP_C "ow0_temp_c"
+  #define WS_WIND_AVG_MS "ws_wind_avg_ms"
+  #define WS_WIND_DIR_DEG "ws_wind_dir_deg"
+  #define WS_WIND_GUST_MS "ws_wind_gust_ms"
+#else
+  #define WS_TEMP_C "air_temp_c"
+  #define WS_HUMIDITY "humidity"
+  #define TH1_TEMP_C "indoor_temp_c"
+  #define TH1_HUMIDITY "indoor_humidity"
+  #define A0_VOLTAGE_MV "battery_v"
+  #define WS_RAIN_DAILY_MM "rain_day"
+  #define WS_RAIN_HOURLY_MM "rain_hr"
+  #define WS_RAIN_MM "rain_mm"
+  #define WS_RAIN_MONTHLY_MM "rain_mon"
+  #define WS_RAIN_WEEKLY_MM "rain_week"
+  #define SOIL1_MOISTURE "soil_moisture"
+  #define SOIL1_TEMP_C "soil_temp_c"
+  #define OW0_TEMP_C "water_temp_c"
+  #define WS_WIND_AVG_MS "wind_avg_meter_sec"
+  #define WS_WIND_DIR_DEG "wind_direction_deg"
+  #define WS_WIND_GUST_MS "wind_gust_meter_sec"
+#endif
+
 // MQTT connection for publishing (local sensor data)
 const int   MQTT_PORT_P = 1883;
 const char *MQTT_HOST_P = "your_broker_pub";
