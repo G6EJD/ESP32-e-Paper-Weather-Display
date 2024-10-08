@@ -20,15 +20,15 @@
 
 /**
  * ESP32 Weather Display using an EPD 7.5" 800x480 Display
- * 
+ *
  * Four virtual screens are provided:
  * 0. Start screen
  * 1. Current weather data and weather forecast by OpenWeatherMap
  * 2. Local weather sensor data (internal T/H/P-sensor with I2C interface, BLE sensor(s))
  * 3. Remote weather sensor data (received from MQTT broker)
- * 
+ *
  * Initially the start screen is shown. After a delay, the default screen is shown.
- * 
+ *
  * For each cycle:
  * - Connect to WiFi
  * - Draw screen title bar
@@ -41,24 +41,28 @@
  * - For MQTT screen: update if new (valid) data has been received
  * - go to deep sleep mode; wake-up is triggered after an integer multiple of SleepDuration past
  *   the full hour - minus SleepOffset (to be ready for receiving equally triggered MQTT messages)
- * 
+ *
  * Switching between screens 1..3 is done by touch sensors.
- * 
+ *
  * Local and remote sensor data (i.e. not OWM data) is stored in non-volatile (NV) RAM. Thus, at least
  * data received previously can be shown even in WiFi is not availably.
- * 
+ *
  * NV RAM is also used to store data for plotting history graphs and for displaying min/max values
  * (during past 24 hrs).
- * 
+ *
  * Based on G6EJD/ESP32-e-Paper-Weather-Display Version 16.11
- * 
+ *
+ * History:
+ *
+ * 20241008 Fixed B/W display (small artefacts remaining)
+ *
  */
 
 #include "owm_credentials.h"  // See 'owm_credentials' tab and enter your OWM API key and set the Wifi SSID and PASSWORD
 #include <ArduinoJson.h>      // https://github.com/bblanchon/ArduinoJson needs version v6 or above
 #include <WiFi.h>             // Built-in
 #include <WiFiMulti.h>
-//#include <WiFiClientSecure.h>
+// #include <WiFiClientSecure.h>
 #include <time.h>                   // Built-in
 #include <SPI.h>                    // Built-in
 #include <vector>                   // Built-in
@@ -138,8 +142,8 @@
 #include <SensirionI2CScd4x.h> // https://github.com/Sensirion/arduino-i2c-scd4x
 #endif
 
-#define DISPLAY_3C
-//#define DISPLAY_BW
+//#define DISPLAY_3C
+#define DISPLAY_BW
 #define SCREEN_WIDTH 800   //!< EPD screen width
 #define SCREEN_HEIGHT 480  //!< EPD screen height
 
@@ -551,16 +555,22 @@ void setup() {
       //ScreenNo = ScreenMQTT;
     }
 
+    #if defined(DISPLAY_3C)
     display.firstPage();
     do {
+    #endif
       display.fillScreen(GxEPD_WHITE);
       DisplayGeneralInfoSection();
       int x = SCREEN_WIDTH / 2 - 24;
       int y = SCREEN_HEIGHT / 2 - 24;
       display.drawBitmap(x, y, epd_bitmap_hourglass_top, 48, 48, GxEPD_BLACK);
     } while (display.nextPage());
+  #if defined(DISPAY_3C)
   } // if (ScreenNo != PrevScreenNo)
-
+  #endif
+  #if defined(DISPLAY_BW)
+  display.display(true);
+  #endif
   // Add list of wifi networks
   wifiMulti.addAP(ssid0, password0);
   wifiMulti.addAP(ssid1, password1);
@@ -868,12 +878,16 @@ void DisplayOWMWeather(const unsigned char *status_bitmap) {
   //  display.fillScreen(GxEPD_WHITE);
   //} while (display.nextPage());
   //display.display(true);
+#if defined(DISPLAY_3C)
   display.firstPage();
   do {
+#endif
+    display.fillScreen(GxEPD_WHITE);
     DisplayGeneralInfoSection();
     DisplayDateTime(90, 255);
     DisplayDisplayWindSection(108, 146, WxConditions[0].Winddir, WxConditions[0].Windspeed, 81, true, TXT_WIND_SPEED_DIRECTION);
     DisplayMainWeatherSection(300, 100);  // Centre section of display for Location, temperature, Weather report, current Wx Symbol and wind direction
+    display.drawLine(0, 38, SCREEN_WIDTH - 3, 38, GxEPD_BLACK);
     DisplayForecastSection(217, 245);     // 3hr forecast boxes
     DisplayAstronomySection(391, 165);    // Astronomy section Sun rise/set, Moon phase and Moon icon
     DisplayOWMAttribution(581, 165);
@@ -884,9 +898,12 @@ void DisplayOWMWeather(const unsigned char *status_bitmap) {
     if (status_bitmap) {
       display.drawBitmap(x, y, status_bitmap, 48, 48, GxEPD_BLACK);
     }
+#if defined(DISPLAY_3C)
   } while (display.nextPage());
-  display.display(false);
-  //display.display(true);
+#endif
+#if defined(DISPLAY_BW)
+  display.display(true);
+#endif
 }
 
 
@@ -1277,8 +1294,11 @@ void SaveRainDayData(void) {
  * \param nowifi  show "no wifi" bitmap
  */
 void DisplayMQTTWeather(const unsigned char *status_bitmap) {
+  #if defined(DIPLAY_3C)
   display.firstPage();
   do {
+  #endif
+    display.fillScreen(GxEPD_WHITE);
     DisplayGeneralInfoSection();
     DisplayMQTTDateTime(90, 225);
     display.drawBitmap(5, 25, epd_bitmap_remote, 220, 165, GxEPD_BLACK);
@@ -1387,7 +1407,12 @@ void DisplayMQTTWeather(const unsigned char *status_bitmap) {
     if (status_bitmap) {
       display.drawBitmap(x, y, status_bitmap, 48, 48, GxEPD_BLACK);
     }
+  #if defined(DISPLAY_3C)
   } while (display.nextPage());
+  #endif
+  #if defined(DISPLAY_BW)
+  display.display(true);
+  #endif
 }
 
 
@@ -1622,8 +1647,11 @@ void findLocalMinMaxTemp(float *t_min, float *t_max) {
  * \param nowifi  show "no wifi" bitmap
  */
 void DisplayLocalWeather(const unsigned char *status_bitmap) {
+  #if defined(DISPLAY_3C)
   display.firstPage();
   do {
+  #endif
+    display.fillScreen(GxEPD_WHITE);
     DisplayGeneralInfoSection();
     DisplayDateTime(90, 225);
 #ifdef SCD4X_EN    
@@ -1708,7 +1736,12 @@ void DisplayLocalWeather(const unsigned char *status_bitmap) {
     if (status_bitmap) {
       display.drawBitmap(x, y, status_bitmap, 48, 48, GxEPD_BLACK);
     }
+  #if defined(DISPLAY_3C)
   } while (display.nextPage());
+  #endif
+  #if defined(DISPLAY_BW)
+  display.display(true);
+  #endif
 }
 
 
@@ -1828,8 +1861,6 @@ void DisplayMQTTDateTime(int x, int y) {
  * \param y   y-coordinate
  */
 void DisplayMainWeatherSection(int x, int y) {
-  //  display.drawRect(x-67, y-65, 140, 182, GxEPD_BLACK);
-  display.drawLine(0, 38, SCREEN_WIDTH - 3, 38, GxEPD_BLACK);
   DisplayConditionsSection(x + 3, y + 49, WxConditions[0].Icon, LargeIcon);
   DisplayTemperatureSection(x + 154, y - 81, 137, 100);
   DisplayPressureSection(x + 281, y - 81, WxConditions[0].Pressure, WxConditions[0].Trend, 137, 100);
