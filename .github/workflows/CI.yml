@@ -50,7 +50,7 @@ jobs:
           # platform-dependent settings - extra board options, board index URLs, skip patterns etc.
           if [[ "${{ contains(matrix.board, 'esp32:esp32') }}" == "true" ]]; then
             # ESP32
-            python -m pip install pyserial
+            //python -m pip install pyserial
             echo "index-url=--additional-urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json" >> $GITHUB_OUTPUT
           fi
 
@@ -64,7 +64,7 @@ jobs:
             "U8g2_for_Adafruit_GFX@1.8.0"
             "cQueue@2.0"
             "TheengsDecoder@1.7.8"
-            "ArduinoJson@7.1.0"
+            "ArduinoJson@7.2.0"
             "pocketBME280@1.2.4"
             "NimBLE-Arduino@1.4.2"
             "Sensirion I2C SCD4x@0.4.0"
