@@ -70,37 +70,16 @@
 #include <string>                  // Built-in
 #include <MQTT.h>                  // https://github.com/256dpi/arduino-mqtt
 #include <cQueue.h>                // https://github.com/SMFSW/cQueue
+#include "MqttInterface.h"         // MQTT sensor data interface
 #include "WeatherSymbols.h"        // Functions for drawing weather symbols at runtime
 #include "bitmap_icons.h"          // Icon bitmaps
 #include "bitmap_weather_report.h" // Picture shown on ScreenStart
+#include "bitmap_local.h"          // Picture shown on ScreenLocal - replace by your own
+#include "bitmap_remote.h"         // Picture shown on ScreenMQTT  - replace by your own
+#include "utils.h"
+#include "secrets.h"
 
-// #define SIMULATE_MQTT
-// #define FORCE_LOW_BATTERY
-// #define FORCE_NO_SIGNAL
 
-#define MQTT_PAYLOAD_SIZE 4096
-#define MQTT_CONNECT_TIMEOUT 30
-#define MQTT_DATA_TIMEOUT 600
-#define MQTT_KEEPALIVE 60
-#define MQTT_TIMEOUT 1800
-#define MQTT_CLEAN_SESSION false
-
-#define MQTT_HIST_SIZE 144
-#define RAIN_HR_HIST_SIZE 24
-#define RAIN_DAY_HIST_SIZE 29
-#define LOCAL_HIST_SIZE 144
-#define HIST_UPDATE_RATE 30
-#define HIST_UPDATE_TOL 5
-
-// #define MITHERMOMETER_EN         //!< Enable MiThermometer   (BLE sensors)
-#define THEENGSDECODER_EN //!< Enable Theengs Decoder (BLE sensors)
-#define BME280_EN         //!< Enable BME280 T/H/p-sensor (I2C)
-#define SCD4X_EN          //!< Enable SCD4x CO2-sensor (I2C)
-// #define WATERTEMP_EN               //!< Enable Wather Temperature Display (MQTT)
-#define MITHERMOMETER_BATTALERT 6 //!< Low battery alert threshold [%]
-#define WATER_TEMP_INVALID -30.0  //!< Water temperature invalid marker [°C]
-#define I2C_SDA 21                //!< I2C Serial Data Pin
-#define I2C_SCL 22                //!< I2C Serial Clock Pin
 
 #define ENABLE_GxEPD2_display 0
 #include <GxEPD2_BW.h> //!< https://github.com/ZinggJM/GxEPD2
@@ -115,14 +94,6 @@
 // #include "src/lang_nl.h"         // Localization (Dutch)
 // #include "src/lang_pl.h"         // Localisation (Polish)
 
-// Encoding of invalid values
-// for floating point, see
-// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/NaN
-#define INV_FLOAT NAN
-#define INV_UINT32 0xFFFFFFFF
-#define INV_UINT16 0xFFFF
-#define INV_UINT8 0xFF
-#define INV_TEMP 327.67
 
 #ifdef MITHERMOMETER_EN
 // BLE Temperature/Humidity Sensor
@@ -142,10 +113,7 @@
 #include <SensirionI2CScd4x.h> // https://github.com/Sensirion/arduino-i2c-scd4x
 #endif
 
-// #define DISPLAY_3C
-#define DISPLAY_BW
-#define SCREEN_WIDTH 800  //!< EPD screen width
-#define SCREEN_HEIGHT 480 //!< EPD screen height
+
 
 long SleepDuration = 30;        //!< Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour (+ SleepOffset)
 long SleepOffset = -120;        //!< Offset in seconds from SleepDuration; -120 will trigger wakeup 2 minutes earlier
@@ -181,11 +149,11 @@ static const uint8_t TOUCH_NEXT = 32; //!< Touch sensor right (next)
 static const uint8_t TOUCH_PREV = 33; //!< Touch sensor left  (previous)
 static const uint8_t TOUCH_MID = 35;  //!< Touch sensor middle
 
-#ifdef SIMULATE_MQTT
-const char *MqttBuf = "{\"end_device_ids\":{\"device_id\":\"eui-9876b6000011c87b\",\"application_ids\":{\"application_id\":\"flora-lora\"},\"dev_eui\":\"9876B6000011C87B\",\"join_eui\":\"0000000000000000\",\"dev_addr\":\"260BFFCA\"},\"correlation_ids\":[\"as:up:01GH0PHSCTGKZ51EB8XCBBGHQD\",\"gs:conn:01GFQX269DVXYK9W6XF8NNZWDD\",\"gs:up:host:01GFQX26AXQM4QHEAPW48E8EWH\",\"gs:uplink:01GH0PHS6A65GBAPZB92XNGYAP\",\"ns:uplink:01GH0PHS6BEPXS9Y7DMDRNK84Y\",\"rpc:/ttn.lorawan.v3.GsNs/HandleUplink:01GH0PHS6BY76SY2VPRSHNDDRH\",\"rpc:/ttn.lorawan.v3.NsAs/HandleUplink:01GH0PHSCS7D3V8ERSKF0DTJ8H\"],\"received_at\":\"2022-11-04T06:51:44.409936969Z\",\"uplink_message\":{\"session_key_id\":\"AYRBaM/qASfqUi+BQK75Gg==\",\"f_port\":1,\"frm_payload\":\"PwOOWAgACAAIBwAAYEKAC28LAw0D4U0DwAoAAAAAwMxMP8DMTD/AzEw/AAAAAAAAAAAA\",\"decoded_payload\":{\"bytes\":{\"air_temp_c\":\"9.1\",\"battery_v\":2927,\"humidity\":88,\"indoor_humidity\":77,\"indoor_temp_c\":\"9.9\",\"rain_day\":\"0.8\",\"rain_hr\":\"0.0\",\"rain_mm\":\"56.0\",\"rain_mon\":\"0.8\",\"rain_week\":\"0.8\",\"soil_moisture\":10,\"soil_temp_c\":\"9.6\",\"status\":{\"ble_ok\":true,\"res\":false,\"rtc_sync_req\":false,\"runtime_expired\":true,\"s1_batt_ok\":true,\"s1_dec_ok\":true,\"ws_batt_ok\":true,\"ws_dec_ok\":true},\"supply_v\":2944,\"water_temp_c\":\"7.8\",\"wind_avg_meter_sec\":\"0.8\",\"wind_direction_deg\":\"180.0\",\"wind_gust_meter_sec\":\"0.8\"}},\"rx_metadata\":[{\"gateway_ids\":{\"gateway_id\":\"lora-db0fc\",\"eui\":\"3135323538002400\"},\"time\":\"2022-11-04T06:51:44.027496Z\",\"timestamp\":1403655780,\"rssi\":-104,\"channel_rssi\":-104,\"snr\":8.25,\"location\":{\"latitude\":52.27640735,\"longitude\":10.54058183,\"altitude\":65,\"source\":\"SOURCE_REGISTRY\"},\"uplink_token\":\"ChgKFgoKbG9yYS1kYjBmYxIIMTUyNTgAJAAQ5KyonQUaCwiA7ZKbBhCw6tpgIKDtnYPt67cC\",\"channel_index\":4,\"received_at\":\"2022-11-04T06:51:44.182146570Z\"}],\"settings\":{\"data_rate\":{\"lora\":{\"bandwidth\":125000,\"spreading_factor\":8,\"coding_rate\":\"4/5\"}},\"frequency\":\"867300000\",\"timestamp\":1403655780,\"time\":\"2022-11-04T06:51:44.027496Z\"},\"received_at\":\"2022-11-04T06:51:44.203702153Z\",\"confirmed\":true,\"consumed_airtime\":\"0.215552s\",\"locations\":{\"user\":{\"latitude\":52.24619,\"longitude\":10.50106,\"source\":\"SOURCE_REGISTRY\"}},\"network_ids\":{\"net_id\":\"000013\",\"tenant_id\":\"ttn\",\"cluster_id\":\"eu1\",\"cluster_address\":\"eu1.cloud.thethings.network\"}}}";
-#else
-char MqttBuf[MQTT_PAYLOAD_SIZE + 1]; //!< MQTT Payload Buffer
-#endif
+// #ifdef SIMULATE_MQTT
+// const char *MqttBuf = "{\"end_device_ids\":{\"device_id\":\"eui-9876b6000011c87b\",\"application_ids\":{\"application_id\":\"flora-lora\"},\"dev_eui\":\"9876B6000011C87B\",\"join_eui\":\"0000000000000000\",\"dev_addr\":\"260BFFCA\"},\"correlation_ids\":[\"as:up:01GH0PHSCTGKZ51EB8XCBBGHQD\",\"gs:conn:01GFQX269DVXYK9W6XF8NNZWDD\",\"gs:up:host:01GFQX26AXQM4QHEAPW48E8EWH\",\"gs:uplink:01GH0PHS6A65GBAPZB92XNGYAP\",\"ns:uplink:01GH0PHS6BEPXS9Y7DMDRNK84Y\",\"rpc:/ttn.lorawan.v3.GsNs/HandleUplink:01GH0PHS6BY76SY2VPRSHNDDRH\",\"rpc:/ttn.lorawan.v3.NsAs/HandleUplink:01GH0PHSCS7D3V8ERSKF0DTJ8H\"],\"received_at\":\"2022-11-04T06:51:44.409936969Z\",\"uplink_message\":{\"session_key_id\":\"AYRBaM/qASfqUi+BQK75Gg==\",\"f_port\":1,\"frm_payload\":\"PwOOWAgACAAIBwAAYEKAC28LAw0D4U0DwAoAAAAAwMxMP8DMTD/AzEw/AAAAAAAAAAAA\",\"decoded_payload\":{\"bytes\":{\"air_temp_c\":\"9.1\",\"battery_v\":2927,\"humidity\":88,\"indoor_humidity\":77,\"indoor_temp_c\":\"9.9\",\"rain_day\":\"0.8\",\"rain_hr\":\"0.0\",\"rain_mm\":\"56.0\",\"rain_mon\":\"0.8\",\"rain_week\":\"0.8\",\"soil_moisture\":10,\"soil_temp_c\":\"9.6\",\"status\":{\"ble_ok\":true,\"res\":false,\"rtc_sync_req\":false,\"runtime_expired\":true,\"s1_batt_ok\":true,\"s1_dec_ok\":true,\"ws_batt_ok\":true,\"ws_dec_ok\":true},\"supply_v\":2944,\"water_temp_c\":\"7.8\",\"wind_avg_meter_sec\":\"0.8\",\"wind_direction_deg\":\"180.0\",\"wind_gust_meter_sec\":\"0.8\"}},\"rx_metadata\":[{\"gateway_ids\":{\"gateway_id\":\"lora-db0fc\",\"eui\":\"3135323538002400\"},\"time\":\"2022-11-04T06:51:44.027496Z\",\"timestamp\":1403655780,\"rssi\":-104,\"channel_rssi\":-104,\"snr\":8.25,\"location\":{\"latitude\":52.27640735,\"longitude\":10.54058183,\"altitude\":65,\"source\":\"SOURCE_REGISTRY\"},\"uplink_token\":\"ChgKFgoKbG9yYS1kYjBmYxIIMTUyNTgAJAAQ5KyonQUaCwiA7ZKbBhCw6tpgIKDtnYPt67cC\",\"channel_index\":4,\"received_at\":\"2022-11-04T06:51:44.182146570Z\"}],\"settings\":{\"data_rate\":{\"lora\":{\"bandwidth\":125000,\"spreading_factor\":8,\"coding_rate\":\"4/5\"}},\"frequency\":\"867300000\",\"timestamp\":1403655780,\"time\":\"2022-11-04T06:51:44.027496Z\"},\"received_at\":\"2022-11-04T06:51:44.203702153Z\",\"confirmed\":true,\"consumed_airtime\":\"0.215552s\",\"locations\":{\"user\":{\"latitude\":52.24619,\"longitude\":10.50106,\"source\":\"SOURCE_REGISTRY\"}},\"network_ids\":{\"net_id\":\"000013\",\"tenant_id\":\"ttn\",\"cluster_id\":\"eu1\",\"cluster_address\":\"eu1.cloud.thethings.network\"}}}";
+// #else
+// char MqttBuf[MQTT_PAYLOAD_SIZE + 1]; //!< MQTT Payload Buffer
+// #endif
 
 #if defined(MITHERMOMETER_EN) || defined(THEENGSDECODER_EN)
 const int bleScanTime = 31; //!< BLE scan time in seconds
@@ -236,7 +204,7 @@ RTC_DATA_ATTR bool touchMidTrig = false;  //!< Flag: Middle touch sensor has bee
 NimBLEScan *pBLEScan;
 #endif
 
-bool mqttMessageReceived = false; //!< Flag: MQTT message has been received
+//bool mqttMessageReceived = false; //!< Flag: MQTT message has been received
 
 // ################ PROGRAM VARIABLES and OBJECTS ################
 
@@ -261,43 +229,43 @@ float humidity_readings[max_readings] = {0};    //!< OWM humidity readings
 float rain_readings[max_readings] = {0};        //!< OWM rain readings
 float snow_readings[max_readings] = {0};        //!< OWM snow readings
 
-// MQTT Sensor Data
-struct MqttS
-{
-  bool valid;           //!<
-  char received_at[32]; //!< MQTT message received date/time
-  struct
-  {
-    unsigned int ws_batt_ok : 1; //!< weather sensor battery o.k.
-    unsigned int ws_dec_ok : 1;  //!< weather sensor decoding o.k.
-    unsigned int s1_batt_ok : 1; //!< soil moisture sensor battery o.k.
-    unsigned int s1_dec_ok : 1;  //!< soil moisture sensor dencoding o.k.
-    unsigned int ble_ok : 1;     //!< BLE T-/H-sensor data o.k.
+// // MQTT Sensor Data
+// struct MqttS
+// {
+//   bool valid;           //!<
+//   char received_at[32]; //!< MQTT message received date/time
+//   struct
+//   {
+//     unsigned int ws_batt_ok : 1; //!< weather sensor battery o.k.
+//     unsigned int ws_dec_ok : 1;  //!< weather sensor decoding o.k.
+//     unsigned int s1_batt_ok : 1; //!< soil moisture sensor battery o.k.
+//     unsigned int s1_dec_ok : 1;  //!< soil moisture sensor dencoding o.k.
+//     unsigned int ble_ok : 1;     //!< BLE T-/H-sensor data o.k.
 
-  } status;
-  float air_temp_c;          //!< temperature in degC
-  uint8_t humidity;          //!< humidity in %
-  float wind_direction_deg;  //!< wind direction in deg
-  float wind_gust_meter_sec; //!< wind speed (gusts) in m/s
-  float wind_avg_meter_sec;  //!< wind speed (avg)   in m/s
-  float rain_mm;             //!< rain gauge level in mm
-  uint16_t supply_v;         //!< supply voltage in mV
-  uint16_t battery_v;        //!< battery voltage in mV
-  float water_temp_c;        //!< water temperature in degC
-  float indoor_temp_c;       //!< indoor temperature in degC
-  uint8_t indoor_humidity;   //!< indoor humidity in %
-  float soil_temp_c;         //!< soil temperature in degC
-  uint8_t soil_moisture;     //!< soil moisture in %
-  float rain_hr;             //!< hourly precipitation in mm
-  bool rain_hr_valid;        //!< hourly precipitation valid
-  float rain_day;            //!< daily precipitation in mm
-  bool rain_day_valid;       //!< daily precipitation valid
-  float rain_day_prev;       //!< daily precipitation in mm, previous value
-  float rain_week;           //!< weekly precipitation in mm
-  float rain_month;          //!< monthly precipitatiion in mm
-};
+//   } status;
+//   float air_temp_c;          //!< temperature in degC
+//   uint8_t humidity;          //!< humidity in %
+//   float wind_direction_deg;  //!< wind direction in deg
+//   float wind_gust_meter_sec; //!< wind speed (gusts) in m/s
+//   float wind_avg_meter_sec;  //!< wind speed (avg)   in m/s
+//   float rain_mm;             //!< rain gauge level in mm
+//   uint16_t supply_v;         //!< supply voltage in mV
+//   uint16_t battery_v;        //!< battery voltage in mV
+//   float water_temp_c;        //!< water temperature in degC
+//   float indoor_temp_c;       //!< indoor temperature in degC
+//   uint8_t indoor_humidity;   //!< indoor humidity in %
+//   float soil_temp_c;         //!< soil temperature in degC
+//   uint8_t soil_moisture;     //!< soil moisture in %
+//   float rain_hr;             //!< hourly precipitation in mm
+//   bool rain_hr_valid;        //!< hourly precipitation valid
+//   float rain_day;            //!< daily precipitation in mm
+//   bool rain_day_valid;       //!< daily precipitation valid
+//   float rain_day_prev;       //!< daily precipitation in mm, previous value
+//   float rain_week;           //!< weekly precipitation in mm
+//   float rain_month;          //!< monthly precipitatiion in mm
+// };
 
-typedef struct MqttS mqtt_sensors_t;      //!< Shortcut for struct Sensor
+// typedef struct MqttS mqtt_sensors_t;      //!< Shortcut for struct Sensor
 RTC_DATA_ATTR mqtt_sensors_t MqttSensors; //!< MQTT sensor data
 
 RTC_DATA_ATTR Queue_t MqttHistQCtrl; //!< MQTT Sensor Data History FIFO Control
@@ -342,34 +310,34 @@ typedef struct RainDayHistQData rain_day_hist_t; //!< Shortcut for struct RainDa
 RTC_DATA_ATTR rain_hr_hist_t RainDayHist[RAIN_DAY_HIST_SIZE]; //<! Daily Rain Data History
 RTC_DATA_ATTR uint8_t RainDayHistMDay = 0;                    //!< Last Daily Rain Data History Update, Day of Month
 
-// Local Sensor Data
-struct LocalS
-{
-  struct
-  {
-    bool valid;         //!< data valid
-    float temperature;  //!< temperature in degC
-    float humidity;     //!< humidity in %
-    uint8_t batt_level; //!< battery level in %
-    int rssi;           //!< RSSI in dBm
-  } ble_thsensor[1];
-  struct
-  {
-    bool valid;        //!< data valid
-    float temperature; //!< temperature in degC
-    float humidity;    //!< humidity in %
-    float pressure;    //!< pressure in hPa
-  } i2c_thpsensor[1];
-  struct
-  {
-    bool valid;        //!< data valid
-    float temperature; //!< temperature in degC
-    float humidity;    //!< humidity in %
-    uint16_t co2;      //!< CO2 in ppm
-  } i2c_co2sensor;
-};
+// // Local Sensor Data
+// struct LocalS
+// {
+//   struct
+//   {
+//     bool valid;         //!< data valid
+//     float temperature;  //!< temperature in degC
+//     float humidity;     //!< humidity in %
+//     uint8_t batt_level; //!< battery level in %
+//     int rssi;           //!< RSSI in dBm
+//   } ble_thsensor[1];
+//   struct
+//   {
+//     bool valid;        //!< data valid
+//     float temperature; //!< temperature in degC
+//     float humidity;    //!< humidity in %
+//     float pressure;    //!< pressure in hPa
+//   } i2c_thpsensor[1];
+//   struct
+//   {
+//     bool valid;        //!< data valid
+//     float temperature; //!< temperature in degC
+//     float humidity;    //!< humidity in %
+//     uint16_t co2;      //!< CO2 in ppm
+//   } i2c_co2sensor;
+// };
 
-typedef struct LocalS local_sensors_t; //!< Shortcut for struct LocalS
+// typedef struct LocalS local_sensors_t; //!< Shortcut for struct LocalS
 local_sensors_t LocalSensors;          //!< Local Sensor Data
 
 RTC_DATA_ATTR Queue_t LocalHistQCtrl; //!< Local Sensor Data History FIFO Control
@@ -533,7 +501,6 @@ void setup()
   Serial.begin(115200);
   Serial.setDebugOutput(true);
 
-  bool mqtt_connected = false;
   bool wifi_ok = false;
 
   if ((esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT1) || TouchTriggered())
@@ -766,8 +733,8 @@ void setup()
 
   // Fetch MQTT data
   MQTTClient MqttClient(MQTT_PAYLOAD_SIZE);
-  mqtt_connected = MqttConnect(net, MqttClient);
-  if (mqtt_connected)
+  MqttInterface mqttInterface(net, MqttClient, MqttSensors);
+  if (mqttInterface.mqttConnect())
   {
     // Show download icon
     int x = 88;
@@ -800,7 +767,7 @@ void setup()
     } // no fast partial update
 
     // Get MQTT data (blocks until data is available)
-    GetMqttData(net, MqttClient);
+    mqttInterface.getMqttData();
 
     if (display.epd2.hasFastPartialUpdate)
     {
@@ -828,7 +795,7 @@ void setup()
         DisplayMQTTWeather(NULL);
       }
     } // no fast partial update
-  } // if (mqtt_connected)
+  } // if MQTT connected
 
   time_t t_now = time(NULL);
   log_i("Time since last MqttHist update: %ld min", (t_now - MqttHistTStamp) / 60);
@@ -845,7 +812,7 @@ void setup()
   }
   SaveRainDayData();
 
-  MqttUplink(net, MqttClient, LocalSensors);
+  mqttInterface.mqttUplink(net, MqttClient, LocalSensors);
   StopWiFi();
   BeginSleep();
 }
@@ -916,35 +883,22 @@ inline bool TouchTriggered(void)
   return (touchPrevTrig || touchMidTrig || touchNextTrig);
 }
 
-/**
- * \brief Check if history update is due
- *
- * History is updated at an interval of <code>HIST_UPDATE_RATE</code> synchronized
- * to the past full hour with a tolerance of <code>HIST_UPDATE_TOL</code>.
- *
- * \return true if update is due, otherwise false
- */
-bool HistoryUpdateDue(void)
-{
-  int mins = (CurrentHour * 60 + CurrentMin) % HIST_UPDATE_RATE;
-  bool rv = (mins <= HIST_UPDATE_TOL) || (mins >= (HIST_UPDATE_RATE - HIST_UPDATE_TOL));
-  return rv;
-}
 
-/**
- * \brief MQTT message reception callback function
- *
- * Sets the flag <code>mqttMessageReceived</code> and copies the received message to
- * <code>MqttBuf</code>.
- */
-void mqttMessageCb(String &topic, String &payload)
-{
-  mqttMessageReceived = true;
-  log_d("Payload size: %d", payload.length());
-#ifndef SIMULATE_MQTT
-  strncpy(MqttBuf, payload.c_str(), payload.length());
-#endif
-}
+
+// /**
+//  * \brief MQTT message reception callback function
+//  *
+//  * Sets the flag <code>mqttMessageReceived</code> and copies the received message to
+//  * <code>MqttBuf</code>.
+//  */
+// void mqttMessageCb(String &topic, String &payload)
+// {
+//   mqttMessageReceived = true;
+//   log_d("Payload size: %d", payload.length());
+// #ifndef SIMULATE_MQTT
+//   strncpy(MqttBuf, payload.c_str(), payload.length());
+// #endif
+// }
 
 /**
  * \brief Display Open Weather Map (OWM) data
@@ -993,142 +947,142 @@ void DisplayOWMWeather(const unsigned char *status_bitmap)
 #endif
 }
 
-/**
- * \brief Connect to MQTT broker
- *
- * \param net         network connection
- * \param MqttClient  MQTT client object
- *
- * \return true if connection was succesful, otherwise false
- */
-bool MqttConnect(WiFiClient &net, MQTTClient &MqttClient)
-{
-  log_d("Checking wifi...");
-  if (StartWiFi() != WL_CONNECTED)
-  {
-    return false;
-  }
+// /**
+//  * \brief Connect to MQTT broker
+//  *
+//  * \param net         network connection
+//  * \param MqttClient  MQTT client object
+//  *
+//  * \return true if connection was succesful, otherwise false
+//  */
+// bool MqttConnect(WiFiClient &net, MQTTClient &MqttClient)
+// {
+//   log_d("Checking wifi...");
+//   if (StartWiFi() != WL_CONNECTED)
+//   {
+//     return false;
+//   }
 
-  log_i("MQTT connecting...");
-  unsigned long start = millis();
+//   log_i("MQTT connecting...");
+//   unsigned long start = millis();
 
-  MqttClient.begin(MQTT_HOST, MQTT_PORT, net);
-  MqttClient.setOptions(MQTT_KEEPALIVE /* keepAlive [s] */, MQTT_CLEAN_SESSION /* cleanSession */, MQTT_TIMEOUT * 1000 /* timeout [ms] */);
+//   MqttClient.begin(MQTT_HOST, MQTT_PORT, net);
+//   MqttClient.setOptions(MQTT_KEEPALIVE /* keepAlive [s] */, MQTT_CLEAN_SESSION /* cleanSession */, MQTT_TIMEOUT * 1000 /* timeout [ms] */);
 
-  while (!MqttClient.connect(Hostname, MQTT_USER, MQTT_PASS))
-  {
-    log_d(".");
-    if (millis() > start + MQTT_CONNECT_TIMEOUT * 1000)
-    {
-      log_i("Connect timeout!");
-      return false;
-    }
-    delay(1000);
-  }
-  log_i("Connected!");
+//   while (!MqttClient.connect(Hostname, MQTT_USER, MQTT_PASS))
+//   {
+//     log_d(".");
+//     if (millis() > start + MQTT_CONNECT_TIMEOUT * 1000)
+//     {
+//       log_i("Connect timeout!");
+//       return false;
+//     }
+//     delay(1000);
+//   }
+//   log_i("Connected!");
 
-  MqttClient.onMessage(mqttMessageCb);
+//   MqttClient.onMessage(mqttMessageCb);
 
-  if (!MqttClient.subscribe(MQTT_SUB_IN))
-  {
-    log_i("MQTT subscription failed!");
-    return false;
-  }
-  return true;
-}
+//   if (!MqttClient.subscribe(MQTT_SUB_IN))
+//   {
+//     log_i("MQTT subscription failed!");
+//     return false;
+//   }
+//   return true;
+// }
 
-bool MqttUplink(WiFiClient &net, MQTTClient &MqttClient, local_sensors_t &data)
-{
-  char payload[21];
-  char topic[41];
+// bool MqttUplink(WiFiClient &net, MQTTClient &MqttClient, local_sensors_t &data)
+// {
+//   char payload[21];
+//   char topic[41];
 
-  log_d("Checking wifi...");
-  if (StartWiFi() != WL_CONNECTED)
-  {
-    return false;
-  }
+//   log_d("Checking wifi...");
+//   if (StartWiFi() != WL_CONNECTED)
+//   {
+//     return false;
+//   }
 
-  log_i("MQTT (publishing) connecting...");
-  unsigned long start = millis();
+//   log_i("MQTT (publishing) connecting...");
+//   unsigned long start = millis();
 
-  MqttClient.begin(MQTT_HOST_P, MQTT_PORT_P, net);
-  MqttClient.setOptions(MQTT_KEEPALIVE /* keepAlive [s] */, MQTT_CLEAN_SESSION /* cleanSession */, MQTT_TIMEOUT * 1000 /* timeout [ms] */);
+//   MqttClient.begin(MQTT_HOST_P, MQTT_PORT_P, net);
+//   MqttClient.setOptions(MQTT_KEEPALIVE /* keepAlive [s] */, MQTT_CLEAN_SESSION /* cleanSession */, MQTT_TIMEOUT * 1000 /* timeout [ms] */);
 
-  while (!MqttClient.connect(Hostname, MQTT_USER_P, MQTT_PASS_P))
-  {
-    log_d(".");
-    if (millis() > start + MQTT_CONNECT_TIMEOUT * 1000)
-    {
-      log_i("Connect timeout!");
-      return false;
-    }
-    delay(1000);
-  }
-  log_i("Connected!");
+//   while (!MqttClient.connect(Hostname, MQTT_USER_P, MQTT_PASS_P))
+//   {
+//     log_d(".");
+//     if (millis() > start + MQTT_CONNECT_TIMEOUT * 1000)
+//     {
+//       log_i("Connect timeout!");
+//       return false;
+//     }
+//     delay(1000);
+//   }
+//   log_i("Connected!");
 
-  log_d("Publishing...");
-#if defined(SCD4X_EN)
-  if (data.i2c_co2sensor.valid)
-  {
-    snprintf(payload, 20, "%u", data.i2c_co2sensor.co2);
-    snprintf(topic, 40, "%s/sdc4x/co2", Hostname);
-    MqttClient.publish(topic, payload);
+//   log_d("Publishing...");
+// #if defined(SCD4X_EN)
+//   if (data.i2c_co2sensor.valid)
+//   {
+//     snprintf(payload, 20, "%u", data.i2c_co2sensor.co2);
+//     snprintf(topic, 40, "%s/sdc4x/co2", Hostname);
+//     MqttClient.publish(topic, payload);
 
-    snprintf(payload, 20, "%3.1f", data.i2c_co2sensor.temperature);
-    snprintf(topic, 40, "%s/sdc4x/temperature", Hostname);
-    MqttClient.publish(topic, payload);
+//     snprintf(payload, 20, "%3.1f", data.i2c_co2sensor.temperature);
+//     snprintf(topic, 40, "%s/sdc4x/temperature", Hostname);
+//     MqttClient.publish(topic, payload);
 
-    snprintf(payload, 20, "%3.0f", data.i2c_co2sensor.humidity);
-    snprintf(topic, 40, "%s/sdc4x/humidity", Hostname);
-    MqttClient.publish(topic, payload);
-  }
-#endif
+//     snprintf(payload, 20, "%3.0f", data.i2c_co2sensor.humidity);
+//     snprintf(topic, 40, "%s/sdc4x/humidity", Hostname);
+//     MqttClient.publish(topic, payload);
+//   }
+// #endif
 
-#if defined(BME280_EN)
-  if (data.i2c_thpsensor[0].valid)
-  {
-    snprintf(payload, 20, "%3.1f", data.i2c_thpsensor[0].temperature);
-    snprintf(topic, 40, "%s/bme280/temperature", Hostname);
-    MqttClient.publish(topic, payload);
+// #if defined(BME280_EN)
+//   if (data.i2c_thpsensor[0].valid)
+//   {
+//     snprintf(payload, 20, "%3.1f", data.i2c_thpsensor[0].temperature);
+//     snprintf(topic, 40, "%s/bme280/temperature", Hostname);
+//     MqttClient.publish(topic, payload);
 
-    snprintf(payload, 20, "%3.0f", data.i2c_thpsensor[0].humidity);
-    snprintf(topic, 40, "%s/bme280/humidity", Hostname);
-    MqttClient.publish(topic, payload);
+//     snprintf(payload, 20, "%3.0f", data.i2c_thpsensor[0].humidity);
+//     snprintf(topic, 40, "%s/bme280/humidity", Hostname);
+//     MqttClient.publish(topic, payload);
 
-    snprintf(payload, 20, "%4.0f", data.i2c_thpsensor[0].pressure);
-    snprintf(topic, 40, "%s/bme280/pressure", Hostname);
-    MqttClient.publish(topic, payload);
-  }
-#endif
+//     snprintf(payload, 20, "%4.0f", data.i2c_thpsensor[0].pressure);
+//     snprintf(topic, 40, "%s/bme280/pressure", Hostname);
+//     MqttClient.publish(topic, payload);
+//   }
+// #endif
 
-#if defined(THEENGSDECODER_EN) || defined(THEENGSDECODER_EN)
-  if (data.ble_thsensor[0].valid)
-  {
-    snprintf(payload, 20, "%3.1f", data.ble_thsensor[0].temperature);
-    snprintf(topic, 40, "%s/ble/temperature", Hostname);
-    MqttClient.publish(topic, payload);
+// #if defined(THEENGSDECODER_EN) || defined(THEENGSDECODER_EN)
+//   if (data.ble_thsensor[0].valid)
+//   {
+//     snprintf(payload, 20, "%3.1f", data.ble_thsensor[0].temperature);
+//     snprintf(topic, 40, "%s/ble/temperature", Hostname);
+//     MqttClient.publish(topic, payload);
 
-    snprintf(payload, 20, "%3.0f", data.ble_thsensor[0].humidity);
-    snprintf(topic, 40, "%s/ble/humidity", Hostname);
-    MqttClient.publish(topic, payload);
+//     snprintf(payload, 20, "%3.0f", data.ble_thsensor[0].humidity);
+//     snprintf(topic, 40, "%s/ble/humidity", Hostname);
+//     MqttClient.publish(topic, payload);
 
-    snprintf(payload, 20, "%u", data.ble_thsensor[0].batt_level);
-    snprintf(topic, 40, "%s/ble/batt_level", Hostname);
-    MqttClient.publish(topic, payload);
-  }
-#endif
+//     snprintf(payload, 20, "%u", data.ble_thsensor[0].batt_level);
+//     snprintf(topic, 40, "%s/ble/batt_level", Hostname);
+//     MqttClient.publish(topic, payload);
+//   }
+// #endif
 
-  for (int i = 0; i < 10; i++)
-  {
-    MqttClient.loop();
-    delay(500);
-  }
+//   for (int i = 0; i < 10; i++)
+//   {
+//     MqttClient.loop();
+//     delay(500);
+//   }
 
-  log_i("MQTT (publishing) disconnect.");
-  MqttClient.disconnect();
+//   log_i("MQTT (publishing) disconnect.");
+//   MqttClient.disconnect();
 
-  return true;
-}
+//   return true;
+// }
 
 /**
  * \brief Find min/max temperature in MQTT history data
@@ -1182,174 +1136,155 @@ void findMqttMinMaxTemp(float *t_min, float *t_max)
   *t_max = outdoorTMax;
 }
 
-void convertUtcTimestamp(String time_str_utc, struct tm *ti_local, int tz_offset)
-{
-  struct tm received_at_utc;
-  memset(&received_at_utc, 0, sizeof(struct tm));
-  memset(ti_local, 0, sizeof(struct tm));
 
-  // Read time string
-  strptime(time_str_utc.c_str(), "%Y-%m-%dT%H:%M:%S%z", &received_at_utc);
-  log_d("UTC: %d-%02d-%02d %02d:%02d DST: %d\n", received_at_utc.tm_year + 1900, received_at_utc.tm_mon + 1, received_at_utc.tm_mday, received_at_utc.tm_hour, received_at_utc.tm_min, received_at_utc.tm_isdst);
+// /**
+//  * \brief Get MQTT data from broker
+//  *
+//  * \param net         network connection
+//  * \param MqttClient  MQTT client object
+//  */
+// void GetMqttData(WiFiClient &net, MQTTClient &MqttClient)
+// {
+//   MqttSensors.valid = false;
 
-  // Convert time struct and calculate offset
-  time_t received_at = mktime(&received_at_utc) - tz_offset;
+//   log_i("Waiting for MQTT message...");
 
-  // Convert time value to time struct (local time; with consideration of DST)
-  localtime_r(&received_at, ti_local);
-  char tbuf[26];
-  strftime(tbuf, 25, "%Y-%m-%d %H:%M", ti_local);
-  log_d("Message received at: %s local time, DST: %d\n", tbuf, ti_local->tm_isdst);
-}
+//   // allocate the JsonDocument
+//   JsonDocument doc;
 
-/**
- * \brief Get MQTT data from broker
- *
- * \param net         network connection
- * \param MqttClient  MQTT client object
- */
-void GetMqttData(WiFiClient &net, MQTTClient &MqttClient)
-{
-  MqttSensors.valid = false;
+//   // LoRaWAN fPort
+//   unsigned char f_port;
 
-  log_i("Waiting for MQTT message...");
+//   do
+//   {
+// #ifndef SIMULATE_MQTT
+//     unsigned long start = millis();
+//     int count = 0;
+//     while (!mqttMessageReceived)
+//     {
+//       MqttClient.loop();
+//       delay(10);
+//       if (count++ == 1000)
+//       {
+//         log_d(".");
+//         count = 0;
+//       }
+//       if (mqttMessageReceived)
+//         break;
+//       if (!MqttClient.connected())
+//       {
+//         MqttConnect(net, MqttClient);
+//       }
+//       if (TouchTriggered())
+//       {
+//         log_i("Touch interrupt!");
+//         return;
+//       }
+//       if (millis() > start + MQTT_DATA_TIMEOUT * 1000)
+//       {
+//         log_i("Timeout!");
+//         MqttClient.disconnect();
+//         return;
+//       }
+//       // During this time-consuming loop, updating local history could be due
+//       if (HistoryUpdateDue())
+//       {
+//         time_t now = time(NULL);
+//         if (now - LocalHistTStamp >= (HIST_UPDATE_RATE - HIST_UPDATE_TOL) * 60)
+//         {
+//           LocalHistTStamp = now;
+//           SaveLocalData();
+//         }
+//       }
+//     }
+// #else
+//     log_i("(Simulated MQTT incoming message)");
+//     MqttSensors.valid = true;
+// #endif
 
-  // allocate the JsonDocument
-  JsonDocument doc;
+//     log_i("done!");
+//     log_d("%s", MqttBuf);
 
-  // LoRaWAN fPort
-  unsigned char f_port;
+//     log_d("Creating JSON object...");
 
-  do
-  {
-#ifndef SIMULATE_MQTT
-    unsigned long start = millis();
-    int count = 0;
-    while (!mqttMessageReceived)
-    {
-      MqttClient.loop();
-      delay(10);
-      if (count++ == 1000)
-      {
-        log_d(".");
-        count = 0;
-      }
-      if (mqttMessageReceived)
-        break;
-      if (!MqttClient.connected())
-      {
-        MqttConnect(net, MqttClient);
-      }
-      if (TouchTriggered())
-      {
-        log_i("Touch interrupt!");
-        return;
-      }
-      if (millis() > start + MQTT_DATA_TIMEOUT * 1000)
-      {
-        log_i("Timeout!");
-        MqttClient.disconnect();
-        return;
-      }
-      // During this time-consuming loop, updating local history could be due
-      if (HistoryUpdateDue())
-      {
-        time_t now = time(NULL);
-        if (now - LocalHistTStamp >= (HIST_UPDATE_RATE - HIST_UPDATE_TOL) * 60)
-        {
-          LocalHistTStamp = now;
-          SaveLocalData();
-        }
-      }
-    }
-#else
-    log_i("(Simulated MQTT incoming message)");
-    MqttSensors.valid = true;
-#endif
+//     // Deserialize the JSON document
+//     DeserializationError error = deserializeJson(doc, MqttBuf, MQTT_PAYLOAD_SIZE);
 
-    log_i("done!");
-    log_d("%s", MqttBuf);
+//     // Test if parsing succeeds.
+//     if (error)
+//     {
+//       log_i("deserializeJson() failed: %s", error.c_str());
+//       return;
+//     }
+//     else
+//     {
+//       log_d("Done!");
+//     }
 
-    log_d("Creating JSON object...");
+//     MqttClient.disconnect();
+//     MqttSensors.valid = true;
 
-    // Deserialize the JSON document
-    DeserializationError error = deserializeJson(doc, MqttBuf, MQTT_PAYLOAD_SIZE);
+//     const char *received_at = doc["received_at"];
+//     if (received_at)
+//     {
+//       strncpy(MqttSensors.received_at, received_at, 30);
+//     }
+//     f_port = doc["uplink_message"]["f_port"];
+//   } while (f_port != 1);
+//   JsonVariant payload = doc["uplink_message"]["decoded_payload"]["bytes"];
 
-    // Test if parsing succeeds.
-    if (error)
-    {
-      log_i("deserializeJson() failed: %s", error.c_str());
-      return;
-    }
-    else
-    {
-      log_d("Done!");
-    }
+//   MqttSensors.air_temp_c = payload[WS_TEMP_C].isNull() ? INV_TEMP : payload[WS_TEMP_C];
+//   MqttSensors.humidity = payload[WS_HUMIDITY].isNull() ? INV_UINT8 : payload[WS_HUMIDITY];
+//   MqttSensors.indoor_temp_c = payload[TH1_TEMP_C].isNull() ? INV_TEMP : payload[TH1_TEMP_C];
+//   MqttSensors.indoor_humidity = payload[TH1_HUMIDITY].isNull() ? INV_UINT8 : payload[TH1_HUMIDITY];
+//   MqttSensors.battery_v = payload[A0_VOLTAGE_MV].isNull() ? INV_UINT16 : payload[A0_VOLTAGE_MV];
+//   MqttSensors.rain_day = payload[WS_RAIN_DAILY_MM].isNull() ? INV_FLOAT : payload[WS_RAIN_DAILY_MM];
+//   MqttSensors.rain_hr = payload[WS_RAIN_HOURLY_MM].isNull() ? INV_FLOAT : payload[WS_RAIN_HOURLY_MM];
+//   MqttSensors.rain_mm = payload[WS_RAIN_MM].isNull() ? INV_FLOAT : payload[WS_RAIN_MM];
+//   MqttSensors.rain_month = payload[WS_RAIN_MONTHLY_MM].isNull() ? INV_FLOAT : payload[WS_RAIN_MONTHLY_MM];
+//   MqttSensors.rain_week = payload[WS_RAIN_WEEKLY_MM].isNull() ? INV_FLOAT : payload[WS_RAIN_WEEKLY_MM];
+//   MqttSensors.soil_moisture = payload[SOIL1_MOISTURE].isNull() ? INV_UINT8 : payload[SOIL1_MOISTURE];
+//   MqttSensors.soil_temp_c = payload[SOIL1_TEMP_C].isNull() ? INV_TEMP : payload[SOIL1_TEMP_C];
+//   MqttSensors.water_temp_c = payload[OW0_TEMP_C].isNull() ? INV_TEMP : payload[OW0_TEMP_C];
+//   MqttSensors.wind_avg_meter_sec = payload[WS_WIND_AVG_MS].isNull() ? INV_FLOAT : payload[WS_WIND_AVG_MS];
+//   MqttSensors.wind_direction_deg = payload[WS_WIND_DIR_DEG].isNull() ? INV_UINT16 : payload[WS_WIND_DIR_DEG];
+//   MqttSensors.wind_gust_meter_sec = payload[WS_WIND_GUST_MS].isNull() ? INV_FLOAT : payload[WS_WIND_GUST_MS];
 
-    MqttClient.disconnect();
-    MqttSensors.valid = true;
+//   // FIXME: This is a workaround for the time being
+//   JsonObject status = payload["status"];
+//   bool ble_ok = MqttSensors.indoor_temp_c != INV_TEMP && MqttSensors.indoor_humidity != INV_UINT8;
+//   // MqttSensors.status.ble_ok = status["ble_ok"] | ble_ok;
+//   MqttSensors.status.ble_ok = ble_ok;
+//   bool s1_dec_ok = MqttSensors.soil_temp_c != INV_TEMP && MqttSensors.soil_moisture != INV_UINT8;
+//   // MqttSensors.status.s1_dec_ok = status["s1_dec_ok"] | s1_dec_ok;
+//   MqttSensors.status.s1_dec_ok = s1_dec_ok;
+//   bool ws_dec_ok = MqttSensors.air_temp_c != INV_TEMP && MqttSensors.rain_mm != INV_FLOAT;
+//   // MqttSensors.status.ws_dec_ok = status["ws_dec_ok"] | ws_dec_ok;
+//   MqttSensors.status.ws_dec_ok = ws_dec_ok;
 
-    const char *received_at = doc["received_at"];
-    if (received_at)
-    {
-      strncpy(MqttSensors.received_at, received_at, 30);
-    }
-    f_port = doc["uplink_message"]["f_port"];
-  } while (f_port != 1);
-  JsonVariant payload = doc["uplink_message"]["decoded_payload"]["bytes"];
+//   MqttSensors.status.s1_batt_ok = status["s1_batt_ok"];
+//   MqttSensors.status.ws_batt_ok = status["ws_batt_ok"];
 
-  MqttSensors.air_temp_c = payload[WS_TEMP_C].isNull() ? INV_TEMP : payload[WS_TEMP_C];
-  MqttSensors.humidity = payload[WS_HUMIDITY].isNull() ? INV_UINT8 : payload[WS_HUMIDITY];
-  MqttSensors.indoor_temp_c = payload[TH1_TEMP_C].isNull() ? INV_TEMP : payload[TH1_TEMP_C];
-  MqttSensors.indoor_humidity = payload[TH1_HUMIDITY].isNull() ? INV_UINT8 : payload[TH1_HUMIDITY];
-  MqttSensors.battery_v = payload[A0_VOLTAGE_MV].isNull() ? INV_UINT16 : payload[A0_VOLTAGE_MV];
-  MqttSensors.rain_day = payload[WS_RAIN_DAILY_MM].isNull() ? INV_FLOAT : payload[WS_RAIN_DAILY_MM];
-  MqttSensors.rain_hr = payload[WS_RAIN_HOURLY_MM].isNull() ? INV_FLOAT : payload[WS_RAIN_HOURLY_MM];
-  MqttSensors.rain_mm = payload[WS_RAIN_MM].isNull() ? INV_FLOAT : payload[WS_RAIN_MM];
-  MqttSensors.rain_month = payload[WS_RAIN_MONTHLY_MM].isNull() ? INV_FLOAT : payload[WS_RAIN_MONTHLY_MM];
-  MqttSensors.rain_week = payload[WS_RAIN_WEEKLY_MM].isNull() ? INV_FLOAT : payload[WS_RAIN_WEEKLY_MM];
-  MqttSensors.soil_moisture = payload[SOIL1_MOISTURE].isNull() ? INV_UINT8 : payload[SOIL1_MOISTURE];
-  MqttSensors.soil_temp_c = payload[SOIL1_TEMP_C].isNull() ? INV_TEMP : payload[SOIL1_TEMP_C];
-  MqttSensors.water_temp_c = payload[OW0_TEMP_C].isNull() ? INV_TEMP : payload[OW0_TEMP_C];
-  MqttSensors.wind_avg_meter_sec = payload[WS_WIND_AVG_MS].isNull() ? INV_FLOAT : payload[WS_WIND_AVG_MS];
-  MqttSensors.wind_direction_deg = payload[WS_WIND_DIR_DEG].isNull() ? INV_UINT16 : payload[WS_WIND_DIR_DEG];
-  MqttSensors.wind_gust_meter_sec = payload[WS_WIND_GUST_MS].isNull() ? INV_FLOAT : payload[WS_WIND_GUST_MS];
+//   // Sanity checks
+//   if (MqttSensors.humidity == 0)
+//   {
+//     MqttSensors.status.ws_dec_ok = false;
+//   }
+//   MqttSensors.rain_hr_valid = (MqttSensors.rain_hr >= 0) && (MqttSensors.rain_hr < 300);
+//   MqttSensors.rain_day_valid = (MqttSensors.rain_day >= 0) && (MqttSensors.rain_day < 1800);
 
-  // FIXME: This is a workaround for the time being
-  JsonObject status = payload["status"];
-  bool ble_ok = MqttSensors.indoor_temp_c != INV_TEMP && MqttSensors.indoor_humidity != INV_UINT8;
-  // MqttSensors.status.ble_ok = status["ble_ok"] | ble_ok;
-  MqttSensors.status.ble_ok = ble_ok;
-  bool s1_dec_ok = MqttSensors.soil_temp_c != INV_TEMP && MqttSensors.soil_moisture != INV_UINT8;
-  // MqttSensors.status.s1_dec_ok = status["s1_dec_ok"] | s1_dec_ok;
-  MqttSensors.status.s1_dec_ok = s1_dec_ok;
-  bool ws_dec_ok = MqttSensors.air_temp_c != INV_TEMP && MqttSensors.rain_mm != INV_FLOAT;
-  // MqttSensors.status.ws_dec_ok = status["ws_dec_ok"] | ws_dec_ok;
-  MqttSensors.status.ws_dec_ok = ws_dec_ok;
+//   // If not valid, set value to zero to avoid any problems with auto-scale etc.
+//   if (!MqttSensors.rain_hr_valid)
+//   {
+//     MqttSensors.rain_hr = 0;
+//   }
+//   if (!MqttSensors.rain_day_valid)
+//   {
+//     MqttSensors.rain_day = 0;
+//   }
 
-  MqttSensors.status.s1_batt_ok = status["s1_batt_ok"];
-  MqttSensors.status.ws_batt_ok = status["ws_batt_ok"];
-
-  // Sanity checks
-  if (MqttSensors.humidity == 0)
-  {
-    MqttSensors.status.ws_dec_ok = false;
-  }
-  MqttSensors.rain_hr_valid = (MqttSensors.rain_hr >= 0) && (MqttSensors.rain_hr < 300);
-  MqttSensors.rain_day_valid = (MqttSensors.rain_day >= 0) && (MqttSensors.rain_day < 1800);
-
-  // If not valid, set value to zero to avoid any problems with auto-scale etc.
-  if (!MqttSensors.rain_hr_valid)
-  {
-    MqttSensors.rain_hr = 0;
-  }
-  if (!MqttSensors.rain_day_valid)
-  {
-    MqttSensors.rain_day = 0;
-  }
-
-  log_i("MQTT data updated: %d", MqttSensors.valid ? 1 : 0);
-}
+//   log_i("MQTT data updated: %d", MqttSensors.valid ? 1 : 0);
+// }
 
 /**
  * \brief Save MQTT data to history FIFO
@@ -2042,7 +1977,7 @@ void DisplayMQTTDateTime(int x, int y)
     return;
 
   convertUtcTimestamp(MqttSensors.received_at, &timeinfo, _timezone);
-  printTime(timeinfo, mqtt_date, mqtt_time, 32);
+  printTime(timeinfo, mqtt_date, mqtt_time, 32, TXT_UPDATED);
 
   u8g2Fonts.setFont(u8g2_font_helvB14_tf);
   drawString(x, y, mqtt_date, CENTER);
@@ -2955,89 +2890,6 @@ void DrawRSSI(int x, int y, int rssi)
   }
 }
 
-/**
- * \brief Get time from NTP server and initialize/update RTC
- *
- * The global constants gmtOffset_sec, daylightOffset_sec and ntpServer are used.
- *
- * \return true if RTC initialization was successfully, false otherwise
- */
-boolean SetupTime()
-{
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer, "pool.ntp.org"); //(gmtOffset_sec, daylightOffset_sec, ntpServer)
-  setenv("TZ", Timezone, 1);                                                // setenv()adds the "TZ" variable to the environment with a value TimeZone, only used if set to 1, 0 means no change
-  tzset();                                                                  // Set the TZ environment variable
-  delay(100);
-  bool TimeStatus = UpdateLocalTime();
-  return TimeStatus;
-}
-
-/**
- * \brief Get local time (from RTC) and update global variables
- *
- * The global variables CurrentHour, CurrentMin, CurrentSec, CurrentDay
- * and day_output/time_output are updated.
- * date_output contains the localized date string,
- * time_output contains the localized text TXT_UPDATED with the time string.
- *
- * \return true if RTC time was valid, false otherwise
- */
-boolean UpdateLocalTime()
-{
-  struct tm timeinfo;
-  char time_output[32], date_output[32];
-  while (!getLocalTime(&timeinfo, 10000))
-  { // Wait for 10-sec for time to synchronise
-    log_w("Failed to obtain time");
-    return false;
-  }
-  CurrentHour = timeinfo.tm_hour;
-  CurrentMin = timeinfo.tm_min;
-  CurrentSec = timeinfo.tm_sec;
-  CurrentDay = timeinfo.tm_mday;
-  printTime(timeinfo, time_output, date_output, 32);
-
-  Date_str = date_output;
-  Time_str = time_output;
-  return true;
-}
-
-/**
- * \brief Print localized time to variables
- *
- * \param timeinfo      date and time data structure
- * \param date_output   test output buffer for localized date
- * \param time_output   text output buffer for localized time
- * \param max_size      maximum text buffer size
- *
- *
- */
-void printTime(struct tm &timeinfo, char *date_output, char *time_output, int max_size)
-{
-  char update_time[30];
-
-  // See http://www.cplusplus.com/reference/ctime/strftime/
-  // Serial.println(&timeinfo, "%a %b %d %Y   %H:%M:%S");      // Displays: Saturday, June 24 2017 14:05:49
-  if (Units == "M")
-  {
-    if ((Language == "CZ") || (Language == "DE") || (Language == "PL") || (Language == "NL"))
-    {
-      sprintf(date_output, "%s, %02u. %s %04u", weekday_D[timeinfo.tm_wday], timeinfo.tm_mday, month_M[timeinfo.tm_mon], (timeinfo.tm_year) + 1900); // day_output >> So., 23. Juni 2019 <<
-    }
-    else
-    {
-      sprintf(date_output, "%s %02u-%s-%04u", weekday_D[timeinfo.tm_wday], timeinfo.tm_mday, month_M[timeinfo.tm_mon], (timeinfo.tm_year) + 1900);
-    }
-    strftime(update_time, max_size, "%H:%M:%S", &timeinfo); // Creates: '14:05:49'
-    sprintf(time_output, "%s %s", TXT_UPDATED, update_time);
-  }
-  else
-  {
-    strftime(date_output, max_size, "%a %b-%d-%Y", &timeinfo);   // Creates  'Sat May-31-2019'
-    strftime(update_time, sizeof(update_time), "%r", &timeinfo); // Creates: '02:05:49pm'
-    sprintf(time_output, "%s %s", TXT_UPDATED, update_time);
-  }
-}
 
 #if 0
 /**
@@ -3223,30 +3075,7 @@ void InitialiseDisplay()
   display.setFullWindow();
 }
 // #########################################################################################
-/*String Translate_EN_DE(String text) {
-  if (text == "clear")            return "klar";
-  if (text == "sunny")            return "sonnig";
-  if (text == "mist")             return "Nebel";
-  if (text == "fog")              return "Nebel";
-  if (text == "rain")             return "Regen";
-  if (text == "shower")           return "Regenschauer";
-  if (text == "cloudy")           return "wolkig";
-  if (text == "clouds")           return "Wolken";
-  if (text == "drizzle")          return "Nieselregen";
-  if (text == "snow")             return "Schnee";
-  if (text == "thunderstorm")     return "Gewitter";
-  if (text == "light")            return "leichter";
-  if (text == "heavy")            return "schwer";
-  if (text == "mostly cloudy")    return "größtenteils bewölkt";
-  if (text == "overcast clouds")  return "überwiegend bewölkt";
-  if (text == "scattered clouds") return "aufgelockerte Bewölkung";
-  if (text == "few clouds")       return "ein paar Wolken";
-  if (text == "clear sky")        return "klarer Himmel";
-  if (text == "broken clouds")    return "aufgerissene Bewölkung";
-  if (text == "light rain")       return "leichter Regen";
-  return text;
-  }
-*/
+
 /*
 
   Version 16.11
