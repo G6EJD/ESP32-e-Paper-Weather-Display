@@ -109,7 +109,7 @@ bool MqttInterface::mqttConnect()
 }
 
 // Get data from MQTT broker
-void MqttInterface::getMqttData()
+void MqttInterface::getMqttData(mqtt_sensors_t &MqttSensors)
 {
   MqttSensors.valid = false;
 
