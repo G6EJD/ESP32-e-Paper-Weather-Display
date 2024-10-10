@@ -52,6 +52,51 @@ extern int CurrentDay;
 extern int CurrentHour;
 extern int CurrentMin;
 extern int CurrentSec;
+extern int WiFiSignal;
+
+// WiFi connection to multiple alternative access points
+static WiFiMulti wifiMulti;
+
+// Start WiFi connection
+uint8_t StartWiFi()
+{
+  // Add list of wifi networks
+  wifiMulti.addAP(ssid0, password0);
+  wifiMulti.addAP(ssid1, password1);
+  wifiMulti.addAP(ssid2, password2);
+  
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    return WL_CONNECTED;
+  }
+
+  IPAddress dns(MY_DNS);
+  WiFi.disconnect();
+  WiFi.mode(WIFI_STA); // switch off AP
+
+  uint8_t connectionStatus = wifiMulti.run();
+
+  if (connectionStatus == WL_CONNECTED)
+  {
+    String ssid = WiFi.SSID();
+    WiFiSignal = WiFi.RSSI(); // Get Wifi Signal strength now, because the WiFi will be turned off to save power!
+    log_i("WiFi connected to '%s'", ssid.c_str());
+    log_i("WiFi connected at: %s", WiFi.localIP().toString().c_str());
+  }
+  else
+  {
+    log_w("WiFi connection failed!");
+  }
+
+  return connectionStatus;
+}
+
+// Disconnects WiFi and switches off WiFi to save power.
+void StopWiFi()
+{
+  WiFi.disconnect();
+  WiFi.mode(WIFI_OFF);
+}
 
 // Check if history update is due
 bool HistoryUpdateDue(void)

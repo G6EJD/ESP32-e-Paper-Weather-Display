@@ -48,6 +48,7 @@
 #include <ArduinoJson.h> // https://github.com/bblanchon/ArduinoJson needs version v6 or above
 #include "config.h"
 #include "secrets.h"
+#include "LocalInterface.h"
 
 // MQTT Sensor Data
 struct MqttS
@@ -93,8 +94,8 @@ typedef struct MqttS mqtt_sensors_t; //!< Shortcut for struct Sensor
 #ifdef TOPICS_NEW
 #define WS_TEMP_C "ws_temp_c"
 #define WS_HUMIDITY "ws_humidity"
-#define TH1_TEMP_C "th1_temp_c"
-#define TH1_HUMIDITY "th1_humidity"
+#define BLE0_TEMP_C "ble0_temp_c"
+#define BLE0_HUMIDITY "ble0_humidity"
 #define A0_VOLTAGE_MV "a0_voltage_mv"
 #define WS_RAIN_DAILY_MM "ws_rain_daily_mm"
 #define WS_RAIN_HOURLY_MM "ws_rain_hourly_mm"
@@ -110,8 +111,8 @@ typedef struct MqttS mqtt_sensors_t; //!< Shortcut for struct Sensor
 #else
 #define WS_TEMP_C "air_temp_c"
 #define WS_HUMIDITY "humidity"
-#define TH1_TEMP_C "indoor_temp_c"
-#define TH1_HUMIDITY "indoor_humidity"
+#define BLE0_TEMP_C "indoor_temp_c"
+#define BLE0_HUMIDITY "indoor_humidity"
 #define A0_VOLTAGE_MV "battery_v"
 #define WS_RAIN_DAILY_MM "rain_day"
 #define WS_RAIN_HOURLY_MM "rain_hr"
@@ -140,13 +141,12 @@ class MqttInterface
 private:
     WiFiClient net;
     MQTTClient MqttClient;
-    mqtt_sensors_t MqttSensors;
 
 public:
     /*!
      * \brief Constructor
      */
-    MqttInterface(WiFiClient &_net, MQTTClient &_MqttClient, mqtt_sensors_t &_MqttSensors)
+    MqttInterface(WiFiClient &_net, MQTTClient &_MqttClient)
     {
         net = _net;
         MqttClient = _MqttClient;
@@ -165,7 +165,7 @@ public:
      * \param net         network connection
      * \param MqttClient  MQTT client object
      */
-    void getMqttData();
+    void getMqttData(mqtt_sensors_t &MqttSensors);
 
     bool mqttUplink(WiFiClient &net, MQTTClient &MqttClient, local_sensors_t &data);
 };

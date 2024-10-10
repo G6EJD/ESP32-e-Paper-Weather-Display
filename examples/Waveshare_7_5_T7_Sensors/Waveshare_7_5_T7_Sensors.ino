@@ -62,7 +62,6 @@
 #include "owm_credentials.h" // See 'owm_credentials' tab and enter your OWM API key and set the Wifi SSID and PASSWORD
 #include <ArduinoJson.h>     // https://github.com/bblanchon/ArduinoJson needs version v6 or above
 #include <WiFi.h>            // Built-in
-#include <WiFiMulti.h>
 // #include <WiFiClientSecure.h>
 #include <time.h>                  // Built-in
 #include <SPI.h>                   // Built-in
@@ -71,6 +70,7 @@
 #include <MQTT.h>                  // https://github.com/256dpi/arduino-mqtt
 #include <cQueue.h>                // https://github.com/SMFSW/cQueue
 #include "MqttInterface.h"         // MQTT sensor data interface
+#include "LocalInterface.h"        // Local sensor data interface (BLE and I2C)
 #include "WeatherSymbols.h"        // Functions for drawing weather symbols at runtime
 #include "bitmap_icons.h"          // Icon bitmaps
 #include "bitmap_weather_report.h" // Picture shown on ScreenStart
@@ -78,8 +78,6 @@
 #include "bitmap_remote.h"         // Picture shown on ScreenMQTT  - replace by your own
 #include "utils.h"
 #include "secrets.h"
-
-
 
 #define ENABLE_GxEPD2_display 0
 #include <GxEPD2_BW.h> //!< https://github.com/ZinggJM/GxEPD2
@@ -93,27 +91,6 @@
 // #include "src/lang_it.h"         // Localisation (Italian)
 // #include "src/lang_nl.h"         // Localization (Dutch)
 // #include "src/lang_pl.h"         // Localisation (Polish)
-
-
-#ifdef MITHERMOMETER_EN
-// BLE Temperature/Humidity Sensor
-#include <ATC_MiThermometer.h> //!< https://github.com/matthias-bs/ATC_MiThermometer
-#endif
-
-#ifdef THEENGSDECODER_EN
-#include "NimBLEDevice.h" //!< https://github.com/h2zero/NimBLE-Arduino
-#include "decoder.h"      //!< https://github.com/theengs/decoder
-#endif
-
-#ifdef BME280_EN
-#include <pocketBME280.h> // https://github.com/angrest/pocketBME280
-#endif
-
-#ifdef SCD4X_EN
-#include <SensirionI2CScd4x.h> // https://github.com/Sensirion/arduino-i2c-scd4x
-#endif
-
-
 
 long SleepDuration = 30;        //!< Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour (+ SleepOffset)
 long SleepOffset = -120;        //!< Offset in seconds from SleepDuration; -120 will trigger wakeup 2 minutes earlier
@@ -149,17 +126,6 @@ static const uint8_t TOUCH_NEXT = 32; //!< Touch sensor right (next)
 static const uint8_t TOUCH_PREV = 33; //!< Touch sensor left  (previous)
 static const uint8_t TOUCH_MID = 35;  //!< Touch sensor middle
 
-// #ifdef SIMULATE_MQTT
-// const char *MqttBuf = "{\"end_device_ids\":{\"device_id\":\"eui-9876b6000011c87b\",\"application_ids\":{\"application_id\":\"flora-lora\"},\"dev_eui\":\"9876B6000011C87B\",\"join_eui\":\"0000000000000000\",\"dev_addr\":\"260BFFCA\"},\"correlation_ids\":[\"as:up:01GH0PHSCTGKZ51EB8XCBBGHQD\",\"gs:conn:01GFQX269DVXYK9W6XF8NNZWDD\",\"gs:up:host:01GFQX26AXQM4QHEAPW48E8EWH\",\"gs:uplink:01GH0PHS6A65GBAPZB92XNGYAP\",\"ns:uplink:01GH0PHS6BEPXS9Y7DMDRNK84Y\",\"rpc:/ttn.lorawan.v3.GsNs/HandleUplink:01GH0PHS6BY76SY2VPRSHNDDRH\",\"rpc:/ttn.lorawan.v3.NsAs/HandleUplink:01GH0PHSCS7D3V8ERSKF0DTJ8H\"],\"received_at\":\"2022-11-04T06:51:44.409936969Z\",\"uplink_message\":{\"session_key_id\":\"AYRBaM/qASfqUi+BQK75Gg==\",\"f_port\":1,\"frm_payload\":\"PwOOWAgACAAIBwAAYEKAC28LAw0D4U0DwAoAAAAAwMxMP8DMTD/AzEw/AAAAAAAAAAAA\",\"decoded_payload\":{\"bytes\":{\"air_temp_c\":\"9.1\",\"battery_v\":2927,\"humidity\":88,\"indoor_humidity\":77,\"indoor_temp_c\":\"9.9\",\"rain_day\":\"0.8\",\"rain_hr\":\"0.0\",\"rain_mm\":\"56.0\",\"rain_mon\":\"0.8\",\"rain_week\":\"0.8\",\"soil_moisture\":10,\"soil_temp_c\":\"9.6\",\"status\":{\"ble_ok\":true,\"res\":false,\"rtc_sync_req\":false,\"runtime_expired\":true,\"s1_batt_ok\":true,\"s1_dec_ok\":true,\"ws_batt_ok\":true,\"ws_dec_ok\":true},\"supply_v\":2944,\"water_temp_c\":\"7.8\",\"wind_avg_meter_sec\":\"0.8\",\"wind_direction_deg\":\"180.0\",\"wind_gust_meter_sec\":\"0.8\"}},\"rx_metadata\":[{\"gateway_ids\":{\"gateway_id\":\"lora-db0fc\",\"eui\":\"3135323538002400\"},\"time\":\"2022-11-04T06:51:44.027496Z\",\"timestamp\":1403655780,\"rssi\":-104,\"channel_rssi\":-104,\"snr\":8.25,\"location\":{\"latitude\":52.27640735,\"longitude\":10.54058183,\"altitude\":65,\"source\":\"SOURCE_REGISTRY\"},\"uplink_token\":\"ChgKFgoKbG9yYS1kYjBmYxIIMTUyNTgAJAAQ5KyonQUaCwiA7ZKbBhCw6tpgIKDtnYPt67cC\",\"channel_index\":4,\"received_at\":\"2022-11-04T06:51:44.182146570Z\"}],\"settings\":{\"data_rate\":{\"lora\":{\"bandwidth\":125000,\"spreading_factor\":8,\"coding_rate\":\"4/5\"}},\"frequency\":\"867300000\",\"timestamp\":1403655780,\"time\":\"2022-11-04T06:51:44.027496Z\"},\"received_at\":\"2022-11-04T06:51:44.203702153Z\",\"confirmed\":true,\"consumed_airtime\":\"0.215552s\",\"locations\":{\"user\":{\"latitude\":52.24619,\"longitude\":10.50106,\"source\":\"SOURCE_REGISTRY\"}},\"network_ids\":{\"net_id\":\"000013\",\"tenant_id\":\"ttn\",\"cluster_id\":\"eu1\",\"cluster_address\":\"eu1.cloud.thethings.network\"}}}";
-// #else
-// char MqttBuf[MQTT_PAYLOAD_SIZE + 1]; //!< MQTT Payload Buffer
-// #endif
-
-#if defined(MITHERMOMETER_EN) || defined(THEENGSDECODER_EN)
-const int bleScanTime = 31; //!< BLE scan time in seconds
-std::vector<std::string> knownBLEAddresses = KNOWN_BLE_ADDRESSES;
-#endif
-
 #if defined(DISPLAY_BW)
 GxEPD2_BW<GxEPD2_750_T7, GxEPD2_750_T7::HEIGHT> display(GxEPD2_750_T7(/*CS=*/EPD_CS, /*DC=*/EPD_DC, /*RST=*/EPD_RST, /*BUSY=*/EPD_BUSY)); // B/W display
 #elif defined(DISPLAY_3C)
@@ -189,7 +155,7 @@ boolean LargeIcon = true, SmallIcon = false;
 String Time_str;       //!< Curent time as string
 String Date_str;       //!< Current date as stringstrings to hold time and received weather data
 extern long _timezone; //!<
-int wifi_signal = 0;   //!< WiFi signal strength
+int WiFiSignal = 0;    //!< WiFi signal strength
 int CurrentHour = 0;   //!< Current time - hour
 int CurrentMin = 0;    //!< Current time - minutes
 int CurrentSec = 0;    //!< Current time - seconds
@@ -200,11 +166,7 @@ RTC_DATA_ATTR bool touchPrevTrig = false; //!< Flag: Left   touch sensor has bee
 RTC_DATA_ATTR bool touchNextTrig = false; //!< Flag: Right  touch sensor has been triggered
 RTC_DATA_ATTR bool touchMidTrig = false;  //!< Flag: Middle touch sensor has been triggered
 
-#if defined(MITHERMOMETER_EN) || defined(THEENGSDECODER_EN)
-NimBLEScan *pBLEScan;
-#endif
-
-//bool mqttMessageReceived = false; //!< Flag: MQTT message has been received
+// bool mqttMessageReceived = false; //!< Flag: MQTT message has been received
 
 // ################ PROGRAM VARIABLES and OBJECTS ################
 
@@ -229,44 +191,7 @@ float humidity_readings[max_readings] = {0};    //!< OWM humidity readings
 float rain_readings[max_readings] = {0};        //!< OWM rain readings
 float snow_readings[max_readings] = {0};        //!< OWM snow readings
 
-// // MQTT Sensor Data
-// struct MqttS
-// {
-//   bool valid;           //!<
-//   char received_at[32]; //!< MQTT message received date/time
-//   struct
-//   {
-//     unsigned int ws_batt_ok : 1; //!< weather sensor battery o.k.
-//     unsigned int ws_dec_ok : 1;  //!< weather sensor decoding o.k.
-//     unsigned int s1_batt_ok : 1; //!< soil moisture sensor battery o.k.
-//     unsigned int s1_dec_ok : 1;  //!< soil moisture sensor dencoding o.k.
-//     unsigned int ble_ok : 1;     //!< BLE T-/H-sensor data o.k.
-
-//   } status;
-//   float air_temp_c;          //!< temperature in degC
-//   uint8_t humidity;          //!< humidity in %
-//   float wind_direction_deg;  //!< wind direction in deg
-//   float wind_gust_meter_sec; //!< wind speed (gusts) in m/s
-//   float wind_avg_meter_sec;  //!< wind speed (avg)   in m/s
-//   float rain_mm;             //!< rain gauge level in mm
-//   uint16_t supply_v;         //!< supply voltage in mV
-//   uint16_t battery_v;        //!< battery voltage in mV
-//   float water_temp_c;        //!< water temperature in degC
-//   float indoor_temp_c;       //!< indoor temperature in degC
-//   uint8_t indoor_humidity;   //!< indoor humidity in %
-//   float soil_temp_c;         //!< soil temperature in degC
-//   uint8_t soil_moisture;     //!< soil moisture in %
-//   float rain_hr;             //!< hourly precipitation in mm
-//   bool rain_hr_valid;        //!< hourly precipitation valid
-//   float rain_day;            //!< daily precipitation in mm
-//   bool rain_day_valid;       //!< daily precipitation valid
-//   float rain_day_prev;       //!< daily precipitation in mm, previous value
-//   float rain_week;           //!< weekly precipitation in mm
-//   float rain_month;          //!< monthly precipitatiion in mm
-// };
-
-// typedef struct MqttS mqtt_sensors_t;      //!< Shortcut for struct Sensor
-RTC_DATA_ATTR mqtt_sensors_t MqttSensors; //!< MQTT sensor data
+extern RTC_DATA_ATTR mqtt_sensors_t MqttSensors; //!< MQTT sensor data
 
 RTC_DATA_ATTR Queue_t MqttHistQCtrl; //!< MQTT Sensor Data History FIFO Control
 
@@ -310,35 +235,7 @@ typedef struct RainDayHistQData rain_day_hist_t; //!< Shortcut for struct RainDa
 RTC_DATA_ATTR rain_hr_hist_t RainDayHist[RAIN_DAY_HIST_SIZE]; //<! Daily Rain Data History
 RTC_DATA_ATTR uint8_t RainDayHistMDay = 0;                    //!< Last Daily Rain Data History Update, Day of Month
 
-// // Local Sensor Data
-// struct LocalS
-// {
-//   struct
-//   {
-//     bool valid;         //!< data valid
-//     float temperature;  //!< temperature in degC
-//     float humidity;     //!< humidity in %
-//     uint8_t batt_level; //!< battery level in %
-//     int rssi;           //!< RSSI in dBm
-//   } ble_thsensor[1];
-//   struct
-//   {
-//     bool valid;        //!< data valid
-//     float temperature; //!< temperature in degC
-//     float humidity;    //!< humidity in %
-//     float pressure;    //!< pressure in hPa
-//   } i2c_thpsensor[1];
-//   struct
-//   {
-//     bool valid;        //!< data valid
-//     float temperature; //!< temperature in degC
-//     float humidity;    //!< humidity in %
-//     uint16_t co2;      //!< CO2 in ppm
-//   } i2c_co2sensor;
-// };
-
-// typedef struct LocalS local_sensors_t; //!< Shortcut for struct LocalS
-local_sensors_t LocalSensors;          //!< Local Sensor Data
+extern local_sensors_t LocalSensors; //!< Local Sensor Data
 
 RTC_DATA_ATTR Queue_t LocalHistQCtrl; //!< Local Sensor Data History FIFO Control
 
@@ -359,11 +256,10 @@ RTC_DATA_ATTR time_t LocalHistTStamp = 0;              //!< Last Local History U
 RTC_DATA_ATTR int ScreenNo = START_SCREEN; //!< Current Screen No.
 RTC_DATA_ATTR int PrevScreenNo = -1;       //!< Previous Screen No.
 
-// WiFi connection to multiple alternative access points
-WiFiMulti wifiMulti;
+LocalInterface localInterface;
 
 // WiFi connect timeout per AP. Increase when connecting takes longer.
-const uint32_t connectTimeoutMs = 10000;
+//const uint32_t connectTimeoutMs = 10000;
 
 /**
  * \brief Touch Interrupt Service Routines
@@ -382,113 +278,6 @@ void ARDUINO_ISR_ATTR touch_mid_isr()
 {
   touchMidTrig = true;
 }
-
-#ifdef THEENGSDECODER_EN
-class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks
-{
-
-  int m_devices_found = 0; //!< Number of known devices found
-
-  std::string convertServiceData(std::string deviceServiceData)
-  {
-    int serviceDataLength = (int)deviceServiceData.length();
-    char spr[2 * serviceDataLength + 1];
-    for (int i = 0; i < serviceDataLength; i++)
-      sprintf(spr + 2 * i, "%.2x", (unsigned char)deviceServiceData[i]);
-    spr[2 * serviceDataLength] = 0;
-    return spr;
-  }
-
-  void onResult(BLEAdvertisedDevice *advertisedDevice)
-  {
-    TheengsDecoder decoder;
-    bool device_found = false;
-    unsigned idx;
-    JsonDocument doc;
-
-    log_v("Advertised Device: %s", advertisedDevice->toString().c_str());
-    JsonObject BLEdata = doc.to<JsonObject>();
-    String mac_adress = advertisedDevice->getAddress().toString().c_str();
-
-    BLEdata["id"] = (char *)mac_adress.c_str();
-    for (idx = 0; idx < knownBLEAddresses.size(); idx++)
-    {
-      if (mac_adress == knownBLEAddresses[idx].c_str())
-      {
-        log_v("BLE device found at index %d", idx);
-        device_found = true;
-        break;
-      }
-    }
-
-    if (advertisedDevice->haveName())
-      BLEdata["name"] = (char *)advertisedDevice->getName().c_str();
-
-    if (advertisedDevice->haveManufacturerData())
-    {
-      char *manufacturerdata = BLEUtils::buildHexData(NULL, (uint8_t *)advertisedDevice->getManufacturerData().data(), advertisedDevice->getManufacturerData().length());
-      BLEdata["manufacturerdata"] = manufacturerdata;
-      free(manufacturerdata);
-    }
-
-    if (advertisedDevice->haveRSSI())
-      BLEdata["rssi"] = (int)advertisedDevice->getRSSI();
-
-    if (advertisedDevice->haveTXPower())
-      BLEdata["txpower"] = (int8_t)advertisedDevice->getTXPower();
-
-    if (advertisedDevice->haveServiceData())
-    {
-      int serviceDataCount = advertisedDevice->getServiceDataCount();
-      for (int j = 0; j < serviceDataCount; j++)
-      {
-        std::string service_data = convertServiceData(advertisedDevice->getServiceData(j));
-        BLEdata["servicedata"] = (char *)service_data.c_str();
-        std::string serviceDatauuid = advertisedDevice->getServiceDataUUID(j).toString();
-        BLEdata["servicedatauuid"] = (char *)serviceDatauuid.c_str();
-      }
-    }
-
-    if (decoder.decodeBLEJson(BLEdata) && device_found)
-    {
-      if (CORE_DEBUG_LEVEL >= ARDUHAL_LOG_LEVEL_DEBUG)
-      {
-        char buf[512];
-        serializeJson(BLEdata, buf);
-        log_d("TheengsDecoder found device: %s", buf);
-      }
-      BLEdata.remove("manufacturerdata");
-      BLEdata.remove("servicedata");
-
-      LocalSensors.ble_thsensor[idx].temperature = (float)BLEdata["tempc"];
-      LocalSensors.ble_thsensor[idx].humidity = (float)BLEdata["hum"];
-      LocalSensors.ble_thsensor[idx].batt_level = (uint8_t)BLEdata["batt"];
-      LocalSensors.ble_thsensor[idx].rssi = (int)BLEdata["rssi"];
-      LocalSensors.ble_thsensor[idx].valid = (LocalSensors.ble_thsensor[idx].batt_level > 0);
-      log_i("Temperature:       %.1f°C", LocalSensors.ble_thsensor[idx].temperature);
-      log_i("Humidity:          %.1f%%", LocalSensors.ble_thsensor[idx].humidity);
-      log_i("Battery level:     %d%%", LocalSensors.ble_thsensor[idx].batt_level);
-      log_i("RSSI             %ddBm", LocalSensors.ble_thsensor[idx].rssi = (int)BLEdata["rssi"]);
-      m_devices_found++;
-      log_d("BLE devices found: %d", m_devices_found);
-    }
-
-    // Abort scanning by touch sensor
-    if (TouchTriggered())
-    {
-      log_i("Touch interrupt!");
-      pBLEScan->stop();
-    }
-
-    // Abort scanning because all known devices have been found
-    if (m_devices_found == knownBLEAddresses.size())
-    {
-      log_i("All devices found.");
-      pBLEScan->stop();
-    }
-  }
-};
-#endif
 
 /**
  * \brief Arduino setup()
@@ -540,18 +329,18 @@ void setup()
     // Display start screen for 10 seconds
     if (ScreenNo == ScreenStart)
     {
-      #if defined(DISPLAY_3C)
+#if defined(DISPLAY_3C)
       display.firstPage();
       do
       {
-      #endif
+#endif
         DisplayStartScreen();
-      #if defined(DISPLAY_3C)
+#if defined(DISPLAY_3C)
       } while (display.nextPage());
-      #endif
-      #if defined(DISPLAY_BW)
+#endif
+#if defined(DISPLAY_BW)
       display.display(false);
-      #endif
+#endif
       delay(10000L);
 
       ScreenNo = ScreenOWM;
@@ -576,10 +365,6 @@ void setup()
 #if defined(DISPLAY_BW)
   display.display(true);
 #endif
-  // Add list of wifi networks
-  wifiMulti.addAP(ssid0, password0);
-  wifiMulti.addAP(ssid1, password1);
-  wifiMulti.addAP(ssid2, password2);
 
   wifi_ok = (StartWiFi() == WL_CONNECTED);
 
@@ -654,7 +439,7 @@ void setup()
   }
 
   // Get local sensor data (Bluetooth, I²C, SPI, ...)
-  GetLocalData();
+  localInterface.GetLocalData();
 
   if (HistoryUpdateDue())
   {
@@ -733,7 +518,7 @@ void setup()
 
   // Fetch MQTT data
   MQTTClient MqttClient(MQTT_PAYLOAD_SIZE);
-  MqttInterface mqttInterface(net, MqttClient, MqttSensors);
+  MqttInterface mqttInterface(net, MqttClient);
   if (mqttInterface.mqttConnect())
   {
     // Show download icon
@@ -767,7 +552,7 @@ void setup()
     } // no fast partial update
 
     // Get MQTT data (blocks until data is available)
-    mqttInterface.getMqttData();
+    mqttInterface.getMqttData(MqttSensors);
 
     if (display.epd2.hasFastPartialUpdate)
     {
@@ -883,8 +668,6 @@ inline bool TouchTriggered(void)
   return (touchPrevTrig || touchMidTrig || touchNextTrig);
 }
 
-
-
 // /**
 //  * \brief MQTT message reception callback function
 //  *
@@ -919,11 +702,11 @@ void DisplayOWMWeather(const unsigned char *status_bitmap)
   {
 #endif
     display.fillScreen(GxEPD_WHITE);
-    #if defined(DISPLAY_BW)
+#if defined(DISPLAY_BW)
     display.display();
-    #endif
+#endif
     DisplayGeneralInfoSection();
-    DrawRSSI(705, 15, wifi_signal);
+    DrawRSSI(705, 15, WiFiSignal);
     DisplayDisplayWindSection(108, 146, WxConditions[0].Winddir, WxConditions[0].Windspeed, 81, true, TXT_WIND_SPEED_DIRECTION);
     DisplayMainWeatherSection(300, 100); // Centre section of display for Location, temperature, Weather report, current Wx Symbol and wind direction
     display.drawLine(0, 38, SCREEN_WIDTH - 3, 38, GxEPD_BLACK);
@@ -937,8 +720,7 @@ void DisplayOWMWeather(const unsigned char *status_bitmap)
     {
       display.drawBitmap(x, y, status_bitmap, 48, 48, GxEPD_BLACK);
     }
-    
-    
+
 #if defined(DISPLAY_3C)
   } while (display.nextPage());
 #endif
@@ -946,143 +728,6 @@ void DisplayOWMWeather(const unsigned char *status_bitmap)
   display.display(true);
 #endif
 }
-
-// /**
-//  * \brief Connect to MQTT broker
-//  *
-//  * \param net         network connection
-//  * \param MqttClient  MQTT client object
-//  *
-//  * \return true if connection was succesful, otherwise false
-//  */
-// bool MqttConnect(WiFiClient &net, MQTTClient &MqttClient)
-// {
-//   log_d("Checking wifi...");
-//   if (StartWiFi() != WL_CONNECTED)
-//   {
-//     return false;
-//   }
-
-//   log_i("MQTT connecting...");
-//   unsigned long start = millis();
-
-//   MqttClient.begin(MQTT_HOST, MQTT_PORT, net);
-//   MqttClient.setOptions(MQTT_KEEPALIVE /* keepAlive [s] */, MQTT_CLEAN_SESSION /* cleanSession */, MQTT_TIMEOUT * 1000 /* timeout [ms] */);
-
-//   while (!MqttClient.connect(Hostname, MQTT_USER, MQTT_PASS))
-//   {
-//     log_d(".");
-//     if (millis() > start + MQTT_CONNECT_TIMEOUT * 1000)
-//     {
-//       log_i("Connect timeout!");
-//       return false;
-//     }
-//     delay(1000);
-//   }
-//   log_i("Connected!");
-
-//   MqttClient.onMessage(mqttMessageCb);
-
-//   if (!MqttClient.subscribe(MQTT_SUB_IN))
-//   {
-//     log_i("MQTT subscription failed!");
-//     return false;
-//   }
-//   return true;
-// }
-
-// bool MqttUplink(WiFiClient &net, MQTTClient &MqttClient, local_sensors_t &data)
-// {
-//   char payload[21];
-//   char topic[41];
-
-//   log_d("Checking wifi...");
-//   if (StartWiFi() != WL_CONNECTED)
-//   {
-//     return false;
-//   }
-
-//   log_i("MQTT (publishing) connecting...");
-//   unsigned long start = millis();
-
-//   MqttClient.begin(MQTT_HOST_P, MQTT_PORT_P, net);
-//   MqttClient.setOptions(MQTT_KEEPALIVE /* keepAlive [s] */, MQTT_CLEAN_SESSION /* cleanSession */, MQTT_TIMEOUT * 1000 /* timeout [ms] */);
-
-//   while (!MqttClient.connect(Hostname, MQTT_USER_P, MQTT_PASS_P))
-//   {
-//     log_d(".");
-//     if (millis() > start + MQTT_CONNECT_TIMEOUT * 1000)
-//     {
-//       log_i("Connect timeout!");
-//       return false;
-//     }
-//     delay(1000);
-//   }
-//   log_i("Connected!");
-
-//   log_d("Publishing...");
-// #if defined(SCD4X_EN)
-//   if (data.i2c_co2sensor.valid)
-//   {
-//     snprintf(payload, 20, "%u", data.i2c_co2sensor.co2);
-//     snprintf(topic, 40, "%s/sdc4x/co2", Hostname);
-//     MqttClient.publish(topic, payload);
-
-//     snprintf(payload, 20, "%3.1f", data.i2c_co2sensor.temperature);
-//     snprintf(topic, 40, "%s/sdc4x/temperature", Hostname);
-//     MqttClient.publish(topic, payload);
-
-//     snprintf(payload, 20, "%3.0f", data.i2c_co2sensor.humidity);
-//     snprintf(topic, 40, "%s/sdc4x/humidity", Hostname);
-//     MqttClient.publish(topic, payload);
-//   }
-// #endif
-
-// #if defined(BME280_EN)
-//   if (data.i2c_thpsensor[0].valid)
-//   {
-//     snprintf(payload, 20, "%3.1f", data.i2c_thpsensor[0].temperature);
-//     snprintf(topic, 40, "%s/bme280/temperature", Hostname);
-//     MqttClient.publish(topic, payload);
-
-//     snprintf(payload, 20, "%3.0f", data.i2c_thpsensor[0].humidity);
-//     snprintf(topic, 40, "%s/bme280/humidity", Hostname);
-//     MqttClient.publish(topic, payload);
-
-//     snprintf(payload, 20, "%4.0f", data.i2c_thpsensor[0].pressure);
-//     snprintf(topic, 40, "%s/bme280/pressure", Hostname);
-//     MqttClient.publish(topic, payload);
-//   }
-// #endif
-
-// #if defined(THEENGSDECODER_EN) || defined(THEENGSDECODER_EN)
-//   if (data.ble_thsensor[0].valid)
-//   {
-//     snprintf(payload, 20, "%3.1f", data.ble_thsensor[0].temperature);
-//     snprintf(topic, 40, "%s/ble/temperature", Hostname);
-//     MqttClient.publish(topic, payload);
-
-//     snprintf(payload, 20, "%3.0f", data.ble_thsensor[0].humidity);
-//     snprintf(topic, 40, "%s/ble/humidity", Hostname);
-//     MqttClient.publish(topic, payload);
-
-//     snprintf(payload, 20, "%u", data.ble_thsensor[0].batt_level);
-//     snprintf(topic, 40, "%s/ble/batt_level", Hostname);
-//     MqttClient.publish(topic, payload);
-//   }
-// #endif
-
-//   for (int i = 0; i < 10; i++)
-//   {
-//     MqttClient.loop();
-//     delay(500);
-//   }
-
-//   log_i("MQTT (publishing) disconnect.");
-//   MqttClient.disconnect();
-
-//   return true;
-// }
 
 /**
  * \brief Find min/max temperature in MQTT history data
@@ -1135,156 +780,6 @@ void findMqttMinMaxTemp(float *t_min, float *t_max)
   *t_min = outdoorTMin;
   *t_max = outdoorTMax;
 }
-
-
-// /**
-//  * \brief Get MQTT data from broker
-//  *
-//  * \param net         network connection
-//  * \param MqttClient  MQTT client object
-//  */
-// void GetMqttData(WiFiClient &net, MQTTClient &MqttClient)
-// {
-//   MqttSensors.valid = false;
-
-//   log_i("Waiting for MQTT message...");
-
-//   // allocate the JsonDocument
-//   JsonDocument doc;
-
-//   // LoRaWAN fPort
-//   unsigned char f_port;
-
-//   do
-//   {
-// #ifndef SIMULATE_MQTT
-//     unsigned long start = millis();
-//     int count = 0;
-//     while (!mqttMessageReceived)
-//     {
-//       MqttClient.loop();
-//       delay(10);
-//       if (count++ == 1000)
-//       {
-//         log_d(".");
-//         count = 0;
-//       }
-//       if (mqttMessageReceived)
-//         break;
-//       if (!MqttClient.connected())
-//       {
-//         MqttConnect(net, MqttClient);
-//       }
-//       if (TouchTriggered())
-//       {
-//         log_i("Touch interrupt!");
-//         return;
-//       }
-//       if (millis() > start + MQTT_DATA_TIMEOUT * 1000)
-//       {
-//         log_i("Timeout!");
-//         MqttClient.disconnect();
-//         return;
-//       }
-//       // During this time-consuming loop, updating local history could be due
-//       if (HistoryUpdateDue())
-//       {
-//         time_t now = time(NULL);
-//         if (now - LocalHistTStamp >= (HIST_UPDATE_RATE - HIST_UPDATE_TOL) * 60)
-//         {
-//           LocalHistTStamp = now;
-//           SaveLocalData();
-//         }
-//       }
-//     }
-// #else
-//     log_i("(Simulated MQTT incoming message)");
-//     MqttSensors.valid = true;
-// #endif
-
-//     log_i("done!");
-//     log_d("%s", MqttBuf);
-
-//     log_d("Creating JSON object...");
-
-//     // Deserialize the JSON document
-//     DeserializationError error = deserializeJson(doc, MqttBuf, MQTT_PAYLOAD_SIZE);
-
-//     // Test if parsing succeeds.
-//     if (error)
-//     {
-//       log_i("deserializeJson() failed: %s", error.c_str());
-//       return;
-//     }
-//     else
-//     {
-//       log_d("Done!");
-//     }
-
-//     MqttClient.disconnect();
-//     MqttSensors.valid = true;
-
-//     const char *received_at = doc["received_at"];
-//     if (received_at)
-//     {
-//       strncpy(MqttSensors.received_at, received_at, 30);
-//     }
-//     f_port = doc["uplink_message"]["f_port"];
-//   } while (f_port != 1);
-//   JsonVariant payload = doc["uplink_message"]["decoded_payload"]["bytes"];
-
-//   MqttSensors.air_temp_c = payload[WS_TEMP_C].isNull() ? INV_TEMP : payload[WS_TEMP_C];
-//   MqttSensors.humidity = payload[WS_HUMIDITY].isNull() ? INV_UINT8 : payload[WS_HUMIDITY];
-//   MqttSensors.indoor_temp_c = payload[TH1_TEMP_C].isNull() ? INV_TEMP : payload[TH1_TEMP_C];
-//   MqttSensors.indoor_humidity = payload[TH1_HUMIDITY].isNull() ? INV_UINT8 : payload[TH1_HUMIDITY];
-//   MqttSensors.battery_v = payload[A0_VOLTAGE_MV].isNull() ? INV_UINT16 : payload[A0_VOLTAGE_MV];
-//   MqttSensors.rain_day = payload[WS_RAIN_DAILY_MM].isNull() ? INV_FLOAT : payload[WS_RAIN_DAILY_MM];
-//   MqttSensors.rain_hr = payload[WS_RAIN_HOURLY_MM].isNull() ? INV_FLOAT : payload[WS_RAIN_HOURLY_MM];
-//   MqttSensors.rain_mm = payload[WS_RAIN_MM].isNull() ? INV_FLOAT : payload[WS_RAIN_MM];
-//   MqttSensors.rain_month = payload[WS_RAIN_MONTHLY_MM].isNull() ? INV_FLOAT : payload[WS_RAIN_MONTHLY_MM];
-//   MqttSensors.rain_week = payload[WS_RAIN_WEEKLY_MM].isNull() ? INV_FLOAT : payload[WS_RAIN_WEEKLY_MM];
-//   MqttSensors.soil_moisture = payload[SOIL1_MOISTURE].isNull() ? INV_UINT8 : payload[SOIL1_MOISTURE];
-//   MqttSensors.soil_temp_c = payload[SOIL1_TEMP_C].isNull() ? INV_TEMP : payload[SOIL1_TEMP_C];
-//   MqttSensors.water_temp_c = payload[OW0_TEMP_C].isNull() ? INV_TEMP : payload[OW0_TEMP_C];
-//   MqttSensors.wind_avg_meter_sec = payload[WS_WIND_AVG_MS].isNull() ? INV_FLOAT : payload[WS_WIND_AVG_MS];
-//   MqttSensors.wind_direction_deg = payload[WS_WIND_DIR_DEG].isNull() ? INV_UINT16 : payload[WS_WIND_DIR_DEG];
-//   MqttSensors.wind_gust_meter_sec = payload[WS_WIND_GUST_MS].isNull() ? INV_FLOAT : payload[WS_WIND_GUST_MS];
-
-//   // FIXME: This is a workaround for the time being
-//   JsonObject status = payload["status"];
-//   bool ble_ok = MqttSensors.indoor_temp_c != INV_TEMP && MqttSensors.indoor_humidity != INV_UINT8;
-//   // MqttSensors.status.ble_ok = status["ble_ok"] | ble_ok;
-//   MqttSensors.status.ble_ok = ble_ok;
-//   bool s1_dec_ok = MqttSensors.soil_temp_c != INV_TEMP && MqttSensors.soil_moisture != INV_UINT8;
-//   // MqttSensors.status.s1_dec_ok = status["s1_dec_ok"] | s1_dec_ok;
-//   MqttSensors.status.s1_dec_ok = s1_dec_ok;
-//   bool ws_dec_ok = MqttSensors.air_temp_c != INV_TEMP && MqttSensors.rain_mm != INV_FLOAT;
-//   // MqttSensors.status.ws_dec_ok = status["ws_dec_ok"] | ws_dec_ok;
-//   MqttSensors.status.ws_dec_ok = ws_dec_ok;
-
-//   MqttSensors.status.s1_batt_ok = status["s1_batt_ok"];
-//   MqttSensors.status.ws_batt_ok = status["ws_batt_ok"];
-
-//   // Sanity checks
-//   if (MqttSensors.humidity == 0)
-//   {
-//     MqttSensors.status.ws_dec_ok = false;
-//   }
-//   MqttSensors.rain_hr_valid = (MqttSensors.rain_hr >= 0) && (MqttSensors.rain_hr < 300);
-//   MqttSensors.rain_day_valid = (MqttSensors.rain_day >= 0) && (MqttSensors.rain_day < 1800);
-
-//   // If not valid, set value to zero to avoid any problems with auto-scale etc.
-//   if (!MqttSensors.rain_hr_valid)
-//   {
-//     MqttSensors.rain_hr = 0;
-//   }
-//   if (!MqttSensors.rain_day_valid)
-//   {
-//     MqttSensors.rain_day = 0;
-//   }
-
-//   log_i("MQTT data updated: %d", MqttSensors.valid ? 1 : 0);
-// }
 
 /**
  * \brief Save MQTT data to history FIFO
@@ -1359,9 +854,9 @@ void DisplayMQTTWeather(const unsigned char *status_bitmap)
   {
 #endif
     display.fillScreen(GxEPD_WHITE);
-    #if defined(DISPLAY_BW)
+#if defined(DISPLAY_BW)
     display.display();
-    #endif
+#endif
     DisplayGeneralInfoSection();
     DisplayMQTTDateTime(90, 225);
     display.drawBitmap(5, 25, epd_bitmap_remote, 220, 165, GxEPD_BLACK);
@@ -1479,7 +974,7 @@ void DisplayMQTTWeather(const unsigned char *status_bitmap)
       display.drawBitmap(680, 100, epd_bitmap_signal_disconnected, 40, 40, GxEPD_BLACK);
     }
     DisplayMqttHistory();
-    DrawRSSI(705, 15, wifi_signal); // Wi-Fi signal strength
+    DrawRSSI(705, 15, WiFiSignal); // Wi-Fi signal strength
 
     const int x = 88;
     const int y = 272;
@@ -1492,187 +987,6 @@ void DisplayMQTTWeather(const unsigned char *status_bitmap)
 #endif
 #if defined(DISPLAY_BW)
   display.display(true);
-#endif
-}
-
-/**
- * \brief Get local sensor data
- */
-void GetLocalData(void)
-{
-  LocalSensors.ble_thsensor[0].valid = false;
-  LocalSensors.i2c_thpsensor[0].valid = false;
-  LocalSensors.i2c_co2sensor.valid = false;
-
-#if defined(SCD4X_EN) || defined(BME280_EN)
-  TwoWire myWire = TwoWire(0);
-  myWire.begin(I2C_SDA, I2C_SCL, 100000);
-#endif
-
-#ifdef SCD4X_EN
-  SensirionI2CScd4x scd4x;
-
-  uint16_t error;
-  char errorMessage[256];
-
-  scd4x.begin(myWire);
-
-  // stop potential previously started measurement
-  error = scd4x.stopPeriodicMeasurement();
-  if (error)
-  {
-    errorToString(error, errorMessage, 256);
-    log_e("Error trying to execute stopPeriodicMeasurement(): %s", errorMessage);
-  }
-
-  // Start Measurement
-  error = scd4x.measureSingleShot();
-  if (error)
-  {
-    errorToString(error, errorMessage, 256);
-    log_e("Error trying to execute measureSingleShot(): %s", errorMessage);
-  }
-
-  log_d("First measurement takes ~5 sec...");
-#endif
-
-#ifdef MITHERMOMETER_EN
-  // Setup BLE Temperature/Humidity Sensors
-  ATC_MiThermometer miThermometer(knownBLEAddresses); //!< Mijia Bluetooth Low Energy Thermo-/Hygrometer
-  miThermometer.begin();
-
-  // Set sensor data invalid
-  miThermometer.resetData();
-
-  // Get sensor data - run BLE scan for <bleScanTime>
-  miThermometer.getData(bleScanTime);
-
-  if (miThermometer.data[0].valid)
-  {
-    LocalSensors.ble_thsensor[0].valid = true;
-    LocalSensors.ble_thsensor[0].temperature = miThermometer.data[0].temperature / 100.0;
-    LocalSensors.ble_thsensor[0].humidity = miThermometer.data[0].humidity / 100.0;
-    LocalSensors.ble_thsensor[0].batt_level = miThermometer.data[0].batt_level;
-  }
-  miThermometer.clearScanResults();
-#endif
-
-#ifdef THEENGSDECODER_EN
-
-  // From https://github.com/theengs/decoder/blob/development/examples/ESP32/ScanAndDecode/ScanAndDecode.ino:
-  // MyAdvertisedDeviceCallbacks are still triggered multiple times; this makes keeping track of received
-  // sensors difficult. Setting ScanFilterMode to CONFIG_BTDM_SCAN_DUPL_TYPE_DATA_DEVICE seems to
-  // restrict callback invocation to once per device as desired.
-  // NimBLEDevice::setScanFilterMode(CONFIG_BTDM_SCAN_DUPL_TYPE_DEVICE);
-  NimBLEDevice::setScanFilterMode(CONFIG_BTDM_SCAN_DUPL_TYPE_DATA_DEVICE);
-  NimBLEDevice::setScanDuplicateCacheSize(200);
-  NimBLEDevice::init("");
-
-  pBLEScan = NimBLEDevice::getScan(); // create new scan
-  // Set the callback for when devices are discovered, no duplicates.
-  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks(), false);
-  pBLEScan->setActiveScan(true); // Set active scanning, this will get more data from the advertiser.
-  pBLEScan->setInterval(97);     // How often the scan occurs / switches channels; in milliseconds,
-  pBLEScan->setWindow(37);       // How long to scan during the interval; in milliseconds.
-  pBLEScan->setMaxResults(0);    // do not store the scan results, use callback only.
-  pBLEScan->start(bleScanTime, false /* is_continue */);
-#endif
-
-  if (LocalSensors.ble_thsensor[0].valid)
-  {
-    log_d("Outdoor Air Temp.:   % 3.1f °C", LocalSensors.ble_thsensor[0].temperature);
-    log_d("Outdoor Humidity:     %3.1f %%", LocalSensors.ble_thsensor[0].humidity);
-    log_d("Outdoor Sensor Batt:    %d %%", LocalSensors.ble_thsensor[0].batt_level);
-  }
-  else
-  {
-    log_d("Outdoor Air Temp.:    --.- °C");
-    log_d("Outdoor Humidity:     --   %%");
-    log_d("Outdoor Sensor Batt:  --   %%");
-  }
-
-#ifdef BME280_EN
-  pocketBME280 bme280;
-  bme280.setAddress(0x77);
-  log_v("BME280: start");
-  if (bme280.begin(myWire))
-  {
-    LocalSensors.i2c_thpsensor[0].valid = true;
-    bme280.startMeasurement();
-    while (!bme280.isMeasuring())
-    {
-      log_v("BME280: Waiting for Measurement to start");
-      delay(1);
-    }
-    while (bme280.isMeasuring())
-    {
-      log_v("BME280: Measurement in progress");
-      delay(1);
-    }
-    LocalSensors.i2c_thpsensor[0].temperature = bme280.getTemperature() / 100.0;
-    LocalSensors.i2c_thpsensor[0].pressure = bme280.getPressure() / 100.0;
-    LocalSensors.i2c_thpsensor[0].humidity = bme280.getHumidity() / 1024.0;
-    log_d("Indoor Temperature: %.1f °C", LocalSensors.i2c_thpsensor[0].temperature);
-    log_d("Indoor Pressure: %.0f hPa", LocalSensors.i2c_thpsensor[0].pressure);
-    log_d("Indoor Humidity: %.0f %%rH", LocalSensors.i2c_thpsensor[0].humidity);
-  }
-  else
-  {
-    log_d("Indoor Temperature: --.- °C");
-    log_d("Indoor Pressure:    --   hPa");
-    log_d("Indoor Humidity:    --  %%rH");
-  }
-#endif
-
-#ifdef SCD4X_EN
-  if (LocalSensors.i2c_thpsensor[0].valid)
-  {
-    error = scd4x.setAmbientPressure((uint16_t)LocalSensors.i2c_thpsensor[0].pressure);
-    if (error)
-    {
-      errorToString(error, errorMessage, 256);
-      log_e("Error trying to execute setAmbientPressure(): %s", errorMessage);
-    }
-  }
-  // Read Measurement
-  bool isDataReady = false;
-
-  for (int i = 0; i < 50; i++)
-  {
-    error = scd4x.getDataReadyFlag(isDataReady);
-    if (error)
-    {
-      errorToString(error, errorMessage, 256);
-      log_e("Error trying to execute getDataReadyFlag(): %s", errorMessage);
-    }
-    if (error || isDataReady)
-    {
-      break;
-    }
-    delay(100);
-  }
-
-  if (isDataReady && !error)
-  {
-    error = scd4x.readMeasurement(LocalSensors.i2c_co2sensor.co2, LocalSensors.i2c_co2sensor.temperature, LocalSensors.i2c_co2sensor.humidity);
-    if (error)
-    {
-      errorToString(error, errorMessage, 256);
-      log_e("Error trying to execute readMeasurement(): %s", errorMessage);
-    }
-    else if (LocalSensors.i2c_co2sensor.co2 == 0)
-    {
-      log_e("Invalid sample detected, skipping.");
-    }
-    else
-    {
-      log_d("SCD4x CO2: %d ppm", LocalSensors.i2c_co2sensor.co2);
-      log_d("SCD4x Temperature: %4.1f °C", LocalSensors.i2c_co2sensor.temperature);
-      log_d("SCD4x Humidity: %3.1f %%rH", LocalSensors.i2c_co2sensor.humidity);
-      LocalSensors.i2c_co2sensor.valid = true;
-    }
-  }
-  scd4x.powerDown();
 #endif
 }
 
@@ -1759,9 +1073,9 @@ void DisplayLocalWeather(const unsigned char *status_bitmap)
   {
 #endif
     display.fillScreen(GxEPD_WHITE);
-    #if defined(DISPLAY_BW)
+#if defined(DISPLAY_BW)
     display.display();
-    #endif
+#endif
     DisplayGeneralInfoSection();
     DisplayDateTime(90, 225);
 #ifdef SCD4X_EN
@@ -1849,7 +1163,7 @@ void DisplayLocalWeather(const unsigned char *status_bitmap)
 #endif
 
     DisplayLocalHistory();
-    DrawRSSI(705, 15, wifi_signal); // Wi-Fi signal strength
+    DrawRSSI(705, 15, WiFiSignal); // Wi-Fi signal strength
 
     const int x = 88;
     const int y = 272;
@@ -2225,9 +1539,9 @@ void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth)
 void DisplayAstronomySection(int x, int y)
 {
   display.drawRect(x, y + 16, 191, 65, GxEPD_BLACK);
-  //display.drawLine(x, y + 16, x + 191, y + 16, GxEPD_BLACK);
-  //display.drawLine(x, y + 16 + 64, x + 191, y + 16 + 64, GxEPD_BLACK);
-  //display.drawLine(x, y + 16, x, y + 16 + 64, GxEPD_BLACK);
+  // display.drawLine(x, y + 16, x + 191, y + 16, GxEPD_BLACK);
+  // display.drawLine(x, y + 16 + 64, x + 191, y + 16 + 64, GxEPD_BLACK);
+  // display.drawLine(x, y + 16, x, y + 16 + 64, GxEPD_BLACK);
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   drawString(x + 4, y + 24, ConvertUnixTime(WxConditions[0].Sunrise + WxConditions[0].Timezone).substring(0, 5) + " " + TXT_SUNRISE, LEFT);
   drawString(x + 4, y + 44, ConvertUnixTime(WxConditions[0].Sunset + WxConditions[0].Timezone).substring(0, 5) + " " + TXT_SUNSET, LEFT);
@@ -2782,54 +2096,6 @@ void arrow(int x, int y, int asize, float aangle, int pwidth, int plength)
   display.fillTriangle(xx1, yy1, xx3, yy3, xx2, yy2, GxEPD_BLACK);
 }
 
-/**
- * \brief Start WiFi connection
- *
- * Establishes a WiFi connection with global settings ssid and password-
- * If succesful, the global variable wifi_signal is updated with the RSSI.
- *
- * \return WiFi.status(); WL_CONNECTED if successful
- */
-uint8_t StartWiFi()
-{
-  if (WiFi.status() == WL_CONNECTED)
-  {
-    return WL_CONNECTED;
-  }
-
-  IPAddress dns(MY_DNS);
-  WiFi.disconnect();
-  WiFi.mode(WIFI_STA); // switch off AP
-  // WiFi.setAutoConnect(true); // no longer valid
-  // WiFi.setAutoReconnect(false); // default: true
-
-  uint8_t connectionStatus = wifiMulti.run();
-
-  if (connectionStatus == WL_CONNECTED)
-  {
-    String ssid = WiFi.SSID();
-    wifi_signal = WiFi.RSSI(); // Get Wifi Signal strength now, because the WiFi will be turned off to save power!
-    log_i("WiFi connected to '%s'", ssid.c_str());
-    log_i("WiFi connected at: %s", WiFi.localIP().toString().c_str());
-  }
-  else
-  {
-    log_w("WiFi connection failed!");
-  }
-
-  return connectionStatus;
-}
-
-/**
- * \brief Stop WiFi connection
- *
- * Disconnects WiFi and switches off WiFi to save power.
- */
-void StopWiFi()
-{
-  WiFi.disconnect();
-  WiFi.mode(WIFI_OFF);
-}
 
 #if 0
 /**
@@ -2889,7 +2155,6 @@ void DrawRSSI(int x, int y, int rssi)
     drawString(x + 20, y - 10, TXT_WIFI_OFF, CENTER);
   }
 }
-
 
 #if 0
 /**

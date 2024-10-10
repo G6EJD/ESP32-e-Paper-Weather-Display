@@ -43,7 +43,27 @@
 #define _UTILS_H
 #include <Arduino.h>
 #include <time.h>
+#include <WiFi.h>
+#include <WiFiMulti.h>
 #include "config.h"
+#include "secrets.h"
+
+/**
+ * \brief Start WiFi connection
+ *
+ * Establishes a WiFi connection with global settings ssid and password-
+ * If succesful, the global variable wifi_signal is updated with the RSSI.
+ *
+ * \return WiFi.status(); WL_CONNECTED if successful
+ */
+uint8_t StartWiFi();
+
+/**
+ * \brief Stop WiFi connection
+ *
+ * Disconnects WiFi and switches off WiFi to save power.
+ */
+void StopWiFi();
 
 /**
  * \brief Check if history update is due
