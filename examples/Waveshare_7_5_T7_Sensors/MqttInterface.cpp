@@ -86,7 +86,7 @@ bool MqttInterface::mqttConnect()
   MqttClient.begin(MQTT_HOST, MQTT_PORT, net);
   MqttClient.setOptions(MQTT_KEEPALIVE /* keepAlive [s] */, MQTT_CLEAN_SESSION /* cleanSession */, MQTT_TIMEOUT * 1000 /* timeout [ms] */);
 
-  while (!MqttClient.connect(Hostname, MQTT_USER, MQTT_PASS))
+  while (!MqttClient.connect(HOSTNAME, MQTT_USER, MQTT_PASS))
   {
     log_d(".");
     if (millis() > start + MQTT_CONNECT_TIMEOUT * 1000)
@@ -270,7 +270,7 @@ bool MqttInterface::mqttUplink(WiFiClient &net, MQTTClient &MqttClient, local_se
   MqttClient.begin(MQTT_HOST_P, MQTT_PORT_P, net);
   MqttClient.setOptions(MQTT_KEEPALIVE /* keepAlive [s] */, MQTT_CLEAN_SESSION /* cleanSession */, MQTT_TIMEOUT * 1000 /* timeout [ms] */);
 
-  while (!MqttClient.connect(Hostname, MQTT_USER_P, MQTT_PASS_P))
+  while (!MqttClient.connect(HOSTNAME, MQTT_USER_P, MQTT_PASS_P))
   {
     log_d(".");
     if (millis() > start + MQTT_CONNECT_TIMEOUT * 1000)
@@ -287,15 +287,15 @@ bool MqttInterface::mqttUplink(WiFiClient &net, MQTTClient &MqttClient, local_se
   if (data.i2c_co2sensor.valid)
   {
     snprintf(payload, 20, "%u", data.i2c_co2sensor.co2);
-    snprintf(topic, 40, "%s/sdc4x/co2", Hostname);
+    snprintf(topic, 40, "%s/sdc4x/co2", HOSTNAME);
     MqttClient.publish(topic, payload);
 
     snprintf(payload, 20, "%3.1f", data.i2c_co2sensor.temperature);
-    snprintf(topic, 40, "%s/sdc4x/temperature", Hostname);
+    snprintf(topic, 40, "%s/sdc4x/temperature", HOSTNAME);
     MqttClient.publish(topic, payload);
 
     snprintf(payload, 20, "%3.0f", data.i2c_co2sensor.humidity);
-    snprintf(topic, 40, "%s/sdc4x/humidity", Hostname);
+    snprintf(topic, 40, "%s/sdc4x/humidity", HOSTNAME);
     MqttClient.publish(topic, payload);
   }
 #endif
@@ -304,15 +304,15 @@ bool MqttInterface::mqttUplink(WiFiClient &net, MQTTClient &MqttClient, local_se
   if (data.i2c_thpsensor[0].valid)
   {
     snprintf(payload, 20, "%3.1f", data.i2c_thpsensor[0].temperature);
-    snprintf(topic, 40, "%s/bme280/temperature", Hostname);
+    snprintf(topic, 40, "%s/bme280/temperature", HOSTNAME);
     MqttClient.publish(topic, payload);
 
     snprintf(payload, 20, "%3.0f", data.i2c_thpsensor[0].humidity);
-    snprintf(topic, 40, "%s/bme280/humidity", Hostname);
+    snprintf(topic, 40, "%s/bme280/humidity", HOSTNAME);
     MqttClient.publish(topic, payload);
 
     snprintf(payload, 20, "%4.0f", data.i2c_thpsensor[0].pressure);
-    snprintf(topic, 40, "%s/bme280/pressure", Hostname);
+    snprintf(topic, 40, "%s/bme280/pressure", HOSTNAME);
     MqttClient.publish(topic, payload);
   }
 #endif
@@ -321,15 +321,15 @@ bool MqttInterface::mqttUplink(WiFiClient &net, MQTTClient &MqttClient, local_se
   if (data.ble_thsensor[0].valid)
   {
     snprintf(payload, 20, "%3.1f", data.ble_thsensor[0].temperature);
-    snprintf(topic, 40, "%s/ble/temperature", Hostname);
+    snprintf(topic, 40, "%s/ble/temperature", HOSTNAME);
     MqttClient.publish(topic, payload);
 
     snprintf(payload, 20, "%3.0f", data.ble_thsensor[0].humidity);
-    snprintf(topic, 40, "%s/ble/humidity", Hostname);
+    snprintf(topic, 40, "%s/ble/humidity", HOSTNAME);
     MqttClient.publish(topic, payload);
 
     snprintf(payload, 20, "%u", data.ble_thsensor[0].batt_level);
-    snprintf(topic, 40, "%s/ble/batt_level", Hostname);
+    snprintf(topic, 40, "%s/ble/batt_level", HOSTNAME);
     MqttClient.publish(topic, payload);
   }
 #endif
