@@ -74,8 +74,8 @@
 // Domain Name Server - separate bytes by comma!
 #define MY_DNS 192,168,0,1
 
-// // Weather display's hostname
-#define Hostname "your_hostname"
+// Weather display's hostname
+#define HOSTNAME "your_hostname"
 
 // TODO: Move to config.h
 #define TIMEZONE "GMT0BST,M3.5.0/01,M10.5.0/02"            // Choose your time zone from: https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv 
