@@ -43,9 +43,9 @@
 #define _UTILS_H
 #include <Arduino.h>
 #include <time.h>
+#include "config.h"
 #include <WiFi.h>
 #include <WiFiMulti.h>
-#include "config.h"
 #include "secrets.h"
 
 /**
