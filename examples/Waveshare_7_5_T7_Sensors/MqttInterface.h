@@ -155,7 +155,11 @@ typedef struct MqttHistQData mqtt_hist_t; //!< Shortcut for struct MqttHistQData
 class MqttInterface
 {
 private:
+#if defined(USE_SECUREWIFI)
     NetworkClientSecure net;
+    #else
+    WiFiClient net;
+#endif
     MQTTClient MqttClient;
 
 public:
