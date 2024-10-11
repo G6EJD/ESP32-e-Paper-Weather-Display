@@ -157,7 +157,7 @@ class MqttInterface
 private:
 #if defined(USE_SECUREWIFI)
     NetworkClientSecure net;
-    #else
+#else
     WiFiClient net;
 #endif
     MQTTClient MqttClient;
