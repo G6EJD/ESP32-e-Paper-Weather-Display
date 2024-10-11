@@ -152,8 +152,8 @@ boolean UpdateLocalTime()
   CurrentDay = timeinfo.tm_mday;
   printTime(timeinfo, time_output, date_output, 32, TXT_UPDATED);
 
-  Date_str = date_output;
-  Time_str = time_output;
+  Date_str = String(date_output);
+  Time_str = String(time_output);
   return true;
 }
 
@@ -182,5 +182,5 @@ void printTime(struct tm &timeinfo, char *date_output, char *time_output, int ma
     strftime(update_time, sizeof(update_time), "%r", &timeinfo); // Creates: '02:05:49pm'
     
   }
-  sprintf(time_output, "%s %s", label, update_time);
+  sprintf(time_output, "%s %s", label.c_str(), update_time);
 }
