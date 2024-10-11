@@ -56,16 +56,16 @@
  *
  * 20241008 Fixed B/W display (small artefacts remaining)
  * 20241009 Fixed B/W display of main screens
+ * 20241011 Added secure MQTT
  *
  */
 
+#include "config.h"
 #include "owm_credentials.h" // See 'owm_credentials' tab and enter your OWM API key and set the Wifi SSID and PASSWORD
 #include <ArduinoJson.h>     // https://github.com/bblanchon/ArduinoJson needs version v6 or above
-#include <WiFi.h>            // Built-in
-// #include <WiFiClientSecure.h>
-#include <time.h>                  // Built-in
-#include <SPI.h>                   // Built-in
-//#include <vector>                  // Built-in
+
+#include <time.h> // Built-in
+#include <SPI.h>  // Built-in
 #include <string>                  // Built-in
 #include <MQTT.h>                  // https://github.com/256dpi/arduino-mqtt
 #include <cQueue.h>                // https://github.com/SMFSW/cQueue
@@ -167,7 +167,6 @@ RTC_DATA_ATTR bool touchPrevTrig = false; //!< Flag: Left   touch sensor has bee
 RTC_DATA_ATTR bool touchNextTrig = false; //!< Flag: Right  touch sensor has been triggered
 RTC_DATA_ATTR bool touchMidTrig = false;  //!< Flag: Middle touch sensor has been triggered
 
-
 // ################ PROGRAM VARIABLES and OBJECTS ################
 
 #define autoscale_on true
@@ -181,11 +180,11 @@ const String Locations[] = LOCATIONS_TXT; //!< /Screen Titles
 #define max_readings 24
 RTC_DATA_ATTR Forecast_record_type WxConditions[1]; //!< OWM Weather Conditions
 Forecast_record_type WxForecast[max_readings];      //!< OWM Weather Forecast
-float pressure_readings[max_readings] = {0};    //!< OWM pressure readings
-float temperature_readings[max_readings] = {0}; //!< OWM temperature readings
-float humidity_readings[max_readings] = {0};    //!< OWM humidity readings
-float rain_readings[max_readings] = {0};        //!< OWM rain readings
-float snow_readings[max_readings] = {0};        //!< OWM snow readings
+float pressure_readings[max_readings] = {0};        //!< OWM pressure readings
+float temperature_readings[max_readings] = {0};     //!< OWM temperature readings
+float humidity_readings[max_readings] = {0};        //!< OWM humidity readings
+float rain_readings[max_readings] = {0};            //!< OWM rain readings
+float snow_readings[max_readings] = {0};            //!< OWM snow readings
 
 #include "common.h"
 
@@ -238,8 +237,6 @@ void ARDUINO_ISR_ATTR touch_mid_isr()
  */
 void setup()
 {
-  WiFiClient net; //!< network object
-
   StartTime = millis();
   Serial.begin(115200);
   Serial.setDebugOutput(true);
@@ -362,11 +359,13 @@ void setup()
       bool RxWeather = false, RxForecast = false;
 
       while ((RxWeather == false || RxForecast == false) && Attempts <= 2)
-      { // Try up-to 2 time for Weather and Forecast data
-        if (RxWeather == false)
-          RxWeather = obtain_wx_data(net, "weather");
-        if (RxForecast == false)
-          RxForecast = obtain_wx_data(net, "forecast");
+      { // Try up-to 2 times for Weather and Forecast data
+        if (RxWeather == false) {
+          RxWeather = obtain_wx_data("weather");
+        }
+        if (RxForecast == false) {
+          RxForecast = obtain_wx_data("forecast");
+        }
         Attempts++;
       }
       if (RxWeather && RxForecast)
@@ -472,7 +471,9 @@ void setup()
 
   // Fetch MQTT data
   MQTTClient MqttClient(MQTT_PAYLOAD_SIZE);
-  MqttInterface mqttInterface(net, MqttClient);
+  //NetworkClientSecure net;
+  //MqttInterface mqttInterface(net, MqttClient);
+  MqttInterface mqttInterface(MqttClient);
   if (mqttInterface.mqttConnect())
   {
     // Show download icon
@@ -510,12 +511,23 @@ void setup()
 
     if (display.epd2.hasFastPartialUpdate)
     {
-      display.setPartialWindow(x, y, 48, 48);
-      display.firstPage();
-      do
-      {
-        display.fillRect(x, y, 48, 48, GxEPD_WHITE);
-      } while (display.nextPage());
+      log_d("hasFastPartialUpdate");
+      if (ScreenNo == ScreenMQTT) {
+        log_d("DisplayMQTTWeather(NULL)");
+        display.setFullWindow();
+        DisplayMQTTWeather(NULL);
+      } else {
+        display.setPartialWindow(x, y, 48, 48);
+        #if defined(DISPLAY_3C)
+        display.firstPage();
+        do
+        {
+        #endif
+          display.fillRect(x, y, 48, 48, GxEPD_WHITE);
+        #if defined(DISPLAY_3C)
+        } while (display.nextPage());
+        #endif
+      }
     }
     else
     {
@@ -551,7 +563,7 @@ void setup()
   }
   SaveRainDayData();
 
-  mqttInterface.mqttUplink(net, MqttClient, LocalSensors);
+  mqttInterface.mqttUplink(MqttClient, LocalSensors);
   StopWiFi();
   BeginSleep();
 }
@@ -621,7 +633,6 @@ inline bool TouchTriggered(void)
 {
   return (touchPrevTrig || touchMidTrig || touchNextTrig);
 }
-
 
 /**
  * \brief Display Open Weather Map (OWM) data
@@ -851,9 +862,9 @@ void DisplayMQTTWeather(const unsigned char *status_bitmap)
       drawString(524, 130, String(MqttSensors.indoor_humidity) + "%", CENTER);
 
 #ifdef FORCE_LOW_BATTERY
-      MqttSensors.status.ws_batt_ok = false;
+      MqttSensors.status.ble_batt_ok = false;
 #endif
-      if (!MqttSensors.status.ws_batt_ok)
+      if (!MqttSensors.status.ble_batt_ok)
       {
         display.drawBitmap(577, 115, epd_bitmap_battery_alert, 24, 24, GxEPD_BLACK);
       }
