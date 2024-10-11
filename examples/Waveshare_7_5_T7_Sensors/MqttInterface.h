@@ -33,6 +33,7 @@
 // History:
 //
 // 20241010 Extracted from Waveshare_7_5_T7_Sensors.ino
+// 20241011 Fixed sensor status flags, added secure MQTT
 //
 // ToDo:
 // -
@@ -43,10 +44,16 @@
 #define _MQTT_INTERFACE
 #include <Arduino.h>
 #include <string>
+#include "config.h"
+
 #include <WiFi.h>
+#if defined(USE_SECUREWIFI)
+#include <WiFiClientSecure.h>
+#endif
+
 #include <MQTT.h>        // https://github.com/256dpi/arduino-mqtt
 #include <ArduinoJson.h> // https://github.com/bblanchon/ArduinoJson needs version v6 or above
-#include "config.h"
+
 #include "secrets.h"
 #include "LocalInterface.h"
 
@@ -57,11 +64,12 @@ struct MqttS
     char received_at[32]; //!< MQTT message received date/time
     struct
     {
-        unsigned int ws_batt_ok : 1; //!< weather sensor battery o.k.
-        unsigned int ws_dec_ok : 1;  //!< weather sensor decoding o.k.
-        unsigned int s1_batt_ok : 1; //!< soil moisture sensor battery o.k.
-        unsigned int s1_dec_ok : 1;  //!< soil moisture sensor dencoding o.k.
-        unsigned int ble_ok : 1;     //!< BLE T-/H-sensor data o.k.
+        unsigned int ws_batt_ok : 1;  //!< weather sensor battery o.k.
+        unsigned int ws_dec_ok : 1;   //!< weather sensor decoding o.k.
+        unsigned int s1_batt_ok : 1;  //!< soil moisture sensor battery o.k.
+        unsigned int s1_dec_ok : 1;   //!< soil moisture sensor dencoding o.k.
+        unsigned int ble_batt_ok : 1; //!< BLE sensor battery o.k.
+        unsigned int ble_ok : 1;      //!< BLE T-/H-sensor data o.k.
 
     } status;
     float air_temp_c;          //!< temperature in degC
@@ -89,9 +97,9 @@ struct MqttS
 typedef struct MqttS mqtt_sensors_t; //!< Shortcut for struct Sensor
 struct MqttHistQData
 {
-  float temperature; //!< temperature in degC
-  uint8_t humidity;  //!< humidity in %
-  bool valid;        //!< data valid
+    float temperature; //!< temperature in degC
+    uint8_t humidity;  //!< humidity in %
+    bool valid;        //!< data valid
 };
 
 typedef struct MqttHistQData mqtt_hist_t; //!< Shortcut for struct MqttHistQData
@@ -147,18 +155,14 @@ typedef struct MqttHistQData mqtt_hist_t; //!< Shortcut for struct MqttHistQData
 class MqttInterface
 {
 private:
-    WiFiClient net;
+    NetworkClientSecure net;
     MQTTClient MqttClient;
 
 public:
     /*!
      * \brief Constructor
      */
-    MqttInterface(WiFiClient &_net, MQTTClient &_MqttClient)
-    {
-        net = _net;
-        MqttClient = _MqttClient;
-    };
+    MqttInterface(MQTTClient &_MqttClient);
 
     /**
      * \brief Connect to MQTT broker
@@ -170,11 +174,10 @@ public:
     /**
      * \brief Get MQTT data from broker
      *
-     * \param net         network connection
      * \param MqttClient  MQTT client object
      */
     void getMqttData(mqtt_sensors_t &MqttSensors);
 
-    bool mqttUplink(WiFiClient &net, MQTTClient &MqttClient, local_sensors_t &data);
+    bool mqttUplink(MQTTClient &MqttClient, local_sensors_t &data);
 };
 #endif

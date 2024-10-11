@@ -33,6 +33,7 @@
 // History:
 //
 // 20241010 Extracted from Waveshare_7_5_T7_Sensors.ino
+// 20241011 Fixed sensor status flags, added secure MQTT
 //
 // ToDo:
 // -
@@ -49,26 +50,43 @@ extern RTC_DATA_ATTR time_t LocalHistTStamp;
 
 static bool mqttMessageReceived = false; //!< Flag: MQTT message has been received
 
+static const char digicert[] PROGMEM = DIGICERT;
 
 #ifdef SIMULATE_MQTT
-    static const char *MqttBuf = "{\"end_device_ids\":{\"device_id\":\"eui-9876b6000011c87b\",\"application_ids\":{\"application_id\":\"flora-lora\"},\"dev_eui\":\"9876B6000011C87B\",\"join_eui\":\"0000000000000000\",\"dev_addr\":\"260BFFCA\"},\"correlation_ids\":[\"as:up:01GH0PHSCTGKZ51EB8XCBBGHQD\",\"gs:conn:01GFQX269DVXYK9W6XF8NNZWDD\",\"gs:up:host:01GFQX26AXQM4QHEAPW48E8EWH\",\"gs:uplink:01GH0PHS6A65GBAPZB92XNGYAP\",\"ns:uplink:01GH0PHS6BEPXS9Y7DMDRNK84Y\",\"rpc:/ttn.lorawan.v3.GsNs/HandleUplink:01GH0PHS6BY76SY2VPRSHNDDRH\",\"rpc:/ttn.lorawan.v3.NsAs/HandleUplink:01GH0PHSCS7D3V8ERSKF0DTJ8H\"],\"received_at\":\"2022-11-04T06:51:44.409936969Z\",\"uplink_message\":{\"session_key_id\":\"AYRBaM/qASfqUi+BQK75Gg==\",\"f_port\":1,\"frm_payload\":\"PwOOWAgACAAIBwAAYEKAC28LAw0D4U0DwAoAAAAAwMxMP8DMTD/AzEw/AAAAAAAAAAAA\",\"decoded_payload\":{\"bytes\":{\"air_temp_c\":\"9.1\",\"battery_v\":2927,\"humidity\":88,\"indoor_humidity\":77,\"indoor_temp_c\":\"9.9\",\"rain_day\":\"0.8\",\"rain_hr\":\"0.0\",\"rain_mm\":\"56.0\",\"rain_mon\":\"0.8\",\"rain_week\":\"0.8\",\"soil_moisture\":10,\"soil_temp_c\":\"9.6\",\"status\":{\"ble_ok\":true,\"res\":false,\"rtc_sync_req\":false,\"runtime_expired\":true,\"s1_batt_ok\":true,\"s1_dec_ok\":true,\"ws_batt_ok\":true,\"ws_dec_ok\":true},\"supply_v\":2944,\"water_temp_c\":\"7.8\",\"wind_avg_meter_sec\":\"0.8\",\"wind_direction_deg\":\"180.0\",\"wind_gust_meter_sec\":\"0.8\"}},\"rx_metadata\":[{\"gateway_ids\":{\"gateway_id\":\"lora-db0fc\",\"eui\":\"3135323538002400\"},\"time\":\"2022-11-04T06:51:44.027496Z\",\"timestamp\":1403655780,\"rssi\":-104,\"channel_rssi\":-104,\"snr\":8.25,\"location\":{\"latitude\":52.27640735,\"longitude\":10.54058183,\"altitude\":65,\"source\":\"SOURCE_REGISTRY\"},\"uplink_token\":\"ChgKFgoKbG9yYS1kYjBmYxIIMTUyNTgAJAAQ5KyonQUaCwiA7ZKbBhCw6tpgIKDtnYPt67cC\",\"channel_index\":4,\"received_at\":\"2022-11-04T06:51:44.182146570Z\"}],\"settings\":{\"data_rate\":{\"lora\":{\"bandwidth\":125000,\"spreading_factor\":8,\"coding_rate\":\"4/5\"}},\"frequency\":\"867300000\",\"timestamp\":1403655780,\"time\":\"2022-11-04T06:51:44.027496Z\"},\"received_at\":\"2022-11-04T06:51:44.203702153Z\",\"confirmed\":true,\"consumed_airtime\":\"0.215552s\",\"locations\":{\"user\":{\"latitude\":52.24619,\"longitude\":10.50106,\"source\":\"SOURCE_REGISTRY\"}},\"network_ids\":{\"net_id\":\"000013\",\"tenant_id\":\"ttn\",\"cluster_id\":\"eu1\",\"cluster_address\":\"eu1.cloud.thethings.network\"}}}";
+static const char *MqttBuf = "{\"end_device_ids\":{\"device_id\":\"eui-9876b6000011c87b\",\"application_ids\":{\"application_id\":\"flora-lora\"},\"dev_eui\":\"9876B6000011C87B\",\"join_eui\":\"0000000000000000\",\"dev_addr\":\"260BFFCA\"},\"correlation_ids\":[\"as:up:01GH0PHSCTGKZ51EB8XCBBGHQD\",\"gs:conn:01GFQX269DVXYK9W6XF8NNZWDD\",\"gs:up:host:01GFQX26AXQM4QHEAPW48E8EWH\",\"gs:uplink:01GH0PHS6A65GBAPZB92XNGYAP\",\"ns:uplink:01GH0PHS6BEPXS9Y7DMDRNK84Y\",\"rpc:/ttn.lorawan.v3.GsNs/HandleUplink:01GH0PHS6BY76SY2VPRSHNDDRH\",\"rpc:/ttn.lorawan.v3.NsAs/HandleUplink:01GH0PHSCS7D3V8ERSKF0DTJ8H\"],\"received_at\":\"2022-11-04T06:51:44.409936969Z\",\"uplink_message\":{\"session_key_id\":\"AYRBaM/qASfqUi+BQK75Gg==\",\"f_port\":1,\"frm_payload\":\"PwOOWAgACAAIBwAAYEKAC28LAw0D4U0DwAoAAAAAwMxMP8DMTD/AzEw/AAAAAAAAAAAA\",\"decoded_payload\":{\"bytes\":{\"air_temp_c\":\"9.1\",\"battery_v\":2927,\"humidity\":88,\"indoor_humidity\":77,\"indoor_temp_c\":\"9.9\",\"rain_day\":\"0.8\",\"rain_hr\":\"0.0\",\"rain_mm\":\"56.0\",\"rain_mon\":\"0.8\",\"rain_week\":\"0.8\",\"soil_moisture\":10,\"soil_temp_c\":\"9.6\",\"status\":{\"ble_ok\":true,\"res\":false,\"rtc_sync_req\":false,\"runtime_expired\":true,\"s1_batt_ok\":true,\"s1_dec_ok\":true,\"ws_batt_ok\":true,\"ws_dec_ok\":true},\"supply_v\":2944,\"water_temp_c\":\"7.8\",\"wind_avg_meter_sec\":\"0.8\",\"wind_direction_deg\":\"180.0\",\"wind_gust_meter_sec\":\"0.8\"}},\"rx_metadata\":[{\"gateway_ids\":{\"gateway_id\":\"lora-db0fc\",\"eui\":\"3135323538002400\"},\"time\":\"2022-11-04T06:51:44.027496Z\",\"timestamp\":1403655780,\"rssi\":-104,\"channel_rssi\":-104,\"snr\":8.25,\"location\":{\"latitude\":52.27640735,\"longitude\":10.54058183,\"altitude\":65,\"source\":\"SOURCE_REGISTRY\"},\"uplink_token\":\"ChgKFgoKbG9yYS1kYjBmYxIIMTUyNTgAJAAQ5KyonQUaCwiA7ZKbBhCw6tpgIKDtnYPt67cC\",\"channel_index\":4,\"received_at\":\"2022-11-04T06:51:44.182146570Z\"}],\"settings\":{\"data_rate\":{\"lora\":{\"bandwidth\":125000,\"spreading_factor\":8,\"coding_rate\":\"4/5\"}},\"frequency\":\"867300000\",\"timestamp\":1403655780,\"time\":\"2022-11-04T06:51:44.027496Z\"},\"received_at\":\"2022-11-04T06:51:44.203702153Z\",\"confirmed\":true,\"consumed_airtime\":\"0.215552s\",\"locations\":{\"user\":{\"latitude\":52.24619,\"longitude\":10.50106,\"source\":\"SOURCE_REGISTRY\"}},\"network_ids\":{\"net_id\":\"000013\",\"tenant_id\":\"ttn\",\"cluster_id\":\"eu1\",\"cluster_address\":\"eu1.cloud.thethings.network\"}}}";
 #else
-    static char MqttBuf[MQTT_PAYLOAD_SIZE + 1]; //!< MQTT Payload Buffer
+static char MqttBuf[MQTT_PAYLOAD_SIZE + 1]; //!< MQTT Payload Buffer
 #endif
 
-/**
- * \brief MQTT message reception callback function
- *
- * Sets the flag <code>mqttMessageReceived</code> and copies the received message to
- * <code>MqttBuf</code>.
- */
+// MQTT message reception callback function
 static void mqttMessageCb(String &topic, String &payload)
 {
-    mqttMessageReceived = true;
-    log_d("Payload size: %d", payload.length());
+  mqttMessageReceived = true;
+  log_d("Payload size: %d", payload.length());
 #ifndef SIMULATE_MQTT
-    strncpy(MqttBuf, payload.c_str(), payload.length());
+  strncpy(MqttBuf, payload.c_str(), payload.length());
 #endif
+}
+
+// Constructor
+MqttInterface::MqttInterface(MQTTClient &_MqttClient)
+{
+#if defined(USE_SECUREWIFI)
+#ifdef CHECK_CA_ROOT
+  net.setCACert(digicert);
+#endif
+#ifdef CHECK_PUB_KEY
+  error "CHECK_PUB_KEY: not implemented"
+#endif
+#ifdef CHECK_FINGERPRINT
+      net.setFingerprint(fp);
+#endif
+#if (!defined(CHECK_PUB_KEY) and !defined(CHECK_CA_ROOT) and !defined(CHECK_FINGERPRINT))
+  // do not verify tls certificate
+  net.setInsecure();
+#endif
+#endif
+  MqttClient = _MqttClient;
 }
 
 // Connect to MQTT broker
@@ -212,19 +230,19 @@ void MqttInterface::getMqttData(mqtt_sensors_t &MqttSensors)
   MqttSensors.soil_moisture = payload[SOIL1_MOISTURE].isNull() ? INV_UINT8 : payload[SOIL1_MOISTURE];
   MqttSensors.soil_temp_c = payload[SOIL1_TEMP_C].isNull() ? INV_TEMP : payload[SOIL1_TEMP_C];
   MqttSensors.water_temp_c = payload[OW0_TEMP_C].isNull() ? INV_TEMP : payload[OW0_TEMP_C];
-  MqttSensors.wind_avg_meter_sec = payload[WS_WIND_AVG_MS].isNull() ? INV_FLOAT : payload[WS_WIND_AVG_MS];
+  MqttSensors.wind_avg_meter_sec = payload[WS_WIND_AVG_MS].isNull() ? INV_UINT16 : payload[WS_WIND_AVG_MS];
   MqttSensors.wind_direction_deg = payload[WS_WIND_DIR_DEG].isNull() ? INV_UINT16 : payload[WS_WIND_DIR_DEG];
-  MqttSensors.wind_gust_meter_sec = payload[WS_WIND_GUST_MS].isNull() ? INV_FLOAT : payload[WS_WIND_GUST_MS];
+  MqttSensors.wind_gust_meter_sec = payload[WS_WIND_GUST_MS].isNull() ? INV_UINT16 : payload[WS_WIND_GUST_MS];
 
-  // FIXME: This is a workaround for the time being
   JsonObject status = payload["status"];
   bool ble_ok = MqttSensors.indoor_temp_c != INV_TEMP && MqttSensors.indoor_humidity != INV_UINT8;
   // MqttSensors.status.ble_ok = status["ble_ok"] | ble_ok;
   MqttSensors.status.ble_ok = ble_ok;
+  MqttSensors.status.ble_batt_ok = 1; // No MQTT signal available
   bool s1_dec_ok = MqttSensors.soil_temp_c != INV_TEMP && MqttSensors.soil_moisture != INV_UINT8;
   // MqttSensors.status.s1_dec_ok = status["s1_dec_ok"] | s1_dec_ok;
   MqttSensors.status.s1_dec_ok = s1_dec_ok;
-  bool ws_dec_ok = MqttSensors.air_temp_c != INV_TEMP && MqttSensors.rain_mm != INV_FLOAT;
+  bool ws_dec_ok = MqttSensors.air_temp_c != INV_TEMP && MqttSensors.humidity != INV_UINT8 && MqttSensors.rain_mm != INV_FLOAT;
   // MqttSensors.status.ws_dec_ok = status["ws_dec_ok"] | ws_dec_ok;
   MqttSensors.status.ws_dec_ok = ws_dec_ok;
 
@@ -249,11 +267,15 @@ void MqttInterface::getMqttData(mqtt_sensors_t &MqttSensors)
     MqttSensors.rain_day = 0;
   }
 
+  log_d("ws_dec_ok:  %d", MqttSensors.status.ws_dec_ok);
+  log_d("s1_dec_ok:  %d", MqttSensors.status.s1_dec_ok);
+  log_d("ble_ok:  %d", MqttSensors.status.ble_ok);
+  log_d("ws_batt_ok: %d", MqttSensors.status.ws_batt_ok);
+  log_d("s1_batt_ok: %d", MqttSensors.status.s1_batt_ok);
   log_i("MQTT data updated: %d", MqttSensors.valid ? 1 : 0);
 }
 
-
-bool MqttInterface::mqttUplink(WiFiClient &net, MQTTClient &MqttClient, local_sensors_t &data)
+bool MqttInterface::mqttUplink(MQTTClient &MqttClient, local_sensors_t &data)
 {
   char payload[21];
   char topic[41];
