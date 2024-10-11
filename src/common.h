@@ -21,7 +21,7 @@ bool DecodeWeather(WiFiClient& json, String Type) {
   log_d("Creating JSON object");
   // allocate the JsonDocument
   JsonDocument doc;
-  
+
   // Deserialize the JSON document
   DeserializationError error = deserializeJson(doc, json);
   // Test if parsing succeeds.
@@ -108,10 +108,9 @@ String ConvertUnixTime(int unix_time) {
   return output;
 }
 //#########################################################################################
-//extern WiFiClient client; // wifi client object
+bool obtain_wx_data(const String& RequestType) {
+  WiFiClient client;
 
-//bool obtain_wx_data(WiFiClient& client, const String& RequestType) {
-bool obtain_wx_data(WiFiClient& client, const String& RequestType) {
   const String units = (Units == "M" ? "metric" : "imperial");
   client.stop(); // close connection before sending a new request
   HTTPClient http;
