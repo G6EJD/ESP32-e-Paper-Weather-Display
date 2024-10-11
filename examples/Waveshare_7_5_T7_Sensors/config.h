@@ -34,6 +34,7 @@
 // History:
 //
 // 20241010 Extracted from owm_credentials.h
+// 20241011 Added secure WiFi
 //
 // ToDo:
 // -
@@ -70,6 +71,14 @@
 #define WATER_TEMP_INVALID -30.0  //!< Water temperature invalid marker [°C]
 #define I2C_SDA 21                //!< I2C Serial Data Pin
 #define I2C_SCL 22                //!< I2C Serial Clock Pin
+
+//#define USE_SECUREWIFI
+
+// enable only one of these below, disabling both is fine too.
+//#define CHECK_CA_ROOT
+//#define CHECK_PUB_KEY
+// Arduino 1.8.19 ESP32 WiFiClientSecure.h: "SHA1 fingerprint is broken now!"
+//#define CHECK_FINGERPRINT
 
 // Domain Name Server - separate bytes by comma!
 #define MY_DNS 192,168,0,1
@@ -129,35 +138,5 @@
 #define LOCAL_HIST_SIZE 144
 #define HIST_UPDATE_RATE 30
 #define HIST_UPDATE_TOL 5
-
-// TODO: Move to LocalSensors class
-// Local Sensor Data
-struct LocalS
-{
-  struct
-  {
-    bool valid;         //!< data valid
-    float temperature;  //!< temperature in degC
-    float humidity;     //!< humidity in %
-    uint8_t batt_level; //!< battery level in %
-    int rssi;           //!< RSSI in dBm
-  } ble_thsensor[1];
-  struct
-  {
-    bool valid;        //!< data valid
-    float temperature; //!< temperature in degC
-    float humidity;    //!< humidity in %
-    float pressure;    //!< pressure in hPa
-  } i2c_thpsensor[1];
-  struct
-  {
-    bool valid;        //!< data valid
-    float temperature; //!< temperature in degC
-    float humidity;    //!< humidity in %
-    uint16_t co2;      //!< CO2 in ppm
-  } i2c_co2sensor;
-};
-
-typedef struct LocalS local_sensors_t; //!< Shortcut for struct LocalS
 
 #endif
