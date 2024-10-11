@@ -65,12 +65,13 @@
 // #include <WiFiClientSecure.h>
 #include <time.h>                  // Built-in
 #include <SPI.h>                   // Built-in
-#include <vector>                  // Built-in
+//#include <vector>                  // Built-in
 #include <string>                  // Built-in
 #include <MQTT.h>                  // https://github.com/256dpi/arduino-mqtt
 #include <cQueue.h>                // https://github.com/SMFSW/cQueue
 #include "MqttInterface.h"         // MQTT sensor data interface
 #include "LocalInterface.h"        // Local sensor data interface (BLE and I2C)
+#include "RainHistory.h"           // Rainfall history data definitions
 #include "WeatherSymbols.h"        // Functions for drawing weather symbols at runtime
 #include "bitmap_icons.h"          // Icon bitmaps
 #include "bitmap_weather_report.h" // Picture shown on ScreenStart
@@ -154,7 +155,7 @@ boolean LargeIcon = true, SmallIcon = false;
 #define Small 6        // For icon drawing, needs to be odd number for best effect
 String Time_str;       //!< Curent time as string
 String Date_str;       //!< Current date as stringstrings to hold time and received weather data
-extern long _timezone; //!<
+extern long _timezone; //!< FIXME: Where defined? Needed?
 int WiFiSignal = 0;    //!< WiFi signal strength
 int CurrentHour = 0;   //!< Current time - hour
 int CurrentMin = 0;    //!< Current time - minutes
@@ -166,16 +167,8 @@ RTC_DATA_ATTR bool touchPrevTrig = false; //!< Flag: Left   touch sensor has bee
 RTC_DATA_ATTR bool touchNextTrig = false; //!< Flag: Right  touch sensor has been triggered
 RTC_DATA_ATTR bool touchMidTrig = false;  //!< Flag: Middle touch sensor has been triggered
 
-// bool mqttMessageReceived = false; //!< Flag: MQTT message has been received
 
 // ################ PROGRAM VARIABLES and OBJECTS ################
-
-#define max_readings 24
-
-RTC_DATA_ATTR Forecast_record_type WxConditions[1]; //!< OWM Weather Conditions
-Forecast_record_type WxForecast[max_readings];      //!< OWM Weather Forecast
-
-#include "common.h"
 
 #define autoscale_on true
 #define autoscale_off false
@@ -185,71 +178,35 @@ Forecast_record_type WxForecast[max_readings];      //!< OWM Weather Forecast
 const String Locations[] = LOCATIONS_TXT; //!< /Screen Titles
 
 // OWM Forecast Data
+#define max_readings 24
+RTC_DATA_ATTR Forecast_record_type WxConditions[1]; //!< OWM Weather Conditions
+Forecast_record_type WxForecast[max_readings];      //!< OWM Weather Forecast
 float pressure_readings[max_readings] = {0};    //!< OWM pressure readings
 float temperature_readings[max_readings] = {0}; //!< OWM temperature readings
 float humidity_readings[max_readings] = {0};    //!< OWM humidity readings
 float rain_readings[max_readings] = {0};        //!< OWM rain readings
 float snow_readings[max_readings] = {0};        //!< OWM snow readings
 
-extern RTC_DATA_ATTR mqtt_sensors_t MqttSensors; //!< MQTT sensor data
+#include "common.h"
 
-RTC_DATA_ATTR Queue_t MqttHistQCtrl; //!< MQTT Sensor Data History FIFO Control
-
-struct MqttHistQData
-{
-  float temperature; //!< temperature in degC
-  uint8_t humidity;  //!< humidity in %
-  bool valid;        //!< data valid
-};
-
-typedef struct MqttHistQData mqtt_hist_t; //!< Shortcut for struct MqttHistQData
-
+// MQTT Sensor Data
+RTC_DATA_ATTR mqtt_sensors_t MqttSensors;           //!< MQTT sensor data
+RTC_DATA_ATTR Queue_t MqttHistQCtrl;                //!< MQTT Sensor Data History FIFO Control
 RTC_DATA_ATTR mqtt_hist_t MqttHist[MQTT_HIST_SIZE]; //<! MQTT Sensor Data History
 RTC_DATA_ATTR time_t MqttHistTStamp = 0;            //!< Last MQTT History Update Timestamp
 
-// Hourly Rainfall Data
-RTC_DATA_ATTR Queue_t RainHrHistQCtrl; //!< Hourly Rain Data History FIFO Control
-
-struct RainHrHistQData
-{
-  float rain; //!< precipitation in mm
-  bool valid; //!< data valid
-};
-
-typedef struct RainHrHistQData rain_hr_hist_t; //!< Shortcut for struct RainHrHistQData
-
+// Rainfall Data History
+RTC_DATA_ATTR Queue_t RainHrHistQCtrl;                      //!< Hourly Rain Data History FIFO Control
 RTC_DATA_ATTR rain_hr_hist_t RainHrHist[RAIN_HR_HIST_SIZE]; //<! Hourly Rain Data History
 RTC_DATA_ATTR time_t RainHrHistTStamp = 0;                  //!< Last Hourly Rain Data History Update Timestamp
 
-// Daily Rainfall Data
-RTC_DATA_ATTR Queue_t RainDayHistQCtrl; //!< Daily Rain Data History FIFO Control
-
-struct RainDayHistQData
-{
-  float rain; //!< precipitation in mm
-  bool valid; //!< data valid
-};
-
-typedef struct RainDayHistQData rain_day_hist_t; //!< Shortcut for struct RainDayHistQData
-
+RTC_DATA_ATTR Queue_t RainDayHistQCtrl;                       //!< Daily Rain Data History FIFO Control
 RTC_DATA_ATTR rain_hr_hist_t RainDayHist[RAIN_DAY_HIST_SIZE]; //<! Daily Rain Data History
 RTC_DATA_ATTR uint8_t RainDayHistMDay = 0;                    //!< Last Daily Rain Data History Update, Day of Month
 
-extern local_sensors_t LocalSensors; //!< Local Sensor Data
-
-RTC_DATA_ATTR Queue_t LocalHistQCtrl; //!< Local Sensor Data History FIFO Control
-
-struct LocalHistQData
-{
-  float temperature; //!< temperature in degC
-  float humidity;    //!< humidity in %
-  float pressure;    //!< pressure in hPa
-  bool th_valid;     //!< temperature/humidity valid
-  bool p_valid;      //!< pressure valid
-};
-
-typedef struct LocalHistQData local_hist_t; //!< Shortcut for struct LocalHistQData
-
+// Local Sensor Data
+local_sensors_t LocalSensors;                          //!< Local Sensor Data
+RTC_DATA_ATTR Queue_t LocalHistQCtrl;                  //!< Local Sensor Data History FIFO Control
 RTC_DATA_ATTR local_hist_t LocalHist[LOCAL_HIST_SIZE]; //!< Local Sensor Data History
 RTC_DATA_ATTR time_t LocalHistTStamp = 0;              //!< Last Local History Update Timestamp
 
@@ -257,9 +214,6 @@ RTC_DATA_ATTR int ScreenNo = START_SCREEN; //!< Current Screen No.
 RTC_DATA_ATTR int PrevScreenNo = -1;       //!< Previous Screen No.
 
 LocalInterface localInterface;
-
-// WiFi connect timeout per AP. Increase when connecting takes longer.
-//const uint32_t connectTimeoutMs = 10000;
 
 /**
  * \brief Touch Interrupt Service Routines
@@ -668,20 +622,6 @@ inline bool TouchTriggered(void)
   return (touchPrevTrig || touchMidTrig || touchNextTrig);
 }
 
-// /**
-//  * \brief MQTT message reception callback function
-//  *
-//  * Sets the flag <code>mqttMessageReceived</code> and copies the received message to
-//  * <code>MqttBuf</code>.
-//  */
-// void mqttMessageCb(String &topic, String &payload)
-// {
-//   mqttMessageReceived = true;
-//   log_d("Payload size: %d", payload.length());
-// #ifndef SIMULATE_MQTT
-//   strncpy(MqttBuf, payload.c_str(), payload.length());
-// #endif
-// }
 
 /**
  * \brief Display Open Weather Map (OWM) data
@@ -2095,7 +2035,6 @@ void arrow(int x, int y, int asize, float aangle, int pwidth, int plength)
   float yy3 = y3 * cos(angle) + x3 * sin(angle) + dy;
   display.fillTriangle(xx1, yy1, xx3, yy3, xx2, yy2, GxEPD_BLACK);
 }
-
 
 #if 0
 /**

@@ -87,6 +87,14 @@ struct MqttS
 };
 
 typedef struct MqttS mqtt_sensors_t; //!< Shortcut for struct Sensor
+struct MqttHistQData
+{
+  float temperature; //!< temperature in degC
+  uint8_t humidity;  //!< humidity in %
+  bool valid;        //!< data valid
+};
+
+typedef struct MqttHistQData mqtt_hist_t; //!< Shortcut for struct MqttHistQData
 
 // TOPICS_NEW: BresserWeatherSensorLW
 #define TOPICS_NEW
