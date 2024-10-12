@@ -7,6 +7,11 @@
 
 #include "forecast_record.h"
 #include "common_functions.h"
+#include "config.h"
+
+#if defined(USE_HTTPS)
+static const char owm_certificate[] PROGMEM = OWM_CERTIFICATE;
+#endif
 
 //#########################################################################################
 void Convert_Readings_to_Imperial() {
@@ -109,8 +114,13 @@ String ConvertUnixTime(int unix_time) {
 }
 //#########################################################################################
 bool obtain_wx_data(const String& RequestType) {
+#if defined(USE_HTTPS)
+  NetworkClientSecure client;
+  client.setCACert(owm_certificate);
+#else
   WiFiClient client;
-
+#endif
+  
   const String units = (Units == "M" ? "metric" : "imperial");
   client.stop(); // close connection before sending a new request
   HTTPClient http;
@@ -119,8 +129,11 @@ bool obtain_wx_data(const String& RequestType) {
   {
     uri += "&cnt=" + String(max_readings);
   }
-  //http.begin(uri,test_root_ca); //HTTPS example connection
+#if defined(USE_HTTPS)
+  http.begin(client, String("https://") + server + uri);
+#else
   http.begin(client, server, 80, uri);
+#endif
   int httpCode = http.GET();
   if(httpCode == HTTP_CODE_OK) {
     if (!DecodeWeather(http.getStream(), RequestType)) return false;
