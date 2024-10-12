@@ -80,6 +80,8 @@
 // Arduino 1.8.19 ESP32 WiFiClientSecure.h: "SHA1 fingerprint is broken now!"
 //#define CHECK_FINGERPRINT
 
+//#define USE_HTTPS
+
 // Domain Name Server - separate bytes by comma!
 #define MY_DNS 192,168,0,1
 
