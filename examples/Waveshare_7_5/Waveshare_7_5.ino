@@ -155,10 +155,10 @@ void callback(){
 void BeginSleep() { // Wake up with a Touch pin to refresh the weather data, just needs a wire on the chosen pin
   display.powerOff();
   long SleepTimer = (SleepDuration * 60 - ((CurrentMin % SleepDuration) * 60 + CurrentSec)); //Some ESP32 are too fast to maintain accurate time
-  int Threshold = 50;  // The higher the umber, the more sensitive is the touch function
+  int Threshold = 50;  // The higher the number, the more sensitive the touch function
   touchAttachInterrupt(T3, callback, Threshold); // T3 is Touch-3 and is GPIO-15 see list
   esp_sleep_enable_touchpad_wakeup();
-  esp_sleep_enable_timer_wakeup((SleepTimer+20) * 1000000LL); // Added +20 seconnds to cover ESP32 RTC timer source inaccuracies
+  esp_sleep_enable_timer_wakeup((SleepTimer+20) * 1000000LL); // Added +20 seconds to cover ESP32 RTC timer source inaccuracies
 #ifdef BUILTIN_LED
   pinMode(BUILTIN_LED, INPUT); // If it's On, turn it off and some boards use GPIO-5 for SPI-SS, which remains low after screen use
   digitalWrite(BUILTIN_LED, HIGH);
@@ -166,7 +166,7 @@ void BeginSleep() { // Wake up with a Touch pin to refresh the weather data, jus
   Serial.println("Entering " + String(SleepTimer) + "-secs of sleep time");
   Serial.println("Awake for : " + String((millis() - StartTime) / 1000.0, 3) + "-secs");
   Serial.println("Starting deep-sleep period...");
-  esp_deep_sleep_start();      // Sleep for e.g. 30 minutes
+  esp_deep_sleep_start();      // Sleep for e.g. 60 minutes
 }
 //#########################################################################################
 void DisplayWeather() {                        // 7.5" e-paper display is 640x384 resolution
@@ -477,7 +477,6 @@ uint8_t StartWiFi() {
   IPAddress dns(8, 8, 8, 8); // Google DNS
   WiFi.disconnect();
   WiFi.mode(WIFI_STA); // switch off AP
-  WiFi.setAutoConnect(true);
   WiFi.setAutoReconnect(true);
   WiFi.begin(ssid, password);
   unsigned long start = millis();

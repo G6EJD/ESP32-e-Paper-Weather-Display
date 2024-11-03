@@ -20,7 +20,7 @@ void Convert_Readings_to_Imperial() {
 bool DecodeWeather(WiFiClient& json, String Type) {
   Serial.print(F("\nCreating object...and "));
   // allocate the JsonDocument
-  DynamicJsonDocument doc(35 * 1024);
+  JsonDocument doc;
   // Deserialize the JSON document
   DeserializationError error = deserializeJson(doc, json);
   // Test if parsing succeeds.
@@ -114,8 +114,10 @@ String ConvertUnixTime(int unix_time) {
 bool obtain_wx_data(WiFiClient& client, const String& RequestType) {
   const String units = (Units == "M" ? "metric" : "imperial");
   client.stop(); // close connection before sending a new request
-  HTTPClient http;
-  String uri = "/data/2.5/" + RequestType + "?q=" + City + "," + Country + "&APPID=" + apikey + "&mode=json&units=" + units + "&lang=" + Language;
+  HTTPClient http;    
+  // Update for API 3.0 June '24
+  // String uri = "/data/3.0/onecall?lat=" + LAT + "&lon=" + LON + "&appid=" + apikey + "&mode=json&units=" + units + "&lang=" + Language;
+  String uri = "/data/2.5/" + RequestType + "?lat=" + LAT + "&lon=" + LON + "&appid=" + apikey + "&mode=json&units=" + units + "&lang=" + Language;
   if(RequestType != "weather")
   {
     uri += "&cnt=" + String(max_readings);
