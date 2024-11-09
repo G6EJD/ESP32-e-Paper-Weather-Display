@@ -57,6 +57,7 @@
  * 20241008 Fixed B/W display (small artefacts remaining)
  * 20241009 Fixed B/W display of main screens
  * 20241011 Added secure MQTT
+ * 20241109 Fixed several B/W display issues
  *
  */
 
