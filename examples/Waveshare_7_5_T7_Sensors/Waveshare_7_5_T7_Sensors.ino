@@ -57,6 +57,7 @@
  * 20241008 Fixed B/W display (small artefacts remaining)
  * 20241009 Fixed B/W display of main screens
  * 20241011 Added secure MQTT
+ * 20241109 Fixed several B/W display issues
  *
  */
 
@@ -64,8 +65,8 @@
 #include "owm_credentials.h" // See 'owm_credentials' tab and enter your OWM API key and set the Wifi SSID and PASSWORD
 #include <ArduinoJson.h>     // https://github.com/bblanchon/ArduinoJson needs version v6 or above
 
-#include <time.h> // Built-in
-#include <SPI.h>  // Built-in
+#include <time.h>                  // Built-in
+#include <SPI.h>                   // Built-in
 #include <string>                  // Built-in
 #include <MQTT.h>                  // https://github.com/256dpi/arduino-mqtt
 #include <cQueue.h>                // https://github.com/SMFSW/cQueue
@@ -360,10 +361,12 @@ void setup()
 
       while ((RxWeather == false || RxForecast == false) && Attempts <= 2)
       { // Try up-to 2 times for Weather and Forecast data
-        if (RxWeather == false) {
+        if (RxWeather == false)
+        {
           RxWeather = obtain_wx_data("weather");
         }
-        if (RxForecast == false) {
+        if (RxForecast == false)
+        {
           RxForecast = obtain_wx_data("forecast");
         }
         Attempts++;
@@ -409,70 +412,56 @@ void setup()
   if (ScreenNo == ScreenLocal)
   {
 #if defined(MITHERMOMETER_EN) || defined(THEENGSDECODER_EN)
-    DisplayLocalWeather(epd_bitmap_downloading);
+    DisplayLocalWeather(NULL);
 #endif
   }
-  display.display(true);
+  // display.display(true);
 
   // WiFi is disconnected - display WiFi-Off-Icon
   if (!wifi_ok)
   {
-
     // Screen has changed to OWM (no previous data available in this case)
-    // display Wiffi-Off icon at the screen's center
+    // display Wifi-Off icon at the screen's center
     if (ScreenNo == ScreenOWM && ScreenNo != PrevScreenNo)
     {
+#if defined(DISPLAY_3C)
       display.firstPage();
       do
       {
+#endif
         display.fillScreen(GxEPD_WHITE);
         DisplayGeneralInfoSection();
         int x = SCREEN_WIDTH / 2 - 24;
         int y = SCREEN_HEIGHT / 2 - 24;
         display.drawBitmap(x, y, epd_bitmap_wifi_off, 48, 48, GxEPD_BLACK);
+#if defined(DISPLAY_3C)
       } while (display.nextPage());
+#endif
+#if defined(DISPLAY_BW)
+      display.display(true);
+#endif
     }
     else
     {
-      // previous data is available
-      // display WiFi-Off icon next to Date/Time of last update
-      int x = (ScreenNo == ScreenOWM) ? 592 : 88;
-      int y = (ScreenNo == ScreenOWM) ? 192 : 272;
-
-      if (display.epd2.hasFastPartialUpdate)
+      display.setFullWindow();
+      switch (ScreenNo)
       {
-        log_d("hasFastPartialUpdate: %d", display.epd2.hasFastPartialUpdate ? 1 : 0);
-        display.setPartialWindow(x, y, 48, 48);
-        display.firstPage();
-        do
-        {
-          display.drawBitmap(x, y, epd_bitmap_wifi_off, 48, 48, GxEPD_BLACK);
-        } while (display.nextPage());
+      case ScreenOWM:
+        DisplayOWMWeather(epd_bitmap_wifi_off);
+        break;
+
+      case ScreenLocal:
+        DisplayLocalWeather(epd_bitmap_wifi_off);
+        break;
+
+      case ScreenMQTT:
+        DisplayMQTTWeather(epd_bitmap_wifi_off);
       }
-      else
-      {
-        display.setFullWindow();
-        switch (ScreenNo)
-        {
-        case ScreenOWM:
-          DisplayOWMWeather(epd_bitmap_wifi_off);
-          break;
-
-        case ScreenLocal:
-          DisplayLocalWeather(epd_bitmap_wifi_off);
-          break;
-
-        case ScreenMQTT:
-          DisplayMQTTWeather(epd_bitmap_wifi_off);
-        }
-      } // no fast partial update
     } // previous data is available
   } // if (!wifi_ok)
 
   // Fetch MQTT data
   MQTTClient MqttClient(MQTT_PAYLOAD_SIZE);
-  //NetworkClientSecure net;
-  //MqttInterface mqttInterface(net, MqttClient);
   MqttInterface mqttInterface(MqttClient);
   if (mqttInterface.mqttConnect())
   {
@@ -482,11 +471,18 @@ void setup()
     if (display.epd2.hasFastPartialUpdate)
     {
       display.setPartialWindow(x, y, 48, 48);
+#if defined(DISPLAY_3C)
       display.firstPage();
       do
       {
+#endif
         display.drawBitmap(x, y, epd_bitmap_downloading, 48, 48, GxEPD_BLACK);
+#if defined(DISPLAY_3C)
       } while (display.nextPage());
+#endif
+#if defined(DISPLAY_BW)
+      display.displayWindow(x, y, 48, 48);
+#endif
     }
     else
     {
@@ -509,28 +505,26 @@ void setup()
     // Get MQTT data (blocks until data is available)
     mqttInterface.getMqttData(MqttSensors);
 
-    if (display.epd2.hasFastPartialUpdate)
+    if (display.epd2.hasFastPartialUpdate && (ScreenNo != ScreenMQTT))
     {
-      log_d("hasFastPartialUpdate");
-      if (ScreenNo == ScreenMQTT) {
-        log_d("DisplayMQTTWeather(NULL)");
-        display.setFullWindow();
-        DisplayMQTTWeather(NULL);
-      } else {
-        display.setPartialWindow(x, y, 48, 48);
-        #if defined(DISPLAY_3C)
-        display.firstPage();
-        do
-        {
-        #endif
-          display.fillRect(x, y, 48, 48, GxEPD_WHITE);
-        #if defined(DISPLAY_3C)
-        } while (display.nextPage());
-        #endif
-      }
+      // Clear the download icon
+      display.setPartialWindow(x, y, 48, 48);
+#if defined(DISPLAY_3C)
+      display.firstPage();
+      do
+      {
+#endif
+        display.fillRect(x, y, 48, 48, GxEPD_WHITE);
+#if defined(DISPLAY_3C)
+      } while (display.nextPage());
+#endif
+#if defined(DISPLAY_BW)
+      display.displayWindow(x, y, 48, 48);
+#endif
     }
     else
     {
+      // Update screen (with download icon cleared)
       display.setFullWindow();
       switch (ScreenNo)
       {
