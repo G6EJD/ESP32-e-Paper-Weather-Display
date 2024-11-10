@@ -470,12 +470,13 @@ void setup()
     int y = (ScreenNo == ScreenOWM) ? 300 : 272;
     if (display.epd2.hasFastPartialUpdate)
     {
-      display.setPartialWindow(x, y, 48, 48);
+      //display.setPartialWindow(x, y, 48, 48);
 #if defined(DISPLAY_3C)
       display.firstPage();
       do
       {
 #endif
+        display.fillRect(x, y, 48, 48, GxEPD_WHITE);
         display.drawBitmap(x, y, epd_bitmap_downloading, 48, 48, GxEPD_BLACK);
 #if defined(DISPLAY_3C)
       } while (display.nextPage());
@@ -508,7 +509,7 @@ void setup()
     if (display.epd2.hasFastPartialUpdate && (ScreenNo != ScreenMQTT))
     {
       // Clear the download icon
-      display.setPartialWindow(x, y, 48, 48);
+      //display.setPartialWindow(x, y, 48, 48);
 #if defined(DISPLAY_3C)
       display.firstPage();
       do
@@ -556,8 +557,11 @@ void setup()
     SaveRainHrData();
   }
   SaveRainDayData();
+  
+  if (!TouchTriggered()) {
+    mqttInterface.mqttUplink(MqttClient, LocalSensors);
+  }
 
-  mqttInterface.mqttUplink(MqttClient, LocalSensors);
   StopWiFi();
   BeginSleep();
 }
