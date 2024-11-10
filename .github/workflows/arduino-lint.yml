@@ -5,8 +5,8 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: arduino/arduino-lint-action@v1
+      - uses: actions/checkout@v4
+      - uses: arduino/arduino-lint-action@v2
         with:
           library-manager: false
           # compliance: strict
