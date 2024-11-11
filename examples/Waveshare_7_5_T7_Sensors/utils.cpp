@@ -64,6 +64,10 @@ uint8_t StartWiFi()
   wifiMulti.addAP(ssid0, password0);
   wifiMulti.addAP(ssid1, password1);
   wifiMulti.addAP(ssid2, password2);
+  #if defined(ssid3)
+  wifiMulti.addAP(ssid3, password3);
+  #endif
+
   
   if (WiFi.status() == WL_CONNECTED)
   {
