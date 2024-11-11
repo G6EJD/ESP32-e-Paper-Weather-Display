@@ -20,11 +20,17 @@
 ## Screens
 **Note:** Display quality is much better in reality than in the images below! 
 ### Weather Report / Forecast
-![2-weather_report_forecast](https://user-images.githubusercontent.com/83612361/219954116-dd68a860-7884-4ef7-af2b-0ddd452a2d07.jpg)
+![1_forecast](https://github.com/user-attachments/assets/5e772a0b-022a-402c-842e-f8d6b7082d9c)
+
+<!-- ![2-weather_report_forecast](https://user-images.githubusercontent.com/83612361/219954116-dd68a860-7884-4ef7-af2b-0ddd452a2d07.jpg) --> 
 ### Local Sensor Data
-![3-weather_local](https://user-images.githubusercontent.com/83612361/219953502-6f0e3b16-58f8-4845-b5d6-c796484c778f.jpg)
+![2_local](https://github.com/user-attachments/assets/53efd31b-5702-4a25-946c-d51dc811b924)
+
+<!-- ![3-weather_local](https://user-images.githubusercontent.com/83612361/219953502-6f0e3b16-58f8-4845-b5d6-c796484c778f.jpg) -->
 ### Remote Sensor Data
-![4-weather_remote](https://user-images.githubusercontent.com/83612361/219953834-cd48c8b0-d533-40d9-b4aa-15b58e0bcb52.png)
+![3_remote](https://github.com/user-attachments/assets/5ee694ae-c27d-4be2-95a9-a7f3766b9e78)
+
+<!-- ![4-weather_remote](https://user-images.githubusercontent.com/83612361/219953834-cd48c8b0-d533-40d9-b4aa-15b58e0bcb52.png) -->
 
 
 ## Setup
