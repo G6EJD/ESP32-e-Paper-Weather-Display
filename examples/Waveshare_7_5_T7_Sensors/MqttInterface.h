@@ -150,7 +150,7 @@ typedef struct MqttHistQData mqtt_hist_t; //!< Shortcut for struct MqttHistQData
 #define INV_UINT32 0xFFFFFFFF
 #define INV_UINT16 0xFFFF
 #define INV_UINT8 0xFF
-#define INV_TEMP 327.67
+#define INV_TEMP 327.67f
 
 class MqttInterface
 {

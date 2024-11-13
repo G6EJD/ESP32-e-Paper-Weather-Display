@@ -902,7 +902,7 @@ void DisplayMQTTWeather(const unsigned char *status_bitmap)
 
 #if defined(WATERTEMP_EN)
     // Water Temperature Sensor
-    if (MqttSensors.water_temp_c != WATER_TEMP_INVALID || MqttHistTStamp == 0)
+    if ((MqttSensors.water_temp_c != WATER_TEMP_INVALID) && (MqttSensors.water_temp_c < INV_TEMP - 1))
     {
       DisplayLocalTemperatureSection(358, 187, 137, 100, "", true, MqttSensors.water_temp_c, false, 0, 0);
       u8g2Fonts.setFont(u8g2_font_helvB18_tf);
