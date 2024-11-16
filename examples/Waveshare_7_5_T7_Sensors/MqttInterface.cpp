@@ -216,6 +216,11 @@ void MqttInterface::getMqttData(mqtt_sensors_t &MqttSensors)
       strncpy(MqttSensors.received_at, received_at, 30);
     }
     f_port = doc["uplink_message"]["f_port"];
+    if (f_port != 1)
+    {
+      // Wrong f_port, retrying...
+      mqttMessageReceived = false;
+    }
   } while (f_port != 1);
   JsonVariant payload = doc["uplink_message"]["decoded_payload"]["bytes"];
 
