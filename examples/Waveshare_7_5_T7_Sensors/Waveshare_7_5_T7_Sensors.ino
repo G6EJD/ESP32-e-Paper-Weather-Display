@@ -797,7 +797,7 @@ void SaveRainDayData(void)
  */
 void DisplayMQTTWeather(const unsigned char *status_bitmap)
 {
-#if defined(DIPLAY_3C)
+#if defined(DISPLAY_3C)
   display.firstPage();
   do
   {
