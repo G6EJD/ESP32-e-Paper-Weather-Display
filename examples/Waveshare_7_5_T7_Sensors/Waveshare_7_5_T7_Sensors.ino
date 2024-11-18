@@ -310,7 +310,7 @@ void setup()
       int x = SCREEN_WIDTH / 2 - 24;
       int y = SCREEN_HEIGHT / 2 - 24;
       display.drawBitmap(x, y, epd_bitmap_hourglass_top, 48, 48, GxEPD_BLACK);
-#if defined(DISPAY_3C)
+#if defined(DISPLAY_3C)
     } while (display.nextPage());
 #endif
   } // if (ScreenNo != PrevScreenNo)
