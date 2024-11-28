@@ -66,7 +66,7 @@ jobs:
             "TheengsDecoder@1.7.8"
             "ArduinoJson@7.2.0"
             "pocketBME280@1.2.4"
-            "NimBLE-Arduino@1.4.2"
+            "NimBLE-Arduino@1.4.3"
             "Sensirion I2C SCD4x@0.4.0"
             "Sensirion Core@0.7.1"
           )
