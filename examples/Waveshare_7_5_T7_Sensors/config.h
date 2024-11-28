@@ -44,6 +44,10 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+// Bitmap images
+#include "bitmap_local.h" // Picture shown on ScreenLocal - replace by your own
+#include "bitmap_remote.h" // Picture shown on ScreenMQTT  - replace by your own
+
 // Screen definitions
 #define ScreenOWM   0
 #define ScreenLocal 1
