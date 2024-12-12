@@ -53,7 +53,7 @@ static const uint8_t EPD_MISO = -1; // Master-In Slave-Out not used, as no data 
 static const uint8_t EPD_MOSI = 23;
 
 GxEPD2_BW<GxEPD2_213_B74, GxEPD2_213_B74::HEIGHT> display(GxEPD2_213_B74(/*CS=D8*/ EPD_CS, /*DC=D3*/ EPD_DC, /*RST=D4*/ EPD_RST, /*BUSY=D2*/ EPD_BUSY));
-#WeAct 2.13 screen module, you need to change GxEPD2_213_B73 to GxEPD2_213_B74
+// #WeAct 2.13 screen module, you need to change GxEPD2_213_B73 to GxEPD2_213_B74
 U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
 // Using fonts:
 // u8g2_font_helvB08_tf
