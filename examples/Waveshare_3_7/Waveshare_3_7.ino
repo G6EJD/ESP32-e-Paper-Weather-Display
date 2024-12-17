@@ -275,17 +275,13 @@ void DrawHeadingSection() {
 //#########################################################################################
 void DrawMainWeatherSection(int x, int y) {
   DrawMainWx(x, y);
-
   //Current weather description - rainy, sunny etc.
   String Wx_Description = WxConditions[0].Forecast0;
   u8g2Fonts.setFont(u8g2_font_helvB18_tf);
   if (WxConditions[0].Forecast1 != "")
     Wx_Description += " & " + WxConditions[0].Forecast1;
-
   drawStringMaxWidth(x + 5, y + 60, 150, TitleCase(Wx_Description), LEFT);
-
   display.drawRect(x, y, 159, 99, GxEPD_BLACK); //first LHS 3rd
-
   DisplayWXicon(x + 160 +80, y+55, WxConditions[0].Icon, LargeIcon);
   display.drawRect(x+160, y, 159, 99, GxEPD_BLACK); //middle 3rd
 }
@@ -529,7 +525,6 @@ uint8_t StartWiFi() {
   IPAddress dns(8, 8, 8, 8); // Google DNS
   WiFi.disconnect();
   WiFi.mode(WIFI_STA); // switch off AP
-  WiFi.setAutoReconnect(true);
   WiFi.begin(ssid, password);
   unsigned long start = millis();
   uint8_t connectionStatus;
