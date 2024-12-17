@@ -543,7 +543,6 @@ uint8_t StartWiFi() {
   WiFi.disconnect(true);
   delay(500);
   WiFi.mode(WIFI_STA); // switch off AP
-  WiFi.setAutoReconnect(true);
   WiFi.begin(ssid, password);
   unsigned long start = millis();
   uint8_t connectionStatus;
