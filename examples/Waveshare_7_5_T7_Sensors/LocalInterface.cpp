@@ -177,7 +177,7 @@ void LocalInterface::GetLocalData(void)
   uint16_t error;
   char errorMessage[256];
 
-  scd4x.begin(myWire);
+  scd4x.begin(myWire, SCD41_I2C_ADDR_62);
 
   // stop potential previously started measurement
   error = scd4x.stopPeriodicMeasurement();
@@ -301,7 +301,7 @@ void LocalInterface::GetLocalData(void)
 
   for (int i = 0; i < 50; i++)
   {
-    error = scd4x.getDataReadyFlag(isDataReady);
+    error = scd4x.getDataReadyStatus(isDataReady);
     if (error)
     {
       errorToString(error, errorMessage, 256);
