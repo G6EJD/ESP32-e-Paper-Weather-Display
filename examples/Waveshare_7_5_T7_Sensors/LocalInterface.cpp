@@ -172,7 +172,7 @@ void LocalInterface::GetLocalData(void)
 #endif
 
 #ifdef SCD4X_EN
-  SensirionI2CScd4x scd4x;
+  SensirionI2cScd4x scd4x;
 
   uint16_t error;
   char errorMessage[256];
