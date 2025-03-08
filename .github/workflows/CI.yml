@@ -12,8 +12,8 @@ jobs:
     strategy:
       matrix:
         board:
-          - esp32:esp32:esp32:PartitionScheme=min_spiffs,DebugLevel=none
-          - esp32:esp32:esp32:PartitionScheme=min_spiffs,DebugLevel=verbose
+          - esp32:esp32:esp32:PartitionScheme=huge_app,DebugLevel=none
+          - esp32:esp32:esp32:PartitionScheme=huge_app,DebugLevel=verbose
           
     runs-on: ubuntu-latest
     name: ${{ matrix.board }}
