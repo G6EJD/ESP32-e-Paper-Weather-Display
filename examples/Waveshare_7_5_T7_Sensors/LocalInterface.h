@@ -60,7 +60,7 @@
 #endif
 
 #ifdef SCD4X_EN
-#include <SensirionI2CScd4x.h> // https://github.com/Sensirion/arduino-i2c-scd4x
+#include <SensirionI2cScd4x.h> // https://github.com/Sensirion/arduino-i2c-scd4x
 #endif
 
 
