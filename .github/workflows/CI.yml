@@ -52,6 +52,9 @@ jobs:
             # ESP32
             #python -m pip install pyserial
             echo "index-url=--additional-urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json" >> $GITHUB_OUTPUT
+            # Use latest version
+            #echo "package-version=''" >> $GITHUB_OUTPUT
+            # Use specific version
             echo "package-version=@3.0.7" >> $GITHUB_OUTPUT
           fi
 
