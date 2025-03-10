@@ -33,6 +33,7 @@
 // History:
 //
 // 20241010 Extracted from Waveshare_7_5_T7_Sensors.ino
+// 20250308 Updated NimBLE-Arduino to v2.2.3
 //
 // ToDo:
 // -
@@ -55,29 +56,24 @@ static NimBLEScan *pBLEScan;
 #endif
 
 #ifdef THEENGSDECODER_EN
-class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks
+class ScanCallbacks : public NimBLEScanCallbacks
 {
+private:
+  int m_devices_found = 0; /// Number of known devices found
 
-  int m_devices_found = 0; //!< Number of known devices found
-
-  std::string convertServiceData(std::string deviceServiceData)
+  void onDiscovered(const NimBLEAdvertisedDevice *advertisedDevice) override
   {
-    int serviceDataLength = (int)deviceServiceData.length();
-    char spr[2 * serviceDataLength + 1];
-    for (int i = 0; i < serviceDataLength; i++)
-      sprintf(spr + 2 * i, "%.2x", (unsigned char)deviceServiceData[i]);
-    spr[2 * serviceDataLength] = 0;
-    return spr;
+    log_v("Discovered Advertised Device: %s", advertisedDevice->toString().c_str());
   }
 
-  void onResult(BLEAdvertisedDevice *advertisedDevice)
+  void onResult(const NimBLEAdvertisedDevice *advertisedDevice) override
   {
     TheengsDecoder decoder;
-    bool device_found = false;
     unsigned idx;
+    bool device_found = false;
     JsonDocument doc;
 
-    log_v("Advertised Device: %s", advertisedDevice->toString().c_str());
+    log_v("Advertised Device Result: %s", advertisedDevice->toString().c_str());
     JsonObject BLEdata = doc.to<JsonObject>();
     String mac_adress = advertisedDevice->getAddress().toString().c_str();
 
@@ -88,6 +84,7 @@ class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks
       {
         log_v("BLE device found at index %d", idx);
         device_found = true;
+        m_devices_found++;
         break;
       }
     }
@@ -97,27 +94,22 @@ class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks
 
     if (advertisedDevice->haveManufacturerData())
     {
-      char *manufacturerdata = BLEUtils::buildHexData(NULL, (uint8_t *)advertisedDevice->getManufacturerData().data(), advertisedDevice->getManufacturerData().length());
-      BLEdata["manufacturerdata"] = manufacturerdata;
-      free(manufacturerdata);
+      std::string manufacturerdata = advertisedDevice->getManufacturerData();
+      std::string mfgdata_hex = NimBLEUtils::dataToHexString((const uint8_t *)manufacturerdata.c_str(), manufacturerdata.length());
+      BLEdata["manufacturerdata"] = (char *)mfgdata_hex.c_str();
     }
 
-    if (advertisedDevice->haveRSSI())
-      BLEdata["rssi"] = (int)advertisedDevice->getRSSI();
+    BLEdata["rssi"] = (int)advertisedDevice->getRSSI();
 
     if (advertisedDevice->haveTXPower())
       BLEdata["txpower"] = (int8_t)advertisedDevice->getTXPower();
 
     if (advertisedDevice->haveServiceData())
     {
-      int serviceDataCount = advertisedDevice->getServiceDataCount();
-      for (int j = 0; j < serviceDataCount; j++)
-      {
-        std::string service_data = convertServiceData(advertisedDevice->getServiceData(j));
-        BLEdata["servicedata"] = (char *)service_data.c_str();
-        std::string serviceDatauuid = advertisedDevice->getServiceDataUUID(j).toString();
-        BLEdata["servicedatauuid"] = (char *)serviceDatauuid.c_str();
-      }
+      std::string servicedata = advertisedDevice->getServiceData(NimBLEUUID((uint16_t)0x181a));
+      std::string servicedata_hex = NimBLEUtils::dataToHexString((const uint8_t *)servicedata.c_str(), servicedata.length());
+      BLEdata["servicedata"] = (char *)servicedata_hex.c_str();
+      BLEdata["servicedatauuid"] = "0x181a";
     }
 
     if (decoder.decodeBLEJson(BLEdata) && device_found)
@@ -128,9 +120,8 @@ class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks
         serializeJson(BLEdata, buf);
         log_d("TheengsDecoder found device: %s", buf);
       }
-      BLEdata.remove("manufacturerdata");
-      BLEdata.remove("servicedata");
 
+      // see https://stackoverflow.com/questions/5348089/passing-a-vector-between-functions-via-pointers
       LocalSensors.ble_thsensor[idx].temperature = (float)BLEdata["tempc"];
       LocalSensors.ble_thsensor[idx].humidity = (float)BLEdata["hum"];
       LocalSensors.ble_thsensor[idx].batt_level = (uint8_t)BLEdata["batt"];
@@ -139,9 +130,11 @@ class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks
       log_i("Temperature:       %.1f°C", LocalSensors.ble_thsensor[idx].temperature);
       log_i("Humidity:          %.1f%%", LocalSensors.ble_thsensor[idx].humidity);
       log_i("Battery level:     %d%%", LocalSensors.ble_thsensor[idx].batt_level);
-      log_i("RSSI             %ddBm", LocalSensors.ble_thsensor[idx].rssi = (int)BLEdata["rssi"]);
-      m_devices_found++;
+      log_i("RSSI:             %ddBm", LocalSensors.ble_thsensor[idx].rssi = (int)BLEdata["rssi"]);
       log_d("BLE devices found: %d", m_devices_found);
+
+      BLEdata.remove("manufacturerdata");
+      BLEdata.remove("servicedata");
     }
 
     // Abort scanning by touch sensor
@@ -158,7 +151,12 @@ class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks
       pBLEScan->stop();
     }
   }
-};
+
+  void onScanEnd(const NimBLEScanResults &results, int reason) override
+  {
+    log_v("Scan Ended; reason = %d", reason);
+  }
+} scanCallbacks;
 #endif
 
 // Get local sensor data
@@ -174,12 +172,12 @@ void LocalInterface::GetLocalData(void)
 #endif
 
 #ifdef SCD4X_EN
-  SensirionI2CScd4x scd4x;
+  SensirionI2cScd4x scd4x;
 
   uint16_t error;
   char errorMessage[256];
 
-  scd4x.begin(myWire);
+  scd4x.begin(myWire, SCD41_I2C_ADDR_62);
 
   // stop potential previously started measurement
   error = scd4x.stopPeriodicMeasurement();
@@ -224,22 +222,22 @@ void LocalInterface::GetLocalData(void)
 #ifdef THEENGSDECODER_EN
 
   // From https://github.com/theengs/decoder/blob/development/examples/ESP32/ScanAndDecode/ScanAndDecode.ino:
-  // MyAdvertisedDeviceCallbacks are still triggered multiple times; this makes keeping track of received
-  // sensors difficult. Setting ScanFilterMode to CONFIG_BTDM_SCAN_DUPL_TYPE_DATA_DEVICE seems to
+  // scanCallbacks are still triggered multiple times; this makes keeping track of received sensors difficult.
+  // Setting ScanFilterMode to CONFIG_BTDM_SCAN_DUPL_TYPE_DATA_DEVICE seems to
   // restrict callback invocation to once per device as desired.
-  // NimBLEDevice::setScanFilterMode(CONFIG_BTDM_SCAN_DUPL_TYPE_DEVICE);
-  NimBLEDevice::setScanFilterMode(CONFIG_BTDM_SCAN_DUPL_TYPE_DATA_DEVICE);
-  NimBLEDevice::setScanDuplicateCacheSize(200);
-  NimBLEDevice::init("");
 
-  pBLEScan = NimBLEDevice::getScan(); // create new scan
-  // Set the callback for when devices are discovered, no duplicates.
-  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks(), false);
-  pBLEScan->setActiveScan(true); // Set active scanning, this will get more data from the advertiser.
-  pBLEScan->setInterval(97);     // How often the scan occurs / switches channels; in milliseconds,
-  pBLEScan->setWindow(37);       // How long to scan during the interval; in milliseconds.
-  pBLEScan->setMaxResults(0);    // do not store the scan results, use callback only.
-  pBLEScan->start(bleScanTime, false /* is_continue */);
+  NimBLEDevice::setScanFilterMode(CONFIG_BTDM_SCAN_DUPL_TYPE_DATA_DEVICE);
+
+  NimBLEDevice::init("ble-scan");
+  pBLEScan = NimBLEDevice::getScan();
+  pBLEScan->setScanCallbacks(&scanCallbacks);
+  pBLEScan->setActiveScan(true);
+  pBLEScan->setInterval(97);
+  pBLEScan->setWindow(37);
+  
+  // Start scanning
+  // Blocks until all known devices are found or scanTime is expired
+  pBLEScan->getResults(bleScanTime * 1000, false);
 #endif
 
   if (LocalSensors.ble_thsensor[0].valid)
@@ -303,7 +301,7 @@ void LocalInterface::GetLocalData(void)
 
   for (int i = 0; i < 50; i++)
   {
-    error = scd4x.getDataReadyFlag(isDataReady);
+    error = scd4x.getDataReadyStatus(isDataReady);
     if (error)
     {
       errorToString(error, errorMessage, 256);

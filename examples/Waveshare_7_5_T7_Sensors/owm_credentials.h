@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////
-// MqttInterface.h
+// owm_credentials.h
 //
-// MQTT Interface for ESP32-e-Paper-Weather-Display
+// Opem Weather Map Credentials
 //
 //
 // created: 10/2024
