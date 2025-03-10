@@ -52,6 +52,7 @@ jobs:
             # ESP32
             #python -m pip install pyserial
             echo "index-url=--additional-urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json" >> $GITHUB_OUTPUT
+            echo "package-version=@3.0.7" >> $GITHUB_OUTPUT
           fi
 
       - name: Install libraries
@@ -80,7 +81,7 @@ jobs:
         run:
           |
           arduino-cli core update-index ${{ format('{0}', steps.prep.outputs.index-url) }}
-          arduino-cli core install ${{ format('{0}:{1} {2}', steps.split.outputs._0, steps.split.outputs._1, steps.prep.outputs.index-url) }}
+          arduino-cli core install ${{ format('{0}:{1}{2} {3}', steps.split.outputs._0, steps.split.outputs._1, steps.prep.outputs.package-version, steps.prep.outputs.index-url) }}
 
       - name: Checkout repository
         if: ${{ env.run-build == 'true' }}
