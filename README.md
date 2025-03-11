@@ -18,6 +18,9 @@
 * Sensor Histogram Data stored in ESP32's RTC RAM (persistent in Deep-Sleep Mode)
 * Currently only 7.5" e-Paper Displays supported
 
+> [!CAUTION]
+> [arduino-esp32 v3.0.7](https://github.com/espressif/arduino-esp32/releases/tag/3.0.7) must be used &ndash; newer versions will result in a linker error! (see https://github.com/matthias-bs/ESP32-e-Paper-Weather-Display/issues/34)
+
 ## Screens
 **Note:** Display quality is much better in reality than in the images below! 
 ### Weather Report / Forecast
