@@ -34,6 +34,7 @@
 //
 // 20241010 Extracted from Waveshare_7_5_T7_Sensors.ino
 // 20241011 Fixed sensor status flags, added secure MQTT
+// 20250322 Added MQTT discovery for Home Assistant, added status message
 //
 // ToDo:
 // -
@@ -89,6 +90,11 @@ MqttInterface::MqttInterface(MQTTClient &_MqttClient)
 #endif
 #endif
   MqttClient = _MqttClient;
+
+  uint32_t id_l = ESP.getEfuseMac() & 0xFFFFFFFF;
+  uint32_t id_h = (ESP.getEfuseMac() >> 32) & 0xFFFF;
+
+  sprintf(chip_id, "%04X%08X", id_h, id_l);
 }
 
 // Connect to MQTT broker
@@ -282,6 +288,7 @@ void MqttInterface::getMqttData(mqtt_sensors_t &MqttSensors)
   log_i("MQTT data updated: %d", MqttSensors.valid ? 1 : 0);
 }
 
+// Publish sensor data to MQTT broker
 bool MqttInterface::mqttUplink(MQTTClient &MqttClient, local_sensors_t &data)
 {
   char payload[21];
@@ -295,9 +302,11 @@ bool MqttInterface::mqttUplink(MQTTClient &MqttClient, local_sensors_t &data)
 
   log_i("MQTT (publishing) connecting...");
   unsigned long start = millis();
+  String mqttPubStatus = String(HOSTNAME) + "/status";
 
   MqttClient.begin(MQTT_HOST_P, MQTT_PORT_P, net);
   MqttClient.setOptions(MQTT_KEEPALIVE /* keepAlive [s] */, MQTT_CLEAN_SESSION /* cleanSession */, MQTT_TIMEOUT * 1000 /* timeout [ms] */);
+  MqttClient.setWill(mqttPubStatus.c_str(), "dead", true /* retained */, 1 /* qos */);
 
   while (!MqttClient.connect(HOSTNAME, MQTT_USER_P, MQTT_PASS_P))
   {
@@ -310,9 +319,13 @@ bool MqttInterface::mqttUplink(MQTTClient &MqttClient, local_sensors_t &data)
     delay(1000);
   }
   log_i("Connected!");
+  MqttClient.publish(mqttPubStatus.c_str(), "online");
 
   log_d("Publishing...");
 #if defined(SCD4X_EN)
+#if defined(AUTO_DISCOVERY)
+  publishAutoDiscovery(MqttClient, "CO2", "carbon_dioxide", "ppm", "sdc4x", "co2");
+#endif
   if (data.i2c_co2sensor.valid)
   {
     snprintf(payload, 20, "%u", data.i2c_co2sensor.co2);
@@ -327,9 +340,15 @@ bool MqttInterface::mqttUplink(MQTTClient &MqttClient, local_sensors_t &data)
     snprintf(topic, 40, "%s/sdc4x/humidity", HOSTNAME);
     MqttClient.publish(topic, payload);
   }
+  MqttClient.loop();
 #endif
 
 #if defined(BME280_EN)
+#if defined(AUTO_DISCOVERY)
+  publishAutoDiscovery(MqttClient, "Indoor Temperature", "temperature", "°C", "bme280", "temperature");
+  publishAutoDiscovery(MqttClient, "Indoor Humidity", "humidity", "%", "bme280", "humidity");
+  publishAutoDiscovery(MqttClient, "Indoor Pressure", "atmospheric_pressure", "hPa", "bme280", "pressure");
+#endif
   if (data.i2c_thpsensor[0].valid)
   {
     snprintf(payload, 20, "%3.1f", data.i2c_thpsensor[0].temperature);
@@ -344,9 +363,15 @@ bool MqttInterface::mqttUplink(MQTTClient &MqttClient, local_sensors_t &data)
     snprintf(topic, 40, "%s/bme280/pressure", HOSTNAME);
     MqttClient.publish(topic, payload);
   }
+  MqttClient.loop();
 #endif
 
-#if defined(THEENGSDECODER_EN) || defined(THEENGSDECODER_EN)
+#if defined(MITHERMOMETER_EN) || defined(THEENGSDECODER_EN)
+#if defined(AUTO_DISCOVERY)
+  publishAutoDiscovery(MqttClient, "Outdoor Temperature", "temperature", "°C", "ble", "temperature");
+  publishAutoDiscovery(MqttClient, "Outdoor Humidity", "humidity", "%", "ble", "humidity");
+  publishAutoDiscovery(MqttClient, "Outdoor Sensor Battery", "battery", "%", "ble", "batt_level");
+#endif
   if (data.ble_thsensor[0].valid)
   {
     snprintf(payload, 20, "%3.1f", data.ble_thsensor[0].temperature);
@@ -361,6 +386,7 @@ bool MqttInterface::mqttUplink(MQTTClient &MqttClient, local_sensors_t &data)
     snprintf(topic, 40, "%s/ble/batt_level", HOSTNAME);
     MqttClient.publish(topic, payload);
   }
+  MqttClient.loop();
 #endif
 
   for (int i = 0; i < 10; i++)
@@ -368,9 +394,40 @@ bool MqttInterface::mqttUplink(MQTTClient &MqttClient, local_sensors_t &data)
     MqttClient.loop();
     delay(500);
   }
+  MqttClient.publish(mqttPubStatus, "offline", true /* retained */, 0 /* qos */);
+  MqttClient.loop();
 
   log_i("MQTT (publishing) disconnect.");
   MqttClient.disconnect();
 
   return true;
 }
+
+#if defined(AUTO_DISCOVERY)
+// Publish auto-discovery configuration for Home Assistant
+void MqttInterface::publishAutoDiscovery(MQTTClient &MqttClient, const char *sensor_name, const char *device_class, const char *unit,
+                                         const char *sensor_topic, const char *value_topic)
+{
+  JsonDocument doc;
+
+  doc["name"] = sensor_name;
+  doc["device_class"] = device_class;
+  doc["unique_id"] = String(HOSTNAME) + "_" + String(chip_id) + String("_") + String(sensor_topic) + String("_") + String(value_topic);
+  doc["state_topic"] = String(HOSTNAME) + "/" + sensor_topic + "/" + value_topic;
+  doc["availability_topic"] = String(HOSTNAME) + "/status";
+  doc["payload_not_available"] = "dead"; // default: "offline"
+  doc["unit_of_measurement"] = unit;
+  doc["value_template"] = "{{ value }}";
+  JsonObject device = doc["device"].to<JsonObject>();
+  device["name"] = String(HOSTNAME);
+  device["identifiers"] = String(HOSTNAME) + "_" + chip_id;
+
+  char buffer[512];
+  serializeJson(doc, buffer);
+
+  String tmp_topic = String(HOSTNAME) + "_" + sensor_topic + "_" + value_topic;
+  String topic = String("homeassistant/sensor/") + tmp_topic + "/config";
+  log_d("Publishing auto-discovery configuration: %s: %s", topic.c_str(), buffer);
+  MqttClient.publish(topic.c_str(), buffer);
+}
+#endif

@@ -34,6 +34,7 @@
 //
 // 20241010 Extracted from Waveshare_7_5_T7_Sensors.ino
 // 20241011 Fixed sensor status flags, added secure MQTT
+// 20250322 Added MQTT discovery for Home Assistant, added status message
 //
 // ToDo:
 // -
@@ -161,6 +162,7 @@ private:
     WiFiClient net;
 #endif
     MQTTClient MqttClient;
+    char chip_id[13]; //!< ESP32 Chip ID
 
 public:
     /*!
@@ -182,6 +184,25 @@ public:
      */
     void getMqttData(mqtt_sensors_t &MqttSensors);
 
+    /**
+     * \brief Publish sensor data to MQTT broker
+     *
+     * \param MqttClient  MQTT client object
+     * \param data        sensor data
+     *
+     * \return true if data was published, otherwise false
+     */
     bool mqttUplink(MQTTClient &MqttClient, local_sensors_t &data);
+
+    /**
+     * \brief Publish Home Assistant MQTT auto-discovery configuration
+     * 
+     * \param sensor_name   Human readable sensor name
+     * \param device_class  Home Assistant device class
+     * \param unit          unit of measurement
+     * \param sensor_topic  sensor topic (e.g. "ble")
+     * \param value_topic   value topic (e.g. "temperature")
+     */
+    void publishAutoDiscovery(MQTTClient &MqttClient, const char *sensor_name, const char *device_class, const char *unit, const char *sensor_topic, const char *value_topic);
 };
 #endif
