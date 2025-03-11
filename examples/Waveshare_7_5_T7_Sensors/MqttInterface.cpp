@@ -94,7 +94,7 @@ MqttInterface::MqttInterface(MQTTClient &_MqttClient)
   uint32_t id_l = ESP.getEfuseMac() & 0xFFFFFFFF;
   uint32_t id_h = (ESP.getEfuseMac() >> 32) & 0xFFFF;
 
-  sprintf(chip_id, "%04X%08X", id_h, id_l);
+  sprintf(chip_id, "%04lX%08lX", id_h, id_l);
 }
 
 // Connect to MQTT broker
