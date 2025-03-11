@@ -35,6 +35,7 @@
 //
 // 20241010 Extracted from owm_credentials.h
 // 20241011 Added secure WiFi
+// 20250310 Added AUTO_DISCOVERY (Home Assistant)
 //
 // ToDo:
 // -
@@ -92,7 +93,7 @@
 // Weather display's hostname
 #define HOSTNAME "your_hostname"
 
-// TODO: Move to config.h
+// Time zone and time server settings
 #define TIMEZONE "GMT0BST,M3.5.0/01,M10.5.0/02"            // Choose your time zone from: https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv 
                                                            // See below for examples
 #define NTPSERVER "0.uk.pool.ntp.org"                      // Or, choose a time server close to you, but in most cases it's best to use pool.ntp.org to find an NTP server
@@ -144,5 +145,8 @@
 #define LOCAL_HIST_SIZE 144
 #define HIST_UPDATE_RATE 30
 #define HIST_UPDATE_TOL 5
+
+// Enable Home Assistant MQTT Auto-Discovery
+#define AUTO_DISCOVERY
 
 #endif
