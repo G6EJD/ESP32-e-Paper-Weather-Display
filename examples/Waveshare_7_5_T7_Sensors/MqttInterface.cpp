@@ -389,14 +389,13 @@ bool MqttInterface::mqttUplink(MQTTClient &MqttClient, local_sensors_t &data)
   MqttClient.loop();
 #endif
 
-  for (int i = 0; i < 10; i++)
+  MqttClient.publish(mqttPubStatus, "offline", true /* retained */, 0 /* qos */);
+  for (int i = 0; i < 5; i++)
   {
     MqttClient.loop();
     delay(500);
   }
-  MqttClient.publish(mqttPubStatus, "offline", true /* retained */, 0 /* qos */);
-  MqttClient.loop();
-
+  delay(1000); // Allow time for the client to disconnect properly
   log_i("MQTT (publishing) disconnect.");
   MqttClient.disconnect();
 
