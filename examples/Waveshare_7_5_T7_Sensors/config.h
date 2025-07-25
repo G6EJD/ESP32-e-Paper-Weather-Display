@@ -36,6 +36,7 @@
 // 20241010 Extracted from owm_credentials.h
 // 20241011 Added secure WiFi
 // 20250310 Added AUTO_DISCOVERY (Home Assistant)
+// 20250725 Added define for selection of JSON payload variant (TTN/Helium)
 //
 // ToDo:
 // -
@@ -82,8 +83,6 @@
 // enable only one of these below, disabling both is fine too.
 //#define CHECK_CA_ROOT
 //#define CHECK_PUB_KEY
-// Arduino 1.8.19 ESP32 WiFiClientSecure.h: "SHA1 fingerprint is broken now!"
-//#define CHECK_FINGERPRINT
 
 //#define USE_HTTPS
 
@@ -127,6 +126,8 @@
 #define MQTT_PORT 1883
 #define MQTT_HOST "your_broker"
 #define MQTT_SUB_IN "your/subscribe/topic"
+#define MQTT_JSON_FMT_TTN
+//#define MQTT_JSON_FMT_HELIUM
 
 // MQTT connection for publishing (local sensor data)
 #define MQTT_PORT_P 1883
