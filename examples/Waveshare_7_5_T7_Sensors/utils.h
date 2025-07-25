@@ -33,6 +33,7 @@
 // History:
 //
 // 20241010 Extracted from Waveshare_7_5_T7_Sensors.ino
+// 20250725 Added unixMillisToIso8601()
 //
 // ToDo:
 // -
@@ -75,7 +76,23 @@ void StopWiFi();
  */
 bool HistoryUpdateDue(void);
 
+/**
+ * \brief Convert UTC timestamp (string) to local time
+ * 
+ * \param time_str_utc UTC time string
+ * \param ti_local Pointer to struct tm for local time
+ * \param tz_offset Time zone offset in seconds
+ */
 void convertUtcTimestamp(String time_str_utc, struct tm *ti_local, int tz_offset);
+
+/** 
+ * \brief Convert Unix time in milliseconds to ISO 8601 format
+ * 
+ * \param ms Unix time in milliseconds
+ * \return String representation of the time in ISO 8601 format
+ */
+String unixMillisToIso8601(uint64_t ms);
+
 
 /**
  * \brief Get time from NTP server and initialize/update RTC
