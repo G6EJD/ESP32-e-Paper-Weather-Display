@@ -33,6 +33,7 @@
 // History:
 //
 // 20241010 Extracted from Waveshare_7_5_T7_Sensors.ino
+// 20250725 Replaced BLE code by src/BleSensors/BleSensors.h/.cpp
 //
 // ToDo:
 // -
@@ -44,15 +45,13 @@
 #include <Arduino.h>
 #include "config.h"
 
-
-#ifdef MITHERMOMETER_EN
+#if defined(MITHERMOMETER_EN)
 // BLE Temperature/Humidity Sensor
-#include <ATC_MiThermometer.h> //!< https://github.com/matthias-bs/ATC_MiThermometer
+#include <ATC_MiThermometer.h>
 #endif
 
-#ifdef THEENGSDECODER_EN
-#include "NimBLEDevice.h" //!< https://github.com/h2zero/NimBLE-Arduino
-#include "decoder.h"      //!< https://github.com/theengs/decoder
+#if defined(THEENGSDECODER_EN)
+#include "BleSensors/BleSensors.h"
 #endif
 
 #ifdef BME280_EN
