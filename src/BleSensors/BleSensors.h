@@ -44,6 +44,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
+#if defined(THEENGSDECODER_EN)
 #if !defined(BLE_SENSORS) && !defined(ARDUINO_ADAFRUIT_FEATHER_ESP32S2) \
                           && !defined(ARDUINO_ARCH_RP2040)
 #define BLE_SENSORS
@@ -130,4 +131,5 @@ class BleSensors {
         std::vector<std::string> _known_sensors; /// MAC addresses of known sensors
         NimBLEScan*              _pBLEScan;      /// NimBLEScan object
 };
-#endif
+#endif // !defined(BLE_SENSORS) && !defined(ARDUINO_ADAFRUIT_FEATHER_ESP32S2) && !defined(ARDUINO_ARCH_RP2040)
+#endif // defined(THEENGSDECODER_EN)

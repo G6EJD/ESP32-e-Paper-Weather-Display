@@ -43,6 +43,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
+#if defined(THEENGSDECODER_EN)
 #if !defined(ARDUINO_ADAFRUIT_FEATHER_ESP32S2) && !defined(ARDUINO_ARCH_RP2040)
 
 #include "BleSensors.h"
@@ -185,4 +186,5 @@ unsigned BleSensors::getData(uint32_t scanTime, bool activeScan)
   return 0;
 }
 
-#endif
+#endif // !defined(ARDUINO_ADAFRUIT_FEATHER_ESP32S2) && !defined(ARDUINO_ARCH_RP2040)
+#endif // defined(THEENGSDECODER_EN)

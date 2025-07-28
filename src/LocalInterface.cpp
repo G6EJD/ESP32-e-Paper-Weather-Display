@@ -35,6 +35,7 @@
 // 20241010 Extracted from Waveshare_7_5_T7_Sensors.ino
 // 20250308 Updated NimBLE-Arduino to v2.2.3
 // 20250725 Replaced BLE code by src/BleSensors/BleSensors.h/.cpp
+// 20250728 Fixed compilation with MITHERMOMETER_EN
 //
 // ToDo:
 // -
@@ -53,10 +54,6 @@ static const int bleScanMode = 1;  //!< BLE scan mode: 0=passive, 1=active
 static std::vector<std::string> knownBLEAddresses = KNOWN_BLE_ADDRESSES;
 #endif
 
-#ifdef MITHERMOMETER_EN
-/// BLE Temperature/Humidity Sensors
-ATC_MiThermometer bleSensors; //!< Mijia Bluetooth Low Energy Thermo-/Hygrometer
-#endif
 #ifdef THEENGSDECODER_EN
 /// Bluetooth Low Energy sensors
 BleSensors bleSensors;
