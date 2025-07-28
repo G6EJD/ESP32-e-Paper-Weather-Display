@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////////
-// LocalInterface.h
+// LocalInterface.cpp
 //
 // Local Sensor Data Interface for ESP32-e-Paper-Weather-Display
 //
@@ -34,6 +34,8 @@
 //
 // 20241010 Extracted from Waveshare_7_5_T7_Sensors.ino
 // 20250308 Updated NimBLE-Arduino to v2.2.3
+// 20250725 Replaced BLE code by src/BleSensors/BleSensors.h/.cpp
+// 20250728 Fixed compilation with MITHERMOMETER_EN
 //
 // ToDo:
 // -
@@ -44,119 +46,17 @@
 
 extern bool TouchTriggered();
 
-extern local_sensors_t LocalSensors; 
+extern local_sensors_t LocalSensors;
 
 #if defined(MITHERMOMETER_EN) || defined(THEENGSDECODER_EN)
 static const int bleScanTime = 31; //!< BLE scan time in seconds
+static const int bleScanMode = 1;  //!< BLE scan mode: 0=passive, 1=active
 static std::vector<std::string> knownBLEAddresses = KNOWN_BLE_ADDRESSES;
 #endif
 
-#if defined(MITHERMOMETER_EN) || defined(THEENGSDECODER_EN)
-static NimBLEScan *pBLEScan;
-#endif
-
 #ifdef THEENGSDECODER_EN
-class ScanCallbacks : public NimBLEScanCallbacks
-{
-private:
-  int m_devices_found = 0; /// Number of known devices found
-
-  void onDiscovered(const NimBLEAdvertisedDevice *advertisedDevice) override
-  {
-    log_v("Discovered Advertised Device: %s", advertisedDevice->toString().c_str());
-  }
-
-  void onResult(const NimBLEAdvertisedDevice *advertisedDevice) override
-  {
-    TheengsDecoder decoder;
-    unsigned idx;
-    bool device_found = false;
-    JsonDocument doc;
-
-    log_v("Advertised Device Result: %s", advertisedDevice->toString().c_str());
-    JsonObject BLEdata = doc.to<JsonObject>();
-    String mac_adress = advertisedDevice->getAddress().toString().c_str();
-
-    BLEdata["id"] = (char *)mac_adress.c_str();
-    for (idx = 0; idx < knownBLEAddresses.size(); idx++)
-    {
-      if (mac_adress == knownBLEAddresses[idx].c_str())
-      {
-        log_v("BLE device found at index %d", idx);
-        device_found = true;
-        m_devices_found++;
-        break;
-      }
-    }
-
-    if (advertisedDevice->haveName())
-      BLEdata["name"] = (char *)advertisedDevice->getName().c_str();
-
-    if (advertisedDevice->haveManufacturerData())
-    {
-      std::string manufacturerdata = advertisedDevice->getManufacturerData();
-      std::string mfgdata_hex = NimBLEUtils::dataToHexString((const uint8_t *)manufacturerdata.c_str(), manufacturerdata.length());
-      BLEdata["manufacturerdata"] = (char *)mfgdata_hex.c_str();
-    }
-
-    BLEdata["rssi"] = (int)advertisedDevice->getRSSI();
-
-    if (advertisedDevice->haveTXPower())
-      BLEdata["txpower"] = (int8_t)advertisedDevice->getTXPower();
-
-    if (advertisedDevice->haveServiceData())
-    {
-      std::string servicedata = advertisedDevice->getServiceData(NimBLEUUID((uint16_t)0x181a));
-      std::string servicedata_hex = NimBLEUtils::dataToHexString((const uint8_t *)servicedata.c_str(), servicedata.length());
-      BLEdata["servicedata"] = (char *)servicedata_hex.c_str();
-      BLEdata["servicedatauuid"] = "0x181a";
-    }
-
-    if (decoder.decodeBLEJson(BLEdata) && device_found)
-    {
-      if (CORE_DEBUG_LEVEL >= ARDUHAL_LOG_LEVEL_DEBUG)
-      {
-        char buf[512];
-        serializeJson(BLEdata, buf);
-        log_d("TheengsDecoder found device: %s", buf);
-      }
-
-      // see https://stackoverflow.com/questions/5348089/passing-a-vector-between-functions-via-pointers
-      LocalSensors.ble_thsensor[idx].temperature = (float)BLEdata["tempc"];
-      LocalSensors.ble_thsensor[idx].humidity = (float)BLEdata["hum"];
-      LocalSensors.ble_thsensor[idx].batt_level = (uint8_t)BLEdata["batt"];
-      LocalSensors.ble_thsensor[idx].rssi = (int)BLEdata["rssi"];
-      LocalSensors.ble_thsensor[idx].valid = (LocalSensors.ble_thsensor[idx].batt_level > 0);
-      log_i("Temperature:       %.1f°C", LocalSensors.ble_thsensor[idx].temperature);
-      log_i("Humidity:          %.1f%%", LocalSensors.ble_thsensor[idx].humidity);
-      log_i("Battery level:     %d%%", LocalSensors.ble_thsensor[idx].batt_level);
-      log_i("RSSI:             %ddBm", LocalSensors.ble_thsensor[idx].rssi = (int)BLEdata["rssi"]);
-      log_d("BLE devices found: %d", m_devices_found);
-
-      BLEdata.remove("manufacturerdata");
-      BLEdata.remove("servicedata");
-    }
-
-    // Abort scanning by touch sensor
-    if (TouchTriggered())
-    {
-      log_i("Touch interrupt!");
-      pBLEScan->stop();
-    }
-
-    // Abort scanning because all known devices have been found
-    if (m_devices_found == knownBLEAddresses.size())
-    {
-      log_i("All devices found.");
-      pBLEScan->stop();
-    }
-  }
-
-  void onScanEnd(const NimBLEScanResults &results, int reason) override
-  {
-    log_v("Scan Ended; reason = %d", reason);
-  }
-} scanCallbacks;
+/// Bluetooth Low Energy sensors
+BleSensors bleSensors;
 #endif
 
 // Get local sensor data
@@ -219,25 +119,30 @@ void LocalInterface::GetLocalData(void)
   miThermometer.clearScanResults();
 #endif
 
+ // BLE Temperature/Humidity Sensors
+#if defined(MITHERMOMETER_EN)
+  float div = 100.0;
+#elif defined(THEENGSDECODER_EN)
+  float div = 1.0;
+#endif
+
 #ifdef THEENGSDECODER_EN
+  bleSensors = BleSensors(KNOWN_BLE_ADDRESSES);
+  if (bleSensors.data.size() > 0)
+  {
+    bleSensors.getData(bleScanTime, bleScanMode);
+  }
 
-  // From https://github.com/theengs/decoder/blob/development/examples/ESP32/ScanAndDecode/ScanAndDecode.ino:
-  // scanCallbacks are still triggered multiple times; this makes keeping track of received sensors difficult.
-  // Setting ScanFilterMode to CONFIG_BTDM_SCAN_DUPL_TYPE_DATA_DEVICE seems to
-  // restrict callback invocation to once per device as desired.
+  if (bleSensors.data[0].valid)
+  {
+    LocalSensors.ble_thsensor[0].valid = true;
+    LocalSensors.ble_thsensor[0].temperature = bleSensors.data[0].temperature / div;
+    LocalSensors.ble_thsensor[0].humidity = bleSensors.data[0].humidity / div;
+    LocalSensors.ble_thsensor[0].batt_level = bleSensors.data[0].batt_level;
+    LocalSensors.ble_thsensor[0].rssi = bleSensors.data[0].rssi;
+  }
+  bleSensors.clearScanResults();
 
-  NimBLEDevice::setScanFilterMode(CONFIG_BTDM_SCAN_DUPL_TYPE_DATA_DEVICE);
-
-  NimBLEDevice::init("ble-scan");
-  pBLEScan = NimBLEDevice::getScan();
-  pBLEScan->setScanCallbacks(&scanCallbacks);
-  pBLEScan->setActiveScan(true);
-  pBLEScan->setInterval(97);
-  pBLEScan->setWindow(37);
-  
-  // Start scanning
-  // Blocks until all known devices are found or scanTime is expired
-  pBLEScan->getResults(bleScanTime * 1000, false);
 #endif
 
   if (LocalSensors.ble_thsensor[0].valid)

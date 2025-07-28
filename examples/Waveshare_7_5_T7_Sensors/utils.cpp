@@ -33,6 +33,7 @@
 // History:
 //
 // 20241010 Extracted from Waveshare_7_5_T7_Sensors.ino
+// 20250725 Added unixMillisToIso8601()
 //
 // ToDo:
 // -
@@ -128,6 +129,21 @@ void convertUtcTimestamp(String time_str_utc, struct tm *ti_local, int tz_offset
   char tbuf[26];
   strftime(tbuf, 25, "%Y-%m-%d %H:%M", ti_local);
   log_d("Message received at: %s local time, DST: %d\n", tbuf, ti_local->tm_isdst);
+}
+
+// Convert Unix time in milliseconds to ISO 8601 format
+String unixMillisToIso8601(uint64_t ms) {
+  time_t seconds = ms / 1000;
+  struct tm t;
+  gmtime_r(&seconds, &t); // UTC time
+
+  char buf[40];
+  snprintf(buf, sizeof(buf),
+      "%04d-%02d-%02dT%02d:%02d:%02dZ",
+      t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
+      t.tm_hour, t.tm_min, t.tm_sec
+  );
+  return String(buf);
 }
 
 // Get time from NTP server and initialize/update RTC

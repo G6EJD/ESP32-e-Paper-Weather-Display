@@ -34,7 +34,6 @@
 //
 // 20241010 Extracted from Waveshare_7_5_T7_Sensors.ino
 // 20241011 Fixed sensor status flags, added secure MQTT
-// 20250322 Added MQTT discovery for Home Assistant, added status message
 //
 // ToDo:
 // -
@@ -56,6 +55,7 @@
 #include <ArduinoJson.h> // https://github.com/bblanchon/ArduinoJson needs version v6 or above
 
 #include "secrets.h"
+#include "utils.h"
 #include "LocalInterface.h"
 
 // MQTT Sensor Data
