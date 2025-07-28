@@ -43,110 +43,114 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#if defined(THEENGSDECODER_EN)
 #if !defined(ARDUINO_ADAFRUIT_FEATHER_ESP32S2) && !defined(ARDUINO_ARCH_RP2040)
 
 #include "BleSensors.h"
 
-class ScanCallbacks : public NimBLEScanCallbacks
+namespace BleSensorsCallbacks
 {
-public:
-  std::vector<std::string> m_knownBLEAddresses; /// MAC addresses of known sensors
-  std::vector<ble_sensors_t> *m_sensorData;     /// Sensor data
-  NimBLEScan *m_pBLEScan;
 
-private:
-  int m_devices_found = 0; /// Number of known devices found
-
-  void onDiscovered(const NimBLEAdvertisedDevice *advertisedDevice) override
+  class ScanCallbacks : public NimBLEScanCallbacks
   {
-    log_v("Discovered Advertised Device: %s", advertisedDevice->toString().c_str());
-  }
+  public:
+    std::vector<std::string> m_knownBLEAddresses; /// MAC addresses of known sensors
+    std::vector<ble_sensors_t> *m_sensorData;     /// Sensor data
+    NimBLEScan *m_pBLEScan;
 
-  void onResult(const NimBLEAdvertisedDevice *advertisedDevice) override
-  {
-    TheengsDecoder decoder;
-    unsigned idx;
-    bool device_found = false;
-    JsonDocument doc;
+  private:
+    int m_devices_found = 0; /// Number of known devices found
 
-    log_v("Advertised Device Result: %s", advertisedDevice->toString().c_str());
-    JsonObject BLEdata = doc.to<JsonObject>();
-    String mac_adress = advertisedDevice->getAddress().toString().c_str();
-
-    BLEdata["id"] = (char *)mac_adress.c_str();
-    for (idx = 0; idx < m_knownBLEAddresses.size(); idx++)
+    void onDiscovered(const NimBLEAdvertisedDevice *advertisedDevice) override
     {
-      if (mac_adress == m_knownBLEAddresses[idx].c_str())
+      log_v("Discovered Advertised Device: %s", advertisedDevice->toString().c_str());
+    }
+
+    void onResult(const NimBLEAdvertisedDevice *advertisedDevice) override
+    {
+      TheengsDecoder decoder;
+      unsigned idx;
+      bool device_found = false;
+      JsonDocument doc;
+
+      log_v("Advertised Device Result: %s", advertisedDevice->toString().c_str());
+      JsonObject BLEdata = doc.to<JsonObject>();
+      String mac_adress = advertisedDevice->getAddress().toString().c_str();
+
+      BLEdata["id"] = (char *)mac_adress.c_str();
+      for (idx = 0; idx < m_knownBLEAddresses.size(); idx++)
       {
-        log_v("BLE device found at index %d", idx);
-        device_found = true;
-        m_devices_found++;
-        break;
+        if (mac_adress == m_knownBLEAddresses[idx].c_str())
+        {
+          log_v("BLE device found at index %d", idx);
+          device_found = true;
+          m_devices_found++;
+          break;
+        }
+      }
+
+      if (advertisedDevice->haveName())
+        BLEdata["name"] = (char *)advertisedDevice->getName().c_str();
+
+      if (advertisedDevice->haveManufacturerData())
+      {
+        std::string manufacturerdata = advertisedDevice->getManufacturerData();
+        std::string mfgdata_hex = NimBLEUtils::dataToHexString((const uint8_t *)manufacturerdata.c_str(), manufacturerdata.length());
+        BLEdata["manufacturerdata"] = (char *)mfgdata_hex.c_str();
+      }
+
+      BLEdata["rssi"] = (int)advertisedDevice->getRSSI();
+
+      if (advertisedDevice->haveTXPower())
+        BLEdata["txpower"] = (int8_t)advertisedDevice->getTXPower();
+
+      if (advertisedDevice->haveServiceData())
+      {
+        std::string servicedata = advertisedDevice->getServiceData(NimBLEUUID((uint16_t)0x181a));
+        std::string servicedata_hex = NimBLEUtils::dataToHexString((const uint8_t *)servicedata.c_str(), servicedata.length());
+        BLEdata["servicedata"] = (char *)servicedata_hex.c_str();
+        BLEdata["servicedatauuid"] = "0x181a";
+      }
+
+      if (decoder.decodeBLEJson(BLEdata) && device_found)
+      {
+        if (CORE_DEBUG_LEVEL >= ARDUHAL_LOG_LEVEL_DEBUG)
+        {
+          char buf[512];
+          serializeJson(BLEdata, buf);
+          log_d("TheengsDecoder found device: %s", buf);
+        }
+
+        // see https://stackoverflow.com/questions/5348089/passing-a-vector-between-functions-via-pointers
+        (*m_sensorData)[idx].temperature = (float)BLEdata["tempc"];
+        (*m_sensorData)[idx].humidity = (float)BLEdata["hum"];
+        (*m_sensorData)[idx].batt_level = (uint8_t)BLEdata["batt"];
+        (*m_sensorData)[idx].rssi = (int)BLEdata["rssi"];
+        (*m_sensorData)[idx].valid = ((*m_sensorData)[idx].batt_level > 0);
+        log_i("Temperature:       %.1f°C", (*m_sensorData)[idx].temperature);
+        log_i("Humidity:          %.1f%%", (*m_sensorData)[idx].humidity);
+        log_i("Battery level:     %d%%", (*m_sensorData)[idx].batt_level);
+        log_i("RSSI:             %ddBm", (*m_sensorData)[idx].rssi = (int)BLEdata["rssi"]);
+        log_d("BLE devices found: %d", m_devices_found);
+
+        BLEdata.remove("manufacturerdata");
+        BLEdata.remove("servicedata");
+      }
+
+      // Abort scanning because all known devices have been found
+      if (m_devices_found == m_knownBLEAddresses.size())
+      {
+        log_i("All devices found.");
+        m_pBLEScan->stop();
       }
     }
 
-    if (advertisedDevice->haveName())
-      BLEdata["name"] = (char *)advertisedDevice->getName().c_str();
-
-    if (advertisedDevice->haveManufacturerData())
+    void onScanEnd(const NimBLEScanResults &results, int reason) override
     {
-      std::string manufacturerdata = advertisedDevice->getManufacturerData();
-      std::string mfgdata_hex = NimBLEUtils::dataToHexString((const uint8_t *)manufacturerdata.c_str(), manufacturerdata.length());
-      BLEdata["manufacturerdata"] = (char *)mfgdata_hex.c_str();
+      log_v("Scan Ended; reason = %d", reason);
     }
+  } scanCallbacks;
 
-    BLEdata["rssi"] = (int)advertisedDevice->getRSSI();
-
-    if (advertisedDevice->haveTXPower())
-      BLEdata["txpower"] = (int8_t)advertisedDevice->getTXPower();
-
-    if (advertisedDevice->haveServiceData())
-    {
-      std::string servicedata = advertisedDevice->getServiceData(NimBLEUUID((uint16_t)0x181a));
-      std::string servicedata_hex = NimBLEUtils::dataToHexString((const uint8_t *)servicedata.c_str(), servicedata.length());
-      BLEdata["servicedata"] = (char *)servicedata_hex.c_str();
-      BLEdata["servicedatauuid"] = "0x181a";
-    }
-
-    if (decoder.decodeBLEJson(BLEdata) && device_found)
-    {
-      if (CORE_DEBUG_LEVEL >= ARDUHAL_LOG_LEVEL_DEBUG)
-      {
-        char buf[512];
-        serializeJson(BLEdata, buf);
-        log_d("TheengsDecoder found device: %s", buf);
-      }
-
-      // see https://stackoverflow.com/questions/5348089/passing-a-vector-between-functions-via-pointers
-      (*m_sensorData)[idx].temperature = (float)BLEdata["tempc"];
-      (*m_sensorData)[idx].humidity = (float)BLEdata["hum"];
-      (*m_sensorData)[idx].batt_level = (uint8_t)BLEdata["batt"];
-      (*m_sensorData)[idx].rssi = (int)BLEdata["rssi"];
-      (*m_sensorData)[idx].valid = ((*m_sensorData)[idx].batt_level > 0);
-      log_i("Temperature:       %.1f°C", (*m_sensorData)[idx].temperature);
-      log_i("Humidity:          %.1f%%", (*m_sensorData)[idx].humidity);
-      log_i("Battery level:     %d%%", (*m_sensorData)[idx].batt_level);
-      log_i("RSSI:             %ddBm", (*m_sensorData)[idx].rssi = (int)BLEdata["rssi"]);
-      log_d("BLE devices found: %d", m_devices_found);
-
-      BLEdata.remove("manufacturerdata");
-      BLEdata.remove("servicedata");
-    }
-
-    // Abort scanning because all known devices have been found
-    if (m_devices_found == m_knownBLEAddresses.size())
-    {
-      log_i("All devices found.");
-      m_pBLEScan->stop();
-    }
-  }
-
-  void onScanEnd(const NimBLEScanResults &results, int reason) override
-  {
-    log_v("Scan Ended; reason = %d", reason);
-  }
-} scanCallbacks;
+} // namespace BleSensorsCallbacks
 
 void BleSensors::clearScanResults(void)
 {
@@ -161,6 +165,8 @@ void BleSensors::resetData(void)
     data[i].valid = false;
   }
 }
+
+using namespace BleSensorsCallbacks;
 
 /**
  * \brief Get BLE sensor data
@@ -178,7 +184,7 @@ unsigned BleSensors::getData(uint32_t scanTime, bool activeScan)
   scanCallbacks.m_knownBLEAddresses = _known_sensors;
   scanCallbacks.m_sensorData = &data;
   scanCallbacks.m_pBLEScan = _pBLEScan;
-  
+
   // Start scanning
   // Blocks until all known devices are found or scanTime is expired
   _pBLEScan->getResults(scanTime * 1000, false);
@@ -187,4 +193,3 @@ unsigned BleSensors::getData(uint32_t scanTime, bool activeScan)
 }
 
 #endif // !defined(ARDUINO_ADAFRUIT_FEATHER_ESP32S2) && !defined(ARDUINO_ARCH_RP2040)
-#endif // defined(THEENGSDECODER_EN)

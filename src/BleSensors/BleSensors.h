@@ -44,7 +44,6 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#if defined(THEENGSDECODER_EN)
 #if !defined(BLE_SENSORS) && !defined(ARDUINO_ADAFRUIT_FEATHER_ESP32S2) \
                           && !defined(ARDUINO_ARCH_RP2040)
 #define BLE_SENSORS
@@ -132,4 +131,3 @@ class BleSensors {
         NimBLEScan*              _pBLEScan;      /// NimBLEScan object
 };
 #endif // !defined(BLE_SENSORS) && !defined(ARDUINO_ADAFRUIT_FEATHER_ESP32S2) && !defined(ARDUINO_ARCH_RP2040)
-#endif // defined(THEENGSDECODER_EN)
