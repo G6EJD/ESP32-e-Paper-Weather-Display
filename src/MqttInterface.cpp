@@ -36,6 +36,7 @@
 // 20241011 Fixed sensor status flags, added secure MQTT
 // 20250322 Added MQTT discovery for Home Assistant, added status message
 // 20250725 Added Helium Network specific JSON payload decoding
+// 20250729 Added Bresser Weather Sensor Receiver JSON payload decoding
 //
 // ToDo:
 // -
@@ -242,6 +243,10 @@ void MqttInterface::getMqttData(mqtt_sensors_t &MqttSensors)
     #if defined(MQTT_JSON_FMT_HELIUM)
     f_port = doc["port"];
     #endif
+    #if defined(MQTT_JSON_FMT_BWSR)
+    // Bresser Weather Sensor Receiver: f_port is not used, but we need to set it to 1
+    f_port = 1;
+    #endif
     if (f_port != 1)
     {
       // Wrong f_port, retrying...
@@ -254,6 +259,9 @@ void MqttInterface::getMqttData(mqtt_sensors_t &MqttSensors)
   #endif
   #if defined(MQTT_JSON_FMT_HELIUM)
   JsonVariant payload = doc["decoded"]["payload"]["decoded"];
+  #endif
+  #if defined(MQTT_JSON_FMT_BWSR)
+  JsonDocument payload = doc;
   #endif
   MqttSensors.air_temp_c = payload[WS_TEMP_C].isNull() ? INV_TEMP : payload[WS_TEMP_C];
   MqttSensors.humidity = payload[WS_HUMIDITY].isNull() ? INV_UINT8 : payload[WS_HUMIDITY];
