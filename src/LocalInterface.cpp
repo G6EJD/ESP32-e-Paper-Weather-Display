@@ -98,10 +98,17 @@ void LocalInterface::GetLocalData(void)
   log_d("First measurement takes ~5 sec...");
 #endif
 
+  // BLE Temperature/Humidity Sensors
+#if defined(MITHERMOMETER_EN)
+  float div = 100.0;
+#elif defined(THEENGSDECODER_EN)
+  float div = 1.0;
+#endif
+
 #ifdef MITHERMOMETER_EN
   // Setup BLE Temperature/Humidity Sensors
   ATC_MiThermometer miThermometer(knownBLEAddresses); //!< Mijia Bluetooth Low Energy Thermo-/Hygrometer
-  miThermometer.begin();
+  miThermometer.begin(bleScanMode);
 
   // Set sensor data invalid
   miThermometer.resetData();
@@ -112,19 +119,13 @@ void LocalInterface::GetLocalData(void)
   if (miThermometer.data[0].valid)
   {
     LocalSensors.ble_thsensor[0].valid = true;
-    LocalSensors.ble_thsensor[0].temperature = miThermometer.data[0].temperature / 100.0;
-    LocalSensors.ble_thsensor[0].humidity = miThermometer.data[0].humidity / 100.0;
+    LocalSensors.ble_thsensor[0].temperature = miThermometer.data[0].temperature / div;
+    LocalSensors.ble_thsensor[0].humidity = miThermometer.data[0].humidity / div;
     LocalSensors.ble_thsensor[0].batt_level = miThermometer.data[0].batt_level;
   }
   miThermometer.clearScanResults();
 #endif
 
- // BLE Temperature/Humidity Sensors
-#if defined(MITHERMOMETER_EN)
-  float div = 100.0;
-#elif defined(THEENGSDECODER_EN)
-  float div = 1.0;
-#endif
 
 #ifdef THEENGSDECODER_EN
   bleSensors = BleSensors(KNOWN_BLE_ADDRESSES);
