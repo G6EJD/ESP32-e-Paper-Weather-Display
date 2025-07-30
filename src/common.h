@@ -31,7 +31,7 @@ bool DecodeWeather(WiFiClient& json, String Type) {
   DeserializationError error = deserializeJson(doc, json);
   // Test if parsing succeeds.
   if (error) {
-    log_d("deserializeJson() failed: %s", error.c_str());
+    log_d("deserializeJson() failed: %s", error.f_str());
     return false;
   }
   // convert it to a JsonObject

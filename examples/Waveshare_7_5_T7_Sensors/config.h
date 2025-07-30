@@ -128,6 +128,7 @@
 #define MQTT_SUB_IN "your/subscribe/topic"
 #define MQTT_JSON_FMT_TTN
 //#define MQTT_JSON_FMT_HELIUM
+//#define MQTT_JSON_FMT_BWSR // Bresser Weather Sensor Receiver
 
 // MQTT connection for publishing (local sensor data)
 #define MQTT_PORT_P 1883
