@@ -218,14 +218,14 @@ void MqttInterface::getMqttData(mqtt_sensors_t &MqttSensors)
     MqttClient.disconnect();
     MqttSensors.valid = true;
 
-    #if defined(MQTT_JSON_FMT_TTN)
+#if defined(MQTT_JSON_FMT_TTN)
     const char *received_at = doc["received_at"];
     if (received_at)
     {
       strncpy(MqttSensors.received_at, received_at, 30);
     }
-    #endif
-    #if defined(MQTT_JSON_FMT_HELIUM)
+#endif
+#if defined(MQTT_JSON_FMT_HELIUM)
 
     if (!doc["reported_at"].isNull())
     {
@@ -235,18 +235,24 @@ void MqttInterface::getMqttData(mqtt_sensors_t &MqttSensors)
       log_i("Converted to ISO 8601: %s", time_str.c_str());
       strncpy(MqttSensors.received_at, time_str.c_str(), 30);
     }
-    #endif
+#endif
+#if defined(MQTT_JSON_FMT_BWSR)
+    time_t now = time(NULL);
+    struct tm *utc = gmtime(&now);
+    strftime(MqttSensors.received_at, sizeof(MqttSensors.received_at), "%Y-%m-%dT%H:%M:%SZ", utc);
+    log_i("UTC Time: %s", MqttSensors.received_at);
+#endif
 
-    #if defined(MQTT_JSON_FMT_TTN)
+#if defined(MQTT_JSON_FMT_TTN)
     f_port = doc["uplink_message"]["f_port"];
-    #endif
-    #if defined(MQTT_JSON_FMT_HELIUM)
+#endif
+#if defined(MQTT_JSON_FMT_HELIUM)
     f_port = doc["port"];
-    #endif
-    #if defined(MQTT_JSON_FMT_BWSR)
+#endif
+#if defined(MQTT_JSON_FMT_BWSR)
     // Bresser Weather Sensor Receiver: f_port is not used, but we need to set it to 1
     f_port = 1;
-    #endif
+#endif
     if (f_port != 1)
     {
       // Wrong f_port, retrying...
@@ -254,15 +260,15 @@ void MqttInterface::getMqttData(mqtt_sensors_t &MqttSensors)
     }
   } while (f_port != 1);
 
-  #if defined(MQTT_JSON_FMT_TTN)
+#if defined(MQTT_JSON_FMT_TTN)
   JsonVariant payload = doc["uplink_message"]["decoded_payload"]["bytes"];
-  #endif
-  #if defined(MQTT_JSON_FMT_HELIUM)
+#endif
+#if defined(MQTT_JSON_FMT_HELIUM)
   JsonVariant payload = doc["decoded"]["payload"]["decoded"];
-  #endif
-  #if defined(MQTT_JSON_FMT_BWSR)
+#endif
+#if defined(MQTT_JSON_FMT_BWSR)
   JsonDocument payload = doc;
-  #endif
+#endif
   MqttSensors.air_temp_c = payload[WS_TEMP_C].isNull() ? INV_TEMP : payload[WS_TEMP_C];
   MqttSensors.humidity = payload[WS_HUMIDITY].isNull() ? INV_UINT8 : payload[WS_HUMIDITY];
   MqttSensors.indoor_temp_c = payload[BLE0_TEMP_C].isNull() ? INV_TEMP : payload[BLE0_TEMP_C];
