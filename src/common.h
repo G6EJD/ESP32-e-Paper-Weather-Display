@@ -8,6 +8,10 @@
 #include "forecast_record.h"
 #include "common_functions.h"
 
+Forecast_record_type  WxConditions[1];
+Forecast_record_type  WxForecast[max_readings];
+Forecast_record_type  Daily[8];
+
 //#########################################################################################
 void Convert_Readings_to_Imperial() {
   WxConditions[0].Pressure = hPa_to_inHg(WxConditions[0].Pressure);
@@ -28,12 +32,12 @@ String ConvertUnixTime(int unix_time) {
   }
   return output;
 }
+
 //#########################################################################################
-//WiFiClient client; // wifi client object
 
-bool DecodeOneCallWeather(WiFiClient& json, bool print);
+// Test call: http://api.openweathermap.org/data/3.0/onecall?lat=33&lon=-112&APPID=1a838280c1f7a40c3f8a5e5bc573e22d&mode=json&units=metric&lang=US&exclude=minutely
 
-bool obtain_wx_data_onecall(WiFiClient& client, bool print) {
+bool ReceiveOneCallWeather(WiFiClient& client, bool print) {
   Serial.println("Rx weather data...");
   const String units = (Units == "M" ? "metric" : "imperial");
   client.stop(); // close connection before sending a new request
@@ -58,8 +62,9 @@ bool obtain_wx_data_onecall(WiFiClient& client, bool print) {
   http.end();
   return true;
 }
-
+//#######################################################################################
 bool DecodeOneCallWeather(WiFiClient& json, bool print) {
+  if (print) Serial.println("Decoding Wx Data...");
   JsonDocument doc;                                        // allocate the JsonDocument
   DeserializationError error = deserializeJson(doc, json); // Deserialize the JSON document
   if (error) {                                             // Test if parsing succeeds.
@@ -145,4 +150,3 @@ bool DecodeOneCallWeather(WiFiClient& json, bool print) {
 }
 
 #endif /* ifndef COMMON_H_ */
-
