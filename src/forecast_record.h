@@ -4,6 +4,14 @@
 #include <Arduino.h>
 
 typedef struct { // For current Day and Day 1, 2, 3, etc
+  String Time;
+  float  High;
+  float  Low;
+} HL_record_type;
+
+HL_record_type  HLReadings[max_readings];
+
+typedef struct { // For current Day and Day 1, 2, 3, etc
   int      Dt;
   String   Period;
   String   Icon;
@@ -18,21 +26,25 @@ typedef struct { // For current Day and Day 1, 2, 3, etc
   float    lat;
   float    lon;
   float    Temperature;
-  float    Feelslike;
+  float    FeelsLike;
   float    Humidity;
+  float    DewPoint;
   float    High;
   float    Low;
   float    Winddir;
   float    Windspeed;
   float    Rainfall;
   float    Snowfall;
-  float    Pop;
   float    Pressure;
   int      Cloudcover;
   int      Visibility;
   int      Sunrise;
   int      Sunset;
+  int      Moonrise;
+  int      Moonset;
   int      Timezone;
+  float    UVI;
+  float    PoP;
 } Forecast_record_type;
 
 #endif /* ifndef FORECAST_RECORD_H_ */
