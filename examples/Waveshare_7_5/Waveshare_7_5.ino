@@ -1,4 +1,4 @@
-/* ESP32 Weather Display using an EPD 7.5" Display, obtains data from Open Weather Map, decodes and then displays it.
+/* ESP32 Weather Display using an EPD Display, obtains data from Open Weather Map, decodes and then displays it.
   ####################################################################################################################################
   This software, the ideas and concepts is Copyright (c) David Bird 2025. All rights to this software are reserved.
 
@@ -27,7 +27,6 @@
 #include <GxEPD2_3C.h>
 #include <U8g2_for_Adafruit_GFX.h>
 #include "epaper_fonts.h"
-#include "forecast_record.h"
 #include "lang.h"                     // Localisation (English)
 //#include "lang_cz.h"                // Localisation (Czech)
 //#include "lang_fr.h"                // Localisation (French)
@@ -60,8 +59,11 @@ static const uint8_t EPD_MOSI = 23; // to EPD DIN
 //static const uint8_t EPD_MOSI = 14;
 
 GxEPD2_BW<GxEPD2_750, GxEPD2_750::HEIGHT> display(GxEPD2_750(/*CS=*/ EPD_CS, /*DC=*/ EPD_DC, /*RST=*/ EPD_RST, /*BUSY=*/ EPD_BUSY));   // B/W display
+//Try each to suit your display
+//GxEPD2_BW<GxEPD2_750_T7, GxEPD2_750_T7::HEIGHT> display(GxEPD2_750_T7(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4)); // GDEW075T7 800x480, EK79655 (GD7965)
+//GxEPD2_BW<GxEPD2_750_GDEY075T7, GxEPD2_750_GDEY075T7::HEIGHT> display(GxEPD2_750_GDEY075T7(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4)); // GDEY075T7 800x480, UC8179 (GD7965)
 //GxEPD2_3C<GxEPD2_750c, GxEPD2_750c::HEIGHT> display(GxEPD2_750(/*CS=*/ EPD_CS, /*DC=*/ EPD_DC, /*RST=*/ EPD_RST, /*BUSY=*/ EPD_BUSY)); // 3-colour displays
-// use GxEPD_BLACK or GxEPD_WHITE or GxEPD_RED or GxEPD_YELLOW depending on display type
+//use GxEPD_BLACK or GxEPD_WHITE or GxEPD_RED or GxEPD_YELLOW depending on display type
 
 U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
 // Using fonts:
@@ -84,12 +86,11 @@ int     wifi_signal, CurrentHour = 0, CurrentMin = 0, CurrentSec = 0;
 long    StartTime = 0;
 
 //################ PROGRAM VARIABLES and OBJECTS ################
+bool ReceiveOneCallWeather(WiFiClient& json, bool print);
+bool DecodeOneCallWeather(WiFiClient& json, bool print);
 
 #define max_readings 24
-
-Forecast_record_type  WxConditions[1];
-Forecast_record_type  WxForecast[max_readings];
-
+#include "forecast_record.h"
 #include "common.h"
 
 #define autoscale_on  true
@@ -107,19 +108,22 @@ long SleepDuration = 30; // Sleep time in minutes, aligned to the nearest minute
 int  WakeupTime    = 7;  // Don't wakeup until after 07:00 to save battery power
 int  SleepTime     = 23; // Sleep after (23+1) 00:00 to save battery power
 
+bool ReceiveOneCallWeather(WiFiClient& json, bool print);
+bool DecodeOneCallWeather(WiFiClient& json, bool print);
+
 //#########################################################################################
 void setup() {
   StartTime = millis();
   Serial.begin(115200);
   if (StartWiFi() == WL_CONNECTED && SetupTime() == true) {
+    Serial.println("WiFi and Time services started...");
     if ((CurrentHour >= WakeupTime && CurrentHour <= SleepTime)) {
-      InitialiseDisplay(); // Give screen time to initialise by getting weather data!
+      //InitialiseDisplay(); // Give screen time to initialise by getting weather data!
       byte Attempts = 1;
       bool RxWeather = false, RxForecast = false;
       WiFiClient client;   // wifi client object
-      while ((RxWeather == false || RxForecast == false) && Attempts <= 2) { // Try up-to 2 time for Weather and Forecast data
-        if (RxWeather  == false) RxWeather  = obtain_wx_data(client, "weather");
-        if (RxForecast == false) RxForecast = obtain_wx_data(client, "forecast");
+      while ((RxWeather == false) && Attempts <= 2) { // Try up-to 2 time for Weather
+        if (RxWeather  == false) RxWeather = ReceiveOneCallWeather(client, true); // true to print all the data results, false to not! 
         Attempts++;
       }
       if (RxWeather && RxForecast) { // Only if received both Weather or Forecast proceed
@@ -312,8 +316,8 @@ void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
     drawString(x1 + pwidth / 2 + 28, y + 57, String(WxForecast[1].Snowfall, 2) + (Units == "M" ? "mm" : "in"), RIGHT); // Only display snowfall total today if > 0
     addsnow(x1 + pwidth / 2 + 55, y + 45, 2, 7, SmallIcon);
   }
-  if (WxForecast[1].Pop >= 0.005)       // Ignore small amounts
-    drawString(x1 + pwidth / 2, y + 67, String(WxForecast[1].Pop*100, 0) + "%", CENTER); // Only display pop if > 0
+  if (WxForecast[1].PoP >= 0.005)       // Ignore small amounts
+    drawString(x1 + pwidth / 2, y + 67, String(WxForecast[1].PoP*100, 0) + "%", CENTER); // Only display PoP if > 0
 }
 //#########################################################################################
 void DisplayAstronomySection(int x, int y) {
@@ -858,7 +862,7 @@ void Nodata(int x, int y, bool IconSize, String IconName) {
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
 }
 //#########################################################################################
-/* (C) D L BIRD
+/* (C) D L BIRD 2025
     This function will draw a graph on a ePaper/TFT/LCD display using data from an array containing data to be graphed.
     The variable 'max_readings' determines the maximum number of data elements for each array. Call it with the following parametric data:
     x_pos-the x axis top-left position of the graph
@@ -874,37 +878,35 @@ void Nodata(int x, int y, bool IconSize, String IconName) {
     auto_scale_margin, e.g. if set to 1000 then autoscale increments the scale by 1000 steps.
 */
 void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float Y1Max, String title, float DataArray[], int readings, boolean auto_scale, boolean barchart_mode) {
-#define auto_scale_margin 0 // Sets the autoscale increment, so axis steps up in units of e.g. 3
-#define y_minor_axis 5      // 5 y-axis division markers
-  int maxYscale = -10000;
-  int minYscale =  10000;
+#define auto_scale_margin 0  // Sets the autoscale increment, so axis steps up in units of e.g. 3
+#define y_minor_axis 5       // 5 y-axis division markers
+  float maxYscale = -10000;
+  float minYscale = 10000;
   int last_x, last_y;
   float x2, y2;
   if (auto_scale == true) {
-    for (int i = 1; i < readings; i++ ) { // Adjusted graph range
+    for (int i = 1; i < readings; i++) {
       if (DataArray[i] >= maxYscale) maxYscale = DataArray[i];
       if (DataArray[i] <= minYscale) minYscale = DataArray[i];
     }
-    maxYscale = round(maxYscale + auto_scale_margin); // Auto scale the graph and round to the nearest value defined, default was Y1Max
+    maxYscale = round(maxYscale + auto_scale_margin);  // Auto scale the graph and round to the nearest value defined, default was Y1Max
     Y1Max = round(maxYscale + 0.5);
-    if (minYscale != 0) minYscale = round(minYscale - auto_scale_margin); // Auto scale the graph and round to the nearest value defined, default was Y1Min
+    if (minYscale != 0) minYscale = round(minYscale - auto_scale_margin);  // Auto scale the graph and round to the nearest value defined, default was Y1Min
     Y1Min = round(minYscale);
   }
   // Draw the graph
   last_x = x_pos;
   last_y = y_pos + (Y1Max - constrain(DataArray[1], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight;
   display.drawRect(x_pos, y_pos, gwidth + 3, gheight + 2, GxEPD_BLACK);
-  drawString(x_pos + gwidth / 2, y_pos - 13, title, CENTER);
+  drawString(x_pos + 25, y_pos - 18, title, LEFT);
   // Draw the data
   for (int gx = 0; gx < readings; gx++) {
     y2 = y_pos + (Y1Max - constrain(DataArray[gx], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight + 1;
     if (barchart_mode) {
       x2 = x_pos + gx * (gwidth / readings) + 2;
       display.fillRect(x2, y2, (gwidth / readings) - 2, y_pos + gheight - y2 + 2, GxEPD_BLACK);
-    } 
-    else
-    {
-      x2 = x_pos + gx * gwidth / (readings - 1) + 1; // max_readings is the global variable that sets the maximum data that can be plotted
+    } else {
+      x2 = x_pos + gx * gwidth / (readings - 1) + 1;  // max_readings is the global variable that sets the maximum data that can be plotted
       display.drawLine(last_x, last_y, x2, y2, GxEPD_BLACK);
     }
     last_x = x2;
@@ -913,20 +915,25 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
   //Draw the Y-axis scale
 #define number_of_dashes 20
   for (int spacing = 0; spacing <= y_minor_axis; spacing++) {
-    for (int j = 0; j < number_of_dashes; j++) { // Draw dashed graph grid lines
+    for (int j = 0; j < number_of_dashes; j++) {  // Draw dashed graph grid lines
       if (spacing < y_minor_axis) display.drawFastHLine((x_pos + 3 + j * gwidth / number_of_dashes), y_pos + (gheight * spacing / y_minor_axis), gwidth / (2 * number_of_dashes), GxEPD_BLACK);
     }
-    if (Y1Min < 1 && Y1Max < 10)
-      drawString(x_pos - 3, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 1), RIGHT);
-    else
-      drawString(x_pos - 3, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), 0), RIGHT);
+    int characterWidth = 9;  // for 12-point font
+    float fieldWidth = 5;
+    int displayFormat = 0;
+    if (Y1Max <= 0 || Y1Max > -1 && Y1Max < 10) displayFormat = 1;
+    if (Y1Max >= 1000 && Y1Max < 10000) fieldWidth = 4;  // 0000
+    if (Y1Max >= 100 && Y1Max < 1000) fieldWidth = 3;    // 000
+    if (Y1Max >= 10 && Y1Max < 100) fieldWidth = 2.5;    // 00
+    if (Y1Max >= 0 && Y1Max < 10) fieldWidth = 3;        // 0.0
+    if (Y1Max < 0 || Y1Min < 0) fieldWidth += 1;         // -0.0
+    drawString(x_pos - fieldWidth * characterWidth, y_pos + gheight * spacing / y_minor_axis - 5, String((Y1Max - (float)(Y1Max - Y1Min) / y_minor_axis * spacing + 0.01), displayFormat), LEFT);
   }
-  for (int i = 0; i <= 2; i++) {
-    drawString(15 + x_pos + gwidth / 3 * i, y_pos + gheight + 3, String(i), LEFT);
-  }
-  drawString(x_pos + gwidth / 2, y_pos + gheight + 14, TXT_DAYS, CENTER);
+  int Days = 2;
+  drawString(x_pos + gwidth / (Days * 2) * 1, y_pos + gheight + 3, "1", LEFT);
+  drawString(x_pos + gwidth / (Days * 2) * 3, y_pos + gheight + 3, "2", LEFT);
+  drawString(x_pos + gwidth / 3, y_pos + gheight + 14, TXT_DAYS, LEFT);
 }
-
 //#########################################################################################
 void drawString(int x, int y, String text, alignment align) {
   int16_t  x1, y1; //the bounds of x,y and w and h of the variable 'text' in pixels.
@@ -975,84 +982,4 @@ void InitialiseDisplay() {
   display.fillScreen(GxEPD_WHITE);
   display.setFullWindow();
 }
-//#########################################################################################
-/*String Translate_EN_DE(String text) {
-  if (text == "clear")            return "klar";
-  if (text == "sunny")            return "sonnig";
-  if (text == "mist")             return "Nebel";
-  if (text == "fog")              return "Nebel";
-  if (text == "rain")             return "Regen";
-  if (text == "shower")           return "Regenschauer";
-  if (text == "cloudy")           return "wolkig";
-  if (text == "clouds")           return "Wolken";
-  if (text == "drizzle")          return "Nieselregen";
-  if (text == "snow")             return "Schnee";
-  if (text == "thunderstorm")     return "Gewitter";
-  if (text == "light")            return "leichter";
-  if (text == "heavy")            return "schwer";
-  if (text == "mostly cloudy")    return "größtenteils bewölkt";
-  if (text == "overcast clouds")  return "überwiegend bewölkt";
-  if (text == "scattered clouds") return "aufgelockerte Bewölkung";
-  if (text == "few clouds")       return "ein paar Wolken";
-  if (text == "clear sky")        return "klarer Himmel";
-  if (text == "broken clouds")    return "aufgerissene Bewölkung";
-  if (text == "light rain")       return "leichter Regen";
-  return text;
-  }
-*/
-/*
-  Version 16.0 reformatted to use u8g2 fonts
-   1.  Added ß to translations, eventually that conversion can move to the lang_xx.h file
-   2.  Spaced temperature, pressure and precipitation equally, suggest in DE use 'niederschlag' for 'Rain/Snow'
-   3.  No-longer displays Rain or Snow unless there has been any.
-   4.  The nn-mm 'Rain suffix' has been replaced with two rain drops
-   5.  Similarly for 'Snow' two snow flakes, no words and '=Rain' and '"=Snow' for none have gone.
-   6.  Improved the Cloud Cover icon and only shows if reported, 0% cloud (clear sky) is no-report and no icon.
-   7.  Added a Visibility icon and reported distance in Metres. Only shows if reported.
-   8.  Fixed the occasional sleep time error resulting in constant restarts, occurred when updates took longer than expected.
-   9.  Improved the smaller sun icon.
-   10. Added more space for the Sunrise/Sunset and moon phases when translated.
-
-  Version 16.1 Correct timing errors after sleep - persistent problem that is not deterministic
-   1.  Removed Weather (Main) category e.g. previously 'Clear (Clear sky)', now only shows area category of 'Clear sky' and then ', caterory1' and ', category2'
-   2.  Improved accented character displays
-
-  Version 16.2 Correct comestic icon issues
-   1.  At night the addition of a moon icon overwrote the Visibility report, so order of drawing was changed to prevent this.
-   2.  RainDrop icon was too close to the reported value of rain, moved right. Same for Snow Icon.
-   3.  Improved large sun icon sun rays and improved all icon drawing logic, rain drops now use common shape.
-   5.  Moved MostlyCloudy Icon down to align with the rest, same for MostlySunny.
-   6.  Improved graph axis alignment.
-
-  Version 16.3 Correct comestic icon issues
-   1.  Reverted some aspects of UpdateLocalTime() as locialisation changes were unecessary and can be achieved through lang_aa.h files
-   2.  Correct configuration mistakes with moon calculations.
-
-  Version 16.4 Corrected time server addresses and adjusted maximum time-out delay
-   1.  Moved time-server address to the credentials file
-   2.  Increased wait time for a valid time setup to 10-secs
-   3.  Added a lowercase conversion of hemisphere to allow for 'North' or 'NORTH' or 'nOrth' entries for hemisphere
-   4.  Adjusted graph y-axis alignment, redcued number of x dashes
-
-  Version 16.5 Clarified connections for Waveshare ESP32 driver board
-   1.  Added SPI.end(); and SPI.begin(CLK, MISO, MOSI, CS); to enable explicit definition of pins to be used.
-
-  Version 16.6 changed GxEPD2 initialisation from 115200 to 0
-   1.  Display.init(115200); becomes display.init(0); to stop blank screen following update to GxEPD2
-   
-  Version 16.7 changed u8g2 fonts selection
-   1.  Omitted 'FONT(' and added _tf to font names either Regular (R) or Bold (B)
-
-  Version 16.8
-   1. Added 20-sec extra sleep to allow for slow ESP32 RTC timers
-   
-  Version 16.9
-   1. Added probability of precipitation to the display e.g. 17%
-  
-  Version 16.10
-   1. Adjusted line 907 graph range to give better negative number drawing
-   
-   Version 16.11
-   1. Modified for GxEPD2 changes
-*/
 
