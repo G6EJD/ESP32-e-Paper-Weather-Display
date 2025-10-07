@@ -87,8 +87,9 @@ long    StartTime = 0;
 
 #define max_readings 24
 
-Forecast_record_type  WxConditions[1];
-Forecast_record_type  WxForecast[max_readings];
+Forecast_record_type WxConditions[1];
+Forecast_record_type WxForecast[max_readings];
+Forecast_record_type Daily[8];  // 7-days maximum from the API
 
 #include "common.h"
 
@@ -1055,3 +1056,4 @@ void InitialiseDisplay() {
    Version 16.11
    1. Modified for GxEPD2 changes
 */
+
