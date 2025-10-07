@@ -32,7 +32,7 @@ String ConvertUnixTime(int unix_time) {
 //WiFiClient client; // wifi client object
 
 bool DecodeOneCallWeather(WiFiClient& json, bool print);
-// Test call: http://api.openweathermap.org/data/3.0/onecall?lat=33&lon=-112&APPID=1a838280c1f7a40c3f8a5e5bc573e22d&mode=json&units=metric&lang=US&exclude=minutely
+
 bool obtain_wx_data_onecall(WiFiClient& client, bool print) {
   Serial.println("Rx weather data...");
   const String units = (Units == "M" ? "metric" : "imperial");
@@ -145,3 +145,4 @@ bool DecodeOneCallWeather(WiFiClient& json, bool print) {
 }
 
 #endif /* ifndef COMMON_H_ */
+
