@@ -12,6 +12,9 @@ Forecast_record_type  WxConditions[1];
 Forecast_record_type  WxForecast[max_readings];
 Forecast_record_type  Daily[8];
 
+bool ReceiveOneCallWeather(WiFiClient& client, bool print);
+bool DecodeOneCallWeather(WiFiClient& json, bool print);
+
 //#########################################################################################
 void Convert_Readings_to_Imperial() {
   WxConditions[0].Pressure = hPa_to_inHg(WxConditions[0].Pressure);
@@ -150,3 +153,4 @@ bool DecodeOneCallWeather(WiFiClient& json, bool print) {
 }
 
 #endif /* ifndef COMMON_H_ */
+
