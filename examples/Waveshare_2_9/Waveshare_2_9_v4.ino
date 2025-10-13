@@ -27,7 +27,6 @@
 #include <GxEPD2_BW.h>
 #include <GxEPD2_3C.h>
 #include <U8g2_for_Adafruit_GFX.h>
-#include "forecast_record.h"
 #include "lang.h"                     // Localisation (English)
 //#include "lang_cz.h"                // Localisation (Czech)
 //#include "lang_es.h"                // Localisation (Spanish)
@@ -124,14 +123,13 @@ void setup() {
     if (WakeUp) {
       InitialiseDisplay(); // Give screen time to initialise by getting weather data!
       byte Attempts = 1;
-      bool RxWeather = false, RxForecast = false;
+      bool RxWeather = false;
       WiFiClient client;   // wifi client object
-      while ((RxWeather == false || RxForecast == false) && Attempts <= 2) { // Try up-to 2 time for Weather and Forecast data
-        if (RxWeather  == false) RxWeather  = obtain_wx_data(client, "weather");
-        if (RxForecast == false) RxForecast = obtain_wx_data(client, "forecast");
+      while (RxWeather == false && Attempts <= 2) { // Try up-to 2 time for Weather and Forecast data
+        if (RxWeather  == false) RxWeather  = ReceiveOneCallWeather(client, true);
         Attempts++;
       }
-      if (RxWeather && RxForecast) { // Only if received both Weather or Forecast proceed
+      if (RxWeather) { // Only if received both Weather or Forecast proceed
         GetHighsandLows();;
         StopWiFi(); // Reduces power consumption
         DisplayWeather();
@@ -876,3 +874,4 @@ void InitialiseDisplay() {
   1. Added 3-dayy forecasting
 
 */
+
