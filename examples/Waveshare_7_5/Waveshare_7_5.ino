@@ -90,7 +90,6 @@ bool ReceiveOneCallWeather(WiFiClient& json, bool print);
 bool DecodeOneCallWeather(WiFiClient& json, bool print);
 
 #define max_readings 24
-#include "forecast_record.h"
 #include "common.h"
 
 #define autoscale_on  true
@@ -107,10 +106,6 @@ float snow_readings[max_readings]        = {0};
 long SleepDuration = 30; // Sleep time in minutes, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
 int  WakeupTime    = 7;  // Don't wakeup until after 07:00 to save battery power
 int  SleepTime     = 23; // Sleep after (23+1) 00:00 to save battery power
-
-bool ReceiveOneCallWeather(WiFiClient& json, bool print);
-bool DecodeOneCallWeather(WiFiClient& json, bool print);
-
 //#########################################################################################
 void setup() {
   StartTime = millis();
@@ -120,13 +115,13 @@ void setup() {
     if ((CurrentHour >= WakeupTime && CurrentHour <= SleepTime)) {
       //InitialiseDisplay(); // Give screen time to initialise by getting weather data!
       byte Attempts = 1;
-      bool RxWeather = false, RxForecast = false;
+      bool RxWeather = false;
       WiFiClient client;   // wifi client object
-      while ((RxWeather == false) && Attempts <= 2) { // Try up-to 2 time for Weather
+      while (RxWeather == false && Attempts <= 2) { // Try up-to 2 time for Weather
         if (RxWeather  == false) RxWeather = ReceiveOneCallWeather(client, true); // true to print all the data results, false to not! 
         Attempts++;
       }
-      if (RxWeather && RxForecast) { // Only if received both Weather or Forecast proceed
+      if (RxWeather) { // Only if received Weather
         StopWiFi(); // Reduces power consumption
         DisplayWeather();
         display.display(false); // Full screen update mode
@@ -982,4 +977,5 @@ void InitialiseDisplay() {
   display.fillScreen(GxEPD_WHITE);
   display.setFullWindow();
 }
+
 
