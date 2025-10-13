@@ -1,6 +1,7 @@
 //
 
 #include <Arduino.h>
+#include <HTTPClient.h>
 
 typedef struct { // For current Day and Day 1, 2, 3, etc
   String Time;
@@ -240,4 +241,5 @@ double NormalizedMoonPhase(int d, int m, int y) {
   double Phase = (j + 4.867) / 29.53059;
   return (Phase - (int) Phase);
 }
+
 
