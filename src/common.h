@@ -1,12 +1,52 @@
-#ifndef COMMON_H_
-#define COMMON_H_
+//
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
 
-#include "forecast_record.h"
-#include "common_functions.h"
+typedef struct { // For current Day and Day 1, 2, 3, etc
+  String Time;
+  float  High;
+  float  Low;
+} HL_record_type;
+
+HL_record_type  HLReadings[max_readings];
+
+typedef struct { // For current Day and Day 1, 2, 3, etc
+  int      Dt;
+  String   Period;
+  String   Icon;
+  String   Trend;
+  String   Main0;
+  String   Forecast0;
+  String   Forecast1;
+  String   Forecast2;
+  String   Description;
+  String   Time;
+  String   Country;
+  float    lat;
+  float    lon;
+  float    Temperature;
+  float    FeelsLike;
+  float    Humidity;
+  float    DewPoint;
+  float    High;
+  float    Low;
+  float    Winddir;
+  float    Windspeed;
+  float    Rainfall;
+  float    Snowfall;
+  float    Pressure;
+  int      Cloudcover;
+  int      Visibility;
+  int      Sunrise;
+  int      Sunset;
+  int      Moonrise;
+  int      Moonset;
+  int      Timezone;
+  float    UVI;
+  float    PoP;
+} Forecast_record_type;
 
 Forecast_record_type  WxConditions[1];
 Forecast_record_type  WxForecast[max_readings];
@@ -14,6 +54,14 @@ Forecast_record_type  Daily[8];
 
 bool ReceiveOneCallWeather(WiFiClient& client, bool print);
 bool DecodeOneCallWeather(WiFiClient& json, bool print);
+void Convert_Readings_to_Imperial();
+String ConvertUnixTime(int unix_time);
+float mm_to_inches(float value_mm);
+float hPa_to_inHg(float value_hPa);
+int JulianDate(int d, int m, int y);
+float SumOfPrecip(float DataArray[], int readings);
+String TitleCase(String text);
+double NormalizedMoonPhase(int d, int m, int y);
 
 //#########################################################################################
 void Convert_Readings_to_Imperial() {
@@ -35,11 +83,8 @@ String ConvertUnixTime(int unix_time) {
   }
   return output;
 }
-
 //#########################################################################################
-
 // Test call: http://api.openweathermap.org/data/3.0/onecall?lat=33&lon=-112&APPID=1a838280c1f7a40c3f8a5e5bc573e22d&mode=json&units=metric&lang=US&exclude=minutely
-
 bool ReceiveOneCallWeather(WiFiClient& client, bool print) {
   Serial.println("Rx weather data...");
   const String units = (Units == "M" ? "metric" : "imperial");
@@ -125,7 +170,7 @@ bool DecodeOneCallWeather(WiFiClient& json, bool print) {
   }
 
   JsonArray daily = doc["daily"];
-  if (print) Serial.println("\nDDisplaying DAILY Data --------------"); // Neded for the 7-day forecast section
+  if (print) Serial.println("\nDisplaying DAILY Data --------------"); // Neded for the 7-day forecast section
   for (int r = 0; r < 8; r++) { // Maximum of 8-days!
     if (print) Serial.println("\nData for DAY - " + String(r) + " --------------");
     JsonObject daily_values = daily[r];
@@ -152,5 +197,48 @@ bool DecodeOneCallWeather(WiFiClient& json, bool print) {
   return true;
 }
 
-#endif /* ifndef COMMON_H_ */
+float mm_to_inches(float value_mm){
+  return 0.0393701 * value_mm;
+}
 
+float hPa_to_inHg(float value_hPa){
+  return 0.02953 * value_hPa;
+}
+
+int JulianDate(int d, int m, int y) {
+  int mm, yy, k1, k2, k3, j;
+  yy = y - (int)((12 - m) / 10);
+  mm = m + 9;
+  if (mm >= 12) mm = mm - 12;
+  k1 = (int)(365.25 * (yy + 4712));
+  k2 = (int)(30.6001 * mm + 0.5);
+  k3 = (int)((int)((yy / 100) + 49) * 0.75) - 38;
+  // 'j' for dates in Julian calendar:
+  j = k1 + k2 + d + 59 + 1;
+  if (j > 2299160) j = j - k3; // 'j' is the Julian date at 12h UT (Universal Time) For Gregorian calendar:
+  return j;
+}
+
+float SumOfPrecip(float DataArray[], int readings) {
+  float sum = 0;
+  for (int i = 0; i < readings; i++) {
+    sum += DataArray[i];
+  }
+  return sum;
+}
+
+String TitleCase(String text){
+  if (text.length() > 0) {
+    String temp_text = text.substring(0,1);
+    temp_text.toUpperCase();
+    return temp_text + text.substring(1); // Title-case the string
+  }
+  else return text;
+}
+
+double NormalizedMoonPhase(int d, int m, int y) {
+  int j = JulianDate(d, m, y);
+  //Calculate the approximate phase of the moon
+  double Phase = (j + 4.867) / 29.53059;
+  return (Phase - (int) Phase);
+}
