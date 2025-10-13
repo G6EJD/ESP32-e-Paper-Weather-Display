@@ -24,10 +24,8 @@
 #include "time.h"              // Built-in
 #include <SPI.h>               // Built-in 
 #include <GxEPD2_BW.h>         // GxEPD2 from Sketch, Include Library, Manage Libraries, search for GxEDP2
-#include <GxEPD2_3C.h>
 #include <Fonts/FreeMonoBold12pt7b.h>
 #include "epaper_fonts.h"
-#include "forecast_record.h"
 #include "M5CoreInk.h"
 #include "esp_adc_cal.h"
 
@@ -66,9 +64,6 @@ int     StartTime, CurrentHour = 0, CurrentMin = 0, CurrentSec = 0;
 
 #define max_readings 4
 
-Forecast_record_type  WxConditions[1];
-Forecast_record_type  WxForecast[max_readings];
-
 #include "common.h"
 
 #define autoscale_on  true
@@ -96,12 +91,11 @@ void setup() {
       InitialiseDisplay(); // Give screen time to initialise by getting weather data!
       byte Attempts = 1;
       WiFiClient client;   // wifi client object
-      while ((RxWeather == false || RxForecast == false) && Attempts <= 2) { // Try up-to twice for Weather and Forecast data
-        if (RxWeather  == false) RxWeather  = obtain_wx_data(client, "weather");
-        if (RxForecast == false) RxForecast = obtain_wx_data(client, "forecast");
+      while (RxWeather == false && Attempts <= 2) { // Try up-to twice for Weather and Forecast data
+        if (RxWeather  == false) = ReceiveOneCallWeather(client, true);
         Attempts++;
       }
-      if (RxWeather || RxForecast) { // If received either Weather or Forecast data then proceed, report later if either failed
+      if (RxWeather) { // If received Weather then proceed, report later if either failed
         StopWiFi(); // Reduces power consumption
         DisplayWeather();
         display.display(false); // Full screen update mode
@@ -282,14 +276,12 @@ boolean UpdateLocalTimeFromRTC() {
   CurrentHour = RTCtime.Hours;
   CurrentMin  = RTCtime.Minutes;
   CurrentSec  = RTCtime.Seconds;  
-
-  
+ 
   sprintf(timeStrbuff,"M5 RTC %d/%02d/%02d %02d:%02d:%02d",
                       RTCDate.Year,RTCDate.Month,RTCDate.Date,
                       RTCtime.Hours,RTCtime.Minutes,RTCtime.Seconds);
-                      
-  Serial.printf(timeStrbuff);
-                                 
+  
+  Serial.printf(timeStrbuff);                               
 }
 
 boolean UpdateLocalTime() {
