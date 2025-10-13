@@ -43,7 +43,6 @@
     ln -s ~/Arduino/ESP32-e-Paper-Weather-Display-master/src ~/Arduino/libraries/G6EJD-Lib
 */
 #include "epaper_fonts.h"
-#include "forecast_record.h"
 #include "lang.h"                     // Localisation (English)
 //#include "lang_cz.h"                  // Localisation (Czech)
 //#include "lang_fr.h"                  // Localisation (French)
@@ -113,9 +112,6 @@ int        wifi_signal, CurrentHour = 0, CurrentMin = 0, CurrentSec = 0, EventCn
 
 #define max_readings 24
 
-Forecast_record_type  WxConditions[1];
-Forecast_record_type  WxForecast[max_readings];
-
 #include "common.h"
 #include <rom/rtc.h>
 #include "soc/soc.h"
@@ -156,21 +152,19 @@ void setup() {
     if ((CurrentHour >= WakeupTime && CurrentHour <= SleepTime)) {
       //khl moved to above;     InitialiseDisplay(); // Give screen time to initialise by getting weather data!
       byte Attempts = 1;
-      bool RxWeather = false, RxForecast = false;
+      bool RxWeather = false;
       WiFiClient client;   // wifi client object
-      while ((RxWeather == false || RxForecast == false) && Attempts <= 2) { // Try up-to 2 time for Weather and Forecast data
-        if (RxWeather  == false) RxWeather  = obtain_wx_data(client, "weather");
-        if (RxForecast == false) RxForecast = obtain_wx_data(client, "forecast");
+      while (RxWeather == false) && Attempts <= 2) { // Try up-to 2 time for Weather and Forecast data
+        if (RxWeather  == false) RxWeather  = ReceiveOneCallWeather(client, true);
         Attempts++;
       }
-      if (RxWeather && RxForecast) { // Only if received both Weather or Forecast proceed
+      if (RxWeather) { // Only if received both Weather or Forecast proceed
         StopWiFi(); // Reduces power consumption
         DisplayWeather();
       }
       else
       {
         if (!RxWeather)  AddToEventLog("*** Failed to Rx Weather data ***");
-        if (!RxForecast) AddToEventLog("*** Failed to Rx Forecast data ***");
       }
     }
   }
