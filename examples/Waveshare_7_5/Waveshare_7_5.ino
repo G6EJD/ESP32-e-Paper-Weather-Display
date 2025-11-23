@@ -7,6 +7,7 @@
   2. You may copy the content to individual third parties for their personal use, but only if you acknowledge the author David Bird as the source of the material.
   3. You may not, except with my express written permission, distribute or commercially exploit the content.
   4. You may not transmit it or store it in any other website or other form of electronic retrieval system for commercial purposes.
+  5. You may not use this software to create YouTube or other video content, or for any purposes of monetisation.
 
   The above copyright ('as annotated') notice and this permission notice shall be included in all copies or substantial portions of the Software and where the
   software use is visible to an end-user.
@@ -977,6 +978,7 @@ void InitialiseDisplay() {
   display.fillScreen(GxEPD_WHITE);
   display.setFullWindow();
 }
+
 
 
 
