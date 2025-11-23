@@ -271,9 +271,9 @@ void DisplayForecastWeather(int x, int y, int index) {
   x = x + fwidth * index;
   display.drawRect(x, y, fwidth - 1, 65, GxEPD_BLACK);
   display.drawLine(x, y + 13, x + fwidth - 3, y + 13, GxEPD_BLACK);
-  DisplayConditionsSection(x + fwidth / 2, y + 35, WxForecast[index].Icon, SmallIcon);
-  drawString(x + fwidth / 2, y + 3, String(ConvertUnixTime(WxForecast[index].Dt + WxConditions[0].Timezone).substring(0,5)), CENTER);
-  drawString(x + fwidth / 2, y + 53, String(WxForecast[index].High, 0) + "°/" + String(WxForecast[index].Low, 0) + "°", CENTER);
+  DisplayConditionsSection(x + fwidth / 2, y + 35, Daily[index].Icon, SmallIcon);
+  drawString(x + fwidth / 2, y + 3, String(ConvertUnixTime(Daily[index].Dt + WxConditions[0].Timezone).substring(0,5)), CENTER);
+  drawString(x + fwidth / 2, y + 53, String(Daily[index].High, 0) + "°/" + String(Daily[index].Low, 0) + "°", CENTER);
 }
 //#########################################################################################
 void DisplayPressureSection(int x, int y, float pressure, String slope, int pwidth, int pdepth) {
@@ -977,5 +977,6 @@ void InitialiseDisplay() {
   display.fillScreen(GxEPD_WHITE);
   display.setFullWindow();
 }
+
 
 
