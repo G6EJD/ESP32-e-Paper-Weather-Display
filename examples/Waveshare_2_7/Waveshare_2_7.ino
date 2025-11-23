@@ -197,20 +197,13 @@ void Draw_Main_Weather_Section() {
 }
 //#########################################################################################
 void Draw_3hr_Forecast(int x, int y, int index) {
-  DisplayWXicon(x + 26, y, WxForecast[index].Icon, SmallIcon);
+  DisplayWXicon(x + 26, y, Daily[index].Icon, SmallIcon);
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x + 8, y - 22, WxForecast[index].Period.substring(11, 16), LEFT);
-  drawString(x + 3, y + 15, String(WxForecast[index].High, 0) + "°/" + String(WxForecast[index].Low, 0) + "°", LEFT);
+  drawString(x + 8, y - 22, Daily[index].Period.substring(11, 16), LEFT);
+  drawString(x + 3, y + 15, String(Daily[index].High, 0) + "°/" + String(Daily[index].Low, 0) + "°", LEFT);
   display.drawLine(x + 44, y - 24, x + 44, y - 24 + 52 , GxEPD_BLACK);
   display.drawLine(x, y - 24 + 52, x + 44, y - 24 + 52 , GxEPD_BLACK);
 }
-/*void Draw_3hr_Forecast(int x, int y, int index) {
-  DisplayWXicon(x, y, WxForecast[index].Icon, SmallIcon);
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
-  drawString(x + 22, y, WxForecast[index].Period.substring(11, 16), CENTER);
-  drawString(x + 22, y + 40, String(WxForecast[index].High, 0) + "°/" + String(WxForecast[index].Low, 0) + "°", CENTER);
-  display.drawLine(x + 44, y, x + 44, y + 52 , GxEPD_BLACK);
-}*/
 //#########################################################################################
 void DisplayAstronomySection(int x, int y) {
   //display.drawRect(x, y + 13, 168, 52, GxEPD_BLACK);
