@@ -7,6 +7,7 @@
   2. You may copy the content to individual third parties for their personal use, but only if you acknowledge the author David Bird as the source of the material.
   3. You may not, except with my express written permission, distribute or commercially exploit the content.
   4. You may not transmit it or store it in any other website or other form of electronic retrieval system for commercial purposes.
+  5. You may not use this software to create YouTube or other video content, or for any purposes of monetisation.
 
   The above copyright ('as annotated') notice and this permission notice shall be included in all copies or substantial portions of the Software and where the
   software use is visible to an end-user.
@@ -211,9 +212,9 @@ void DrawForecastWeather(int x, int y, int index) {
   u8g2Fonts.setFont(u8g2_font_helvB08_tf);
   display.drawRect(x, y, 55, 65, GxEPD_BLACK);
   display.drawLine(x + 1, y + 13, x + 54, y + 13, GxEPD_BLACK);
-  DisplayWXicon(x + 28, y + 35, WxForecast[index].Icon, SmallIcon);
-  drawString(x + 31, y + 3, String(ConvertUnixTime(WxForecast[index].Dt + WxConditions[0].Timezone).substring(0,5)), CENTER);
-  drawString(x + 41, y + 52, String(WxForecast[index].High, 0) + "° / " + String(WxForecast[index].Low, 0) + "°", CENTER);
+  DisplayWXicon(x + 28, y + 35, Daily[index].Icon, SmallIcon);
+  drawString(x + 31, y + 3, String(ConvertUnixTime(Daily[index].Dt + WxConditions[0].Timezone).substring(0,5)), CENTER);
+  drawString(x + 41, y + 52, String(Daily[index].High, 0) + "° / " + String(Daily[index].Low, 0) + "°", CENTER);
 }
 //#########################################################################################
 void DrawMainWx(int x, int y) {
@@ -914,4 +915,5 @@ void InitialiseDisplay() {
   Version 12.5
   1. Modified for GxEPD2 changes
 */
+
 
