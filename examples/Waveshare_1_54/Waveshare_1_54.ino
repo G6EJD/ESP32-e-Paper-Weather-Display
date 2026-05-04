@@ -112,7 +112,7 @@ void setup() {
       InitialiseDisplay(); // Give screen time to initialise by getting weather data!
       byte Attempts = 1;
       WiFiClient client;   // wifi client object
-      while ((RxWeather == false && Attempts <= 2) { // Try up-to twice for Weather and Forecast data
+      while (RxWeather == false && Attempts <= 2) { // Try up-to twice for Weather and Forecast data
         if (RxWeather  == false) RxWeather  = ReceiveOneCallWeather(client, true);
         Attempts++;
       }
