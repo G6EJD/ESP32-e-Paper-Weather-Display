@@ -21,6 +21,7 @@
 #include "owm_credentials.h"          // See 'owm_credentials' tab and enter your OWM API key and set the Wifi SSID and PASSWORD
 #include <ArduinoJson.h>              // https://github.com/bblanchon/ArduinoJson needs version v6 or above
 #include <WiFi.h>                     // Built-in
+#include <HTTPClient.h>
 #include "time.h"                     // Built-in
 #include <SPI.h>                      // Built-in 
 #define  ENABLE_GxEPD2_display 0
