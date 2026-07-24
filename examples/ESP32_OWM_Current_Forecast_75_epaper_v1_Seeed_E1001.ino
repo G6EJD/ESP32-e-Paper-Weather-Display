@@ -74,6 +74,8 @@ SensirionI2cSht4x sht4x;
 //################  VERSION  #####################################################
 String version = "1.0 (16/11/25)";
 //################ VARIABLES #####################################################
+bool ReceiveOneCallWeather(WiFiClient& json, bool print);
+bool DecodeOneCallWeather(WiFiClient& json, bool print);
 
 boolean LargeIcon = true, SmallIcon = false;
 #define Large 17                          // For icon drawing, needs to be odd number for best effect
