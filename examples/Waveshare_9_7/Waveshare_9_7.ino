@@ -30,6 +30,7 @@
 #include "owm_credentials.h"          // See 'owm_credentials' tab and enter your OWM API key and set the Wifi SSID and PASSWORD
 #include <ArduinoJson.h>              // https://github.com/bblanchon/ArduinoJson needs version v6 or above
 #include <WiFi.h>                     // Built-in
+#include <HTTPClient.h>               // Built-in
 #include <ESPmDNS.h>
 #include "time.h"                     // Built-in
 #include <SPI.h>                      // Built-in 
@@ -109,6 +110,8 @@ const byte EventThreshold = 2; // Change to 1 to view all messages on e-paper sc
 int        wifi_signal, CurrentHour = 0, CurrentMin = 0, CurrentSec = 0, EventCnt = 0;
 
 //################ PROGRAM VARIABLES and OBJECTS ################
+bool ReceiveOneCallWeather(WiFiClient& json, bool print);
+bool DecodeOneCallWeather(WiFiClient& json, bool print);
 
 #define max_readings 24
 
