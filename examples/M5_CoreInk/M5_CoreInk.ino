@@ -21,6 +21,7 @@
 #include "Micro_Wx_Icons.h"    // Weather Icons
 #include <ArduinoJson.h>       // https://github.com/bblanchon/ArduinoJson
 #include <WiFi.h>              // Built-in
+#include <HTTPClient.h>        // Built-in
 #include "time.h"              // Built-in
 #include <SPI.h>               // Built-in 
 #include <GxEPD2_BW.h>         // GxEPD2 from Sketch, Include Library, Manage Libraries, search for GxEDP2
@@ -61,6 +62,8 @@ String  Time_str, Date_str, rxtext; // strings to hold time and received weather
 int     StartTime, CurrentHour = 0, CurrentMin = 0, CurrentSec = 0;
 
 //################ PROGRAM VARIABLES and OBJECTS ################
+bool ReceiveOneCallWeather(WiFiClient& json, bool print);
+bool DecodeOneCallWeather(WiFiClient& json, bool print);
 
 #define max_readings 4
 
