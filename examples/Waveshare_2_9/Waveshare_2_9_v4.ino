@@ -21,6 +21,7 @@
 #include "owm_credentials.h"
 #include <ArduinoJson.h>     // https://github.com/bblanchon/ArduinoJson
 #include <WiFi.h>            // Built-in
+#include <HTTPClient.h>      // Built-in
 #include "time.h"
 #include <SPI.h>
 #define  ENABLE_GxEPD2_display 0
@@ -84,6 +85,9 @@ int     wifi_signal, CurrentHour = 0, CurrentMin = 0, CurrentSec = 0;
 long    StartTime = 0;
 
 //################ PROGRAM VARIABLES and OBJECTS ##########################################
+bool ReceiveOneCallWeather(WiFiClient& json, bool print);
+bool DecodeOneCallWeather(WiFiClient& json, bool print);
+
 #define max_readings 25 // In groups of 3-hours (3-days = 3 x 8 = 24)
 Forecast_record_type  WxConditions[1];
 Forecast_record_type  WxForecast[max_readings];
