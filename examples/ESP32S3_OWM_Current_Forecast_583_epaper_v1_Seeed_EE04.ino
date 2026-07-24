@@ -80,6 +80,8 @@ U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.
 //################  VERSION  #####################################################
 String version = "1.0 (16/11/25)";  // Programme version, see change log at end
 //################ VARIABLES #####################################################
+bool ReceiveOneCallWeather(WiFiClient& json, bool print);
+bool DecodeOneCallWeather(WiFiClient& json, bool print);
 
 boolean LargeIcon = true, SmallIcon = false;
 #define Large 12                          // For icon drawing, needs to be odd number for best effect
