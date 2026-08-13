@@ -85,14 +85,14 @@ GxEPD2_BW<GxEPD2_it60, GxEPD2_it60::HEIGHT / 2> display(GxEPD2_it60(/*CS=*/ EPD_
 
 U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
 // Using fonts:
-// u8g2_font_helvB08_tf
-// u8g2_font_helvB10_tf
-// u8g2_font_helvB12_tf
-// u8g2_font_helvB14_tf
-// u8g2_font_helvB18_tf
-// u8g2_font_helvB24_tf
-// u8g2_font_fub35_tf
-// u8g2_font_fub42_tf
+// u8g2_font_helvB08_te
+// u8g2_font_helvB10_te
+// u8g2_font_helvB12_te
+// u8g2_font_helvB14_te
+// u8g2_font_helvB18_te
+// u8g2_font_helvB24_te
+// u8g2_font_fub35_te
+// u8g2_font_fub42_te
 
 
 //################  VERSION  ##################################################
@@ -239,15 +239,15 @@ void DisplayWeather() {                          // 9.7" e-paper display is 1200
 }
 //#########################################################################################
 void DisplayGeneralInfoSection() {
-  u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB14_te);
   drawString(12, 20, "[Version: " + version + "]", LEFT); // Programme version
   drawString(SCREEN_WIDTH / 2, 20, City, CENTER);
   // Uncomment the next line if the display of IP- and MAC-Adddress is wanted
   //drawString(SCREEN_WIDTH - 150, 20, "IP=" + LocalIP + ",  MAC=" + WiFi.macAddress() ,RIGHT);
   display.drawLine(5, 40, SCREEN_WIDTH - 8, 40, GxEPD_BLACK);
-  u8g2Fonts.setFont(u8g2_font_helvB24_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB24_te);
   drawString(720, 330, Date_str, CENTER);
-  u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB18_te);
   drawString(730, 370, TXT_UPDATED + Time_str, CENTER);
 }
 //#########################################################################################
@@ -263,7 +263,7 @@ void DisplayMainWeatherSection(int x, int y) {  // (x=500, y=190)
 //#########################################################################################
 void DisplayDisplayWindSection(int x, int y, float angle, float windspeed, int Cradius) {
   arrow(x, y, Cradius - 22, angle, 18, 33); // Show wind direction on outer circle of width and length
-  u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB14_te);
   drawString(x - 30, y - Cradius - 60, TXT_WIND_SPEED_DIRECTION, CENTER);
   int dxo, dyo, dxi, dyi;
   display.drawLine(5, 40, 5, y + Cradius + 50, GxEPD_BLACK);
@@ -292,9 +292,9 @@ void DisplayDisplayWindSection(int x, int y, float angle, float windspeed, int C
   drawString(x + Cradius + 15, y - 3, TXT_E, CENTER);
   drawString(x - 12, y - 53, WindDegToDirection(angle), CENTER);
   drawString(x + 3, y + 50, String(angle, 0) + "°", CENTER);
-  u8g2Fonts.setFont(u8g2_font_helvB24_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB24_te);
   drawString(x - 12, y - 3, String(windspeed, 1), CENTER);
-  u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB14_te);
   drawString(x - 5, y + 22, (Units == "M" ? "m/s" : "mph"), CENTER);
 }
 //#########################################################################################
@@ -306,20 +306,20 @@ String WindDegToDirection(float winddirection) {
 //#########################################################################################
 void DisplayTemperatureSection(int x, int y, int twidth, int tdepth) {
   display.drawRect(x - 75, y, twidth, tdepth, GxEPD_BLACK);
-  u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB14_te);
   drawString(x, y + 20, TXT_TEMPERATURES, CENTER);
-  u8g2Fonts.setFont(u8g2_font_fub35_tf);
+  u8g2Fonts.setFont(u8g2_font_fub35_te);
   drawString(x - 30, y + 100, String(WxConditions[0].Temperature, 1) + "°", CENTER); // Show current Temperature
-  u8g2Fonts.setFont(u8g2_font_helvB24_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB24_te);
   drawString(x + 73, y + 100, Units == "M" ? "C" : "F", LEFT);
-  u8g2Fonts.setFont(u8g2_font_helvB18_tf);                                       
+  u8g2Fonts.setFont(u8g2_font_helvB18_te);                                       
   drawString(x + 10, y + 140, String(WxConditions[0].High, 0) + "° | " + String(WxConditions[0].Low, 0) + "°", CENTER); // Show forecast high and Low
 }
 //#########################################################################################
 void DisplayForecastTextSection(int x, int y , int fwidth, int fdepth) {
   String Wx_Description;
   display.drawRect(x, y, fwidth, fdepth, GxEPD_BLACK); // forecast text outline
-  u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB18_te);
   if (Language == "DE")
     Wx_Description = WxConditions[0].Forecast0;
   else {
@@ -332,7 +332,7 @@ void DisplayForecastTextSection(int x, int y , int fwidth, int fdepth) {
   int MsgWidth = 43; // Using proportional fonts, so be aware of making it too wide!
   if (Language == "DE") drawStringMaxWidth(x + 30, y + 40, MsgWidth, Wx_Description, LEFT); // Leave German text in original format, 28 character screen width at this font size
   else                  drawStringMaxWidth(x + 30, y + 40, MsgWidth, TitleCase(Wx_Description), LEFT); // 28 character screen width at this font size
-  u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB10_te);
 }
 //#########################################################################################
 void DisplayForecastWeather(int x, int y, int index) {
@@ -341,22 +341,22 @@ void DisplayForecastWeather(int x, int y, int index) {
   display.drawRect(x, y, fwidth - 2, 150, GxEPD_BLACK);
   display.drawLine(x, y + 40, x + fwidth - 3, y + 40, GxEPD_BLACK);
   DisplayConditionsSection(x + fwidth / 2, y + 90, WxForecast[index].Icon, SmallIcon);
-  u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB14_te);
   drawString(x + fwidth / 2 - 10, y + 20, String(ConvertUnixTime(WxForecast[index].Dt + WxConditions[0].Timezone).substring(0,5)), CENTER);
   drawString(x + fwidth / 2 + 0, y + 130, String(WxForecast[index].High, 0) + "°/" + String(WxForecast[index].Low, 0) + "°", CENTER);
 }
 //#########################################################################################
 void DisplayPressureSection(int x, int y, int pwidth, int pdepth, float pressure, String slope) {
   display.drawRect(x - 56, y, pwidth, pdepth, GxEPD_BLACK); // pressure outline
-  u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB14_te);
   drawString(x + 8, y + 20, TXT_PRESSURE, CENTER);
   String slope_direction = TXT_PRESSURE_STEADY;
   if (slope == "+") slope_direction = TXT_PRESSURE_RISING;
   if (slope == "-") slope_direction = TXT_PRESSURE_FALLING;
-  u8g2Fonts.setFont(u8g2_font_fub35_tf);
+  u8g2Fonts.setFont(u8g2_font_fub35_te);
   if (Units == "I") drawString(x - 22, y + 100, String(pressure, 2), CENTER); // "Imperial"
   else              drawString(x - 22, y + 100, String(pressure, 0), CENTER); // "Metric"
-  u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB14_te);
   drawString(x - 3, y + 150, slope_direction, CENTER);
   display.drawRect(x + 75, y + 135, 49, 35, GxEPD_BLACK);
   drawString(x + 90, y + 150, (Units == "M" ? "hPa" : "in"), CENTER);
@@ -364,9 +364,9 @@ void DisplayPressureSection(int x, int y, int pwidth, int pdepth, float pressure
 //#########################################################################################
 void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
   display.drawRect(x - 48, y, pwidth, pdepth, GxEPD_BLACK); // precipitation outline
-  u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB14_te);
   drawString(x + 10, y + 20, TXT_PRECIPITATION_SOON, CENTER);
-  u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB14_te);
   if (WxForecast[1].Rainfall >= 0.005) { // Ignore small amounts
     drawString(x - 15, y + 80, String(WxForecast[1].Rainfall, 2) + (Units == "M" ? "mm" : "in"), LEFT); // Only display rainfall total today if > 0
     addraindrop(x + 70, y + 80, 7);
@@ -379,7 +379,7 @@ void DisplayPrecipitationSection(int x, int y, int pwidth, int pdepth) {
 //#########################################################################################
 void DisplayAstronomySection(int x, int y) {
   display.drawRect(x, y + 20, 365, 110, GxEPD_BLACK);
-  u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB14_te);
   drawString(x + 14, y + 54, ConvertUnixTime(WxConditions[0].Sunrise + WxConditions[0].Timezone).substring(0, 5) + " " + TXT_SUNRISE, LEFT);
   drawString(x + 14, y + 79, ConvertUnixTime(WxConditions[0].Sunset + WxConditions[0].Timezone).substring(0, 5) + " " + TXT_SUNSET, LEFT);
   time_t now = time(NULL);
@@ -457,7 +457,7 @@ String MoonPhase(int d, int m, int y, String hemisphere) {
 }
 //#########################################################################################
 void DisplayForecastSection(int x, int y) {
-  u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB10_te);
   int f = 0;
   do {
     DisplayForecastWeather(x, y, f);
@@ -478,9 +478,9 @@ void DisplayForecastSection(int x, int y) {
   int gx = (SCREEN_WIDTH - gwidth * 4) / 5 + 7;
   int gy = (SCREEN_HEIGHT - gheight - 50);
   int gap = gwidth + gx;
-  u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB18_te);
   drawString(SCREEN_WIDTH / 2 - 50, gy - 50, TXT_FORECAST_VALUES, CENTER); // Based on a graph height of 60
-  u8g2Fonts.setFont(u8g2_font_helvB12_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB12_te);
   // (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
   DrawGraph(gx + 0 * gap, gy, gwidth, gheight, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure_readings, max_readings, autoscale_on, barchart_off);
   DrawGraph(gx + 1 * gap, gy, gwidth, gheight, 10, 30,    Units == "M" ? TXT_TEMPERATURE_C : TXT_TEMPERATURE_F, temperature_readings, max_readings, autoscale_on, barchart_off);
@@ -507,11 +507,11 @@ void DisplayConditionsSection(int x, int y, String IconName, bool IconSize) {
   else                                              Nodata(x, y, IconSize, IconName);
   if (IconSize == LargeIcon) {
     display.drawRect(x - 130, y - 200, 270, 350, GxEPD_BLACK);
-    u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+    u8g2Fonts.setFont(u8g2_font_helvB14_te);
     drawString(x - 20, y - 180, TXT_CONDITIONS, CENTER);
-    u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+    u8g2Fonts.setFont(u8g2_font_helvB18_te);
     drawString(x - 55, y + 120, String(WxConditions[0].Humidity, 0) + "%", CENTER);
-    u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+    u8g2Fonts.setFont(u8g2_font_helvB14_te);
     drawString(x + 35, y + 120, "RH", CENTER);
     if (WxConditions[0].Visibility > 0) Visibility(x - 100, y - 130, String(WxConditions[0].Visibility) + "M");
     if (WxConditions[0].Cloudcover > 0) CloudCover(x + 60, y - 130, WxConditions[0].Cloudcover);
@@ -596,7 +596,7 @@ void DisplayStatusSection(int x, int y, int rssi) {
   display.drawRect(x ,y , size, 87, GxEPD_BLACK);
   display.drawLine(x ,y + 25, x + size, y + 25, GxEPD_BLACK);
   display.drawLine(x + size / 2, y, x + size / 2, y + 25, GxEPD_BLACK);
-  u8g2Fonts.setFont(u8g2_font_helvB12_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB12_te);
   drawString(x + 45, y + 10, TXT_WIFI, CENTER);
   drawString(x + 150, y + 10, TXT_POWER, CENTER);
   DrawRSSI(x + 25, y + 60, rssi);
@@ -674,7 +674,7 @@ void DrawBattery(int x, int y) {
     display.drawRect(x + 25, y - 20, 40, 15, GxEPD_BLACK);
     display.fillRect(x + 65, y - 16, 4, 6, GxEPD_BLACK);
     display.fillRect(x + 27, y - 18, 36 * percentage / 100.0, 11, GxEPD_BLACK);
-    u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+    u8g2Fonts.setFont(u8g2_font_helvB10_te);
     drawString(x + 5, y - 15, String(percentage) + "%", RIGHT);
     drawString(x + 13, y + 5,  String(voltage, 2) + "v", CENTER);
   }
@@ -908,7 +908,7 @@ void CloudCover(int x, int y, int CCover) {
   addcloud(x - 9, y - 3, Small * 0.8, 2); // Cloud top left
   addcloud(x + 3, y - 3, Small * 0.8, 2); // Cloud top right
   addcloud(x, y,         Small * 0.8, 2); // Main cloud
-  u8g2Fonts.setFont(u8g2_font_helvB12_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB12_te);
   drawString(x + 40, y - 5, String(CCover) + "%", LEFT);
 }
 //#########################################################################################
@@ -926,7 +926,7 @@ void Visibility(int x, int y, String Visi) {
     display.drawPixel(x + r * cos(i), 1 + y + r / 2 + r * sin(i), GxEPD_BLACK);
   }
   display.fillCircle(x, y, r / 4, GxEPD_BLACK);
-  u8g2Fonts.setFont(u8g2_font_helvB12_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB12_te);
   drawString(x + 12, y - 3, Visi, LEFT);
 }
 //#########################################################################################
@@ -943,9 +943,9 @@ void addmoon(int x, int y, int scale, bool IconSize) {
 }
 //#########################################################################################
 void Nodata(int x, int y, bool IconSize, String IconName) {
-  if (IconSize == LargeIcon) u8g2Fonts.setFont(u8g2_font_helvB24_tf); else u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  if (IconSize == LargeIcon) u8g2Fonts.setFont(u8g2_font_helvB24_te); else u8g2Fonts.setFont(u8g2_font_helvB10_te);
   drawString(x - 3, y - 10, "?", CENTER);
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
 }
 //#########################################################################################
 /* (C) D L BIRD
@@ -1045,7 +1045,7 @@ void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alig
   if (align == CENTER) x = x - w / 2;
   u8g2Fonts.setCursor(x, y);
   if (text.length() > text_width * 2) {
-    u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+    u8g2Fonts.setFont(u8g2_font_helvB10_te);
     text_width = 42;
     y = y - 3;
   }
@@ -1068,7 +1068,7 @@ void InitialiseDisplay() {
   u8g2Fonts.setFontDirection(0);             // left to right (this is default)
   u8g2Fonts.setForegroundColor(GxEPD_BLACK); // apply Adafruit GFX color
   u8g2Fonts.setBackgroundColor(GxEPD_WHITE); // apply Adafruit GFX color
-  u8g2Fonts.setFont(u8g2_font_helvB10_tf);   // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
+  u8g2Fonts.setFont(u8g2_font_helvB10_te);   // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
   display.fillScreen(GxEPD_WHITE);
   display.setFullWindow();
 }
@@ -1084,7 +1084,7 @@ void ReportEvent(String EventMessage[]) {
     display.fillRect(wx, wy, tbw, tbh, GxEPD_WHITE);
     display.drawRect(wx, wy, tbw, tbh, GxEPD_BLACK);
   }
-  u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB18_te);
   for (byte Event = 1; Event <= EventCnt; Event++) {
     if (EventCnt > EventThreshold) drawString(wx + 3, wy + 20 + (Event - 1) * 30, 
                                    "Evt#" + String(Event < 10 ? "0" : "") + String(Event) + " : " + EventMessage[Event], LEFT);
@@ -1136,3 +1136,4 @@ void VerboseRecordOfResetReason(RESET_REASON reason) {
    
    
 */
+

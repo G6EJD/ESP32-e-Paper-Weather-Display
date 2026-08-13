@@ -1,4 +1,4 @@
-#define FONT(x) x##_tf
+#define FONT(x) x##_te
 
 //Temperature - Humidity - Forecast
 const String TXT_FORECAST_VALUES  = "3-Day Forecast Values";
@@ -69,4 +69,5 @@ const char* weekday_D[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
 
 //Month
 const char* month_M[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+
 

@@ -66,12 +66,12 @@ GxEPD2_BW<GxEPD2_290, GxEPD2_290::HEIGHT> display(GxEPD2_290(/*CS=D8*/ EPD_CS, /
 
 U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
 // Using fonts:
-// u8g2_font_helvB08_tf
-// u8g2_font_helvB10_tf
-// u8g2_font_helvB12_tf
-// u8g2_font_helvB14_tf
-// u8g2_font_helvB18_tf
-// u8g2_font_helvB24_tf
+// u8g2_font_helvB08_te
+// u8g2_font_helvB10_te
+// u8g2_font_helvB12_te
+// u8g2_font_helvB14_te
+// u8g2_font_helvB18_te
+// u8g2_font_helvB24_te
 
 //################# LIBRARIES ##########################
 String version = "7.0";       // Version of this program
@@ -180,7 +180,7 @@ void DisplayWeather() {             // 2.9" e-paper display is 296x128 resolutio
 }
 //#########################################################################################
 void Draw_Heading_Section() {
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
   drawString(27, 15, City, CENTER);
   drawString(2, 1, time_str + "   " + date_str, LEFT);
   display.drawLine(0, 11, 150 + (Units == "I"?15:0), 11, GxEPD_BLACK);
@@ -190,7 +190,7 @@ void DisplayForecastWeather(int x, int y, int forecast, int Dposition, int fwidt
   GetForecastDay(WxForecast[forecast].Dt);
   x += fwidth * Dposition;
   DisplayConditionsSection(x + 10, y, WxForecast[forecast].Icon, SmallIcon);
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
   drawString(x + 8, y - 24, ForecastDay, CENTER);
   drawString(x + 18, y + 12, String(HLReadings[Dposition].High, 0) + "°/" + String(HLReadings[Dposition].Low, 0) + "°", CENTER);
   display.drawRect(x - 18, y - 27, fwidth, 51, GxEPD_BLACK);
@@ -198,16 +198,16 @@ void DisplayForecastWeather(int x, int y, int forecast, int Dposition, int fwidt
 //#########################################################################################
 void Draw_Main_Weather_Section() {
   DisplayConditionsSection(205, 45, WxConditions[0].Icon, LargeIcon);
-  u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB14_te);
   drawString(3, 33, String(WxConditions[0].Temperature, 1) + "° / " + String(WxConditions[0].Humidity, 0) + "%", LEFT);
-  u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB10_te);
   DrawWind(270, 37, WxConditions[0].Winddir, WxConditions[0].Windspeed);
   if (WxConditions[0].Rainfall > 0.005 || WxConditions[0].Snowfall > 0.005) {
     if (WxConditions[0].Rainfall > 0.005) drawString(170, 66, String(WxConditions[0].Rainfall, 1) + (Units == "M" ? "mm " : "in ") + TXT_PRECIPITATION_SOON, LEFT);
     else drawString(170, 66, String(WxConditions[0].Snowfall, 1) + (Units == "M" ? "mm " : "in ") + TXT_PRECIPITATION_SOON, LEFT); // Rain has precedence over snow if both reported!
   }
   DrawPressureTrend(3, 49, WxConditions[0].Pressure, WxConditions[0].Trend);
-  u8g2Fonts.setFont(u8g2_font_helvB12_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB12_te);
   String Wx_Description = WxConditions[0].Forecast0;
   drawString(2, 63, TitleCase(Wx_Description), LEFT);
   display.drawLine(0, 77, 296, 77, GxEPD_BLACK);
@@ -216,7 +216,7 @@ void Draw_Main_Weather_Section() {
 //#########################################################################################
 void DisplayAstronomySection(int x, int y) {
   display.drawRect(x, y + 13, 126, 51, GxEPD_BLACK);
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
   SunRise(x + 64, y + 23);
   drawString(x + 80, y + 20, ConvertUnixTime(WxConditions[0].Sunrise + WxConditions[0].Timezone).substring(0, (Units == "M" ? 5 : 7)), LEFT);
   SunSet(x + 64, y + 38);
@@ -307,9 +307,9 @@ void DrawWind(int x, int y, float angle, float windspeed) {
     dy = Cradius * sin(m * PI / 180); // calculate Y position
     display.drawLine(x + dx, y + dy, x + dx * 0.8, y + dy * 0.8, GxEPD_BLACK);
   }
-  u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB10_te);
   drawString(x - 10 + (WindDegToDirection(angle).length() < 2 ? 10 : 0), y + Cradius + 12, WindDegToDirection(angle), CENTER);
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
   drawString(x + 5, y - Cradius - 15, String(windspeed, 1) + (Units == "M" ? " m/s" : " mph"), CENTER);
 }
 //#########################################################################################
@@ -731,7 +731,7 @@ void CloudCover(int x, int y, int CCover) {
   addcloud(x - 9, y - 3, Small * 0.6, 2); // Cloud top left
   addcloud(x + 3, y - 3, Small * 0.6, 2); // Cloud top right
   addcloud(x, y,         Small * 0.6, 2); // Main cloud
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
   drawString(x + 15, y - 5, String(CCover) + "%", LEFT);
 }
 //#########################################################################################
@@ -749,7 +749,7 @@ void Visibility(int x, int y, String Visi) {
     display.drawPixel(x + r * cos(i), 1 + y + r / 2 + r * sin(i), GxEPD_BLACK);
   }
   display.fillCircle(x, y, r / 4, GxEPD_BLACK);
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
   drawString(x + 12, y - 3, Visi, LEFT);
 }
 //#########################################################################################
@@ -767,13 +767,13 @@ void addmoon(int x, int y, int scale, bool IconSize) {
 }
 //#########################################################################################
 void Nodata(int x, int y, bool IconSize, String IconName) {
-  if (IconSize == LargeIcon) u8g2Fonts.setFont(u8g2_font_helvB24_tf); else u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  if (IconSize == LargeIcon) u8g2Fonts.setFont(u8g2_font_helvB24_te); else u8g2Fonts.setFont(u8g2_font_helvB10_te);
   drawString(x - 3, y - 8, "?", CENTER);
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
 }
 //#########################################################################################
 void SunRise(int x, int y) {
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
   addsun(x, y, 3, SmallIcon);
   display.drawFastVLine(x + 10, y - 6, 10, GxEPD_BLACK);
   display.drawLine(x + 10 - 3, y - 6 + 3, x + 10, y - 6, GxEPD_BLACK);
@@ -781,7 +781,7 @@ void SunRise(int x, int y) {
 }
 //#########################################################################################
 void SunSet(int x, int y) {
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
   addsun(x, y, 3, SmallIcon);
   display.drawFastVLine(x + 10, y - 6, 10, GxEPD_BLACK);
   display.drawLine(x + 10 - 3, y + 4 - 3, x + 10, y + 4, GxEPD_BLACK);
@@ -807,7 +807,7 @@ void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alig
   if (alignment == CENTER) x = x - w / 2;
   u8g2Fonts.setCursor(x, y);
   if (text.length() > text_width * 2) {
-    u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+    u8g2Fonts.setFont(u8g2_font_helvB10_te);
     text_width = 42;
     y = y - 3;
   }
@@ -848,7 +848,7 @@ void InitialiseDisplay() {
   u8g2Fonts.setFontDirection(0);             // left to right (this is default)
   u8g2Fonts.setForegroundColor(GxEPD_BLACK); // apply Adafruit GFX color
   u8g2Fonts.setBackgroundColor(GxEPD_WHITE); // apply Adafruit GFX color
-  u8g2Fonts.setFont(u8g2_font_helvB10_tf);   // Explore u8g2 fonts from here: https://github.com/olikraus/u8g2/wiki/fntlistall
+  u8g2Fonts.setFont(u8g2_font_helvB10_te);   // Explore u8g2 fonts from here: https://github.com/olikraus/u8g2/wiki/fntlistall
   display.fillScreen(GxEPD_WHITE);
   display.setFullWindow();
 }
@@ -866,7 +866,7 @@ void InitialiseDisplay() {
   1.  display.init(115200); becomes display.init(0); to stop blank screen following update to GxEPD2
 
   Version 6.3 changed u8g2 fonts selection
-   1.  Omitted 'FONT(' and added _tf to font names either Regular (R) or Bold (B)
+   1.  Omitted 'FONT(' and added _te to font names either Regular (R) or Bold (B)
 
   Version 6.4
    1. Added an extra 20-secs sleep delay to allow for slow ESP32 RTC timers
@@ -878,4 +878,5 @@ void InitialiseDisplay() {
   1. Added 3-dayy forecasting
 
 */
+
 

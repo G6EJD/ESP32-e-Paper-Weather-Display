@@ -61,12 +61,12 @@ GxEPD2_BW<GxEPD2_370_TC1, GxEPD2_370_TC1::HEIGHT> display(GxEPD2_370_TC1(/*CS=D8
 U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
 
 // Using fonts:
-// u8g2_font_helvB08_tf
-// u8g2_font_helvB10_tf
-// u8g2_font_helvB12_tf
-// u8g2_font_helvB14_tf
-// u8g2_font_helvB18_tf
-// u8g2_font_helvB24_tf
+// u8g2_font_helvB08_te
+// u8g2_font_helvB10_te
+// u8g2_font_helvB12_te
+// u8g2_font_helvB14_te
+// u8g2_font_helvB18_te
+// u8g2_font_helvB24_te
 
 //################  VERSION  ##########################
 String version = "12.5";     // Version of this program
@@ -262,7 +262,7 @@ void Draw_Grid() {
 //#########################################################################################
 void DrawHeadingSection() {
   //Header bar is 20pix high, including the underline
-  u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB14_te);
   drawString(SCREEN_WIDTH / 2, 0, City, CENTER);  //City in the middle
   drawString(1, 0, date_str, LEFT);   //Date on the left
   // I don't like having the time on the screen - it's not the 'current' time, it's the
@@ -275,7 +275,7 @@ void DrawMainWeatherSection(int x, int y) {
   DrawMainWx(x, y);
   //Current weather description - rainy, sunny etc.
   String Wx_Description = WxConditions[0].Forecast0;
-  u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB18_te);
   if (WxConditions[0].Forecast1 != "")
     Wx_Description += " & " + WxConditions[0].Forecast1;
   drawStringMaxWidth(x + 5, y + 60, 150, TitleCase(Wx_Description), LEFT);
@@ -285,7 +285,7 @@ void DrawMainWeatherSection(int x, int y) {
 }
 //#########################################################################################
 void DrawForecastSection(int x, int y) {
-  u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB14_te);
   DrawForecastWeather(x, y, 0);
   DrawForecastWeather(x + 80, y, 1);
   DrawForecastWeather(x + 80*2, y, 2);
@@ -306,10 +306,10 @@ void DrawForecastSection(int x, int y) {
     temperature_readings[r] = WxForecast[r].Temperature;
   }
   display.drawLine(0, y + 172, SCREEN_WIDTH, y + 172, GxEPD_BLACK);
-  u8g2Fonts.setFont(u8g2_font_helvB12_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB12_te);
   drawString(SCREEN_WIDTH / 2, y + 180, TXT_FORECAST_VALUES, CENTER);
 
-  u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB10_te);
 
   //       (x,y,width,height,MinValue, MaxValue, Title, Data Array, AutoScale, ChartMode)
   //DrawGraph(SCREEN_WIDTH / 400 * 30,  SCREEN_HEIGHT / 300 * 221, SCREEN_WIDTH / 4, SCREEN_HEIGHT / 5, 900, 1050, Units == "M" ? TXT_PRESSURE_HPA : TXT_PRESSURE_IN, pressure_readings, max_readings, autoscale_on, barchart_off);
@@ -322,7 +322,7 @@ void DrawForecastSection(int x, int y) {
 }
 //#########################################################################################
 void DrawForecastWeather(int x, int y, int index) {
-  u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB14_te);
   display.drawRect(x, y, 80, 80, GxEPD_BLACK);   //outer rectangle
   display.drawLine(x + 1, y + 20, x + 79, y + 20, GxEPD_BLACK);
   DisplayWXicon(x + 40, y + 40, WxForecast[index].Icon, SmallIcon);
@@ -335,13 +335,13 @@ void DrawMainWx(int x, int y) {
   Combined = String(WxConditions[0].Temperature, 1) + "°" + (Units == "M" ? "C" : "F"); // Show current Temperature
   Combined += " / " + String(WxConditions[0].Humidity, 0) + "%";
 
-  u8g2Fonts.setFont(u8g2_font_helvB18_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB18_te);
   drawString(x+5, y + 5, Combined, LEFT);
 }
 //#########################################################################################
 void DisplayDisplayWindSection(int x, int y, float angle, float windspeed, int Cradius) {
   arrow(x, y, Cradius - 7, angle, 12, 18); // Show wind direction on outer circle of width and length
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
   int dxo, dyo, dxi, dyi;
   display.drawLine(0, 15, 0, y + Cradius + 30, GxEPD_BLACK);
   display.drawCircle(x, y, Cradius, GxEPD_BLACK);     // Draw compass circle
@@ -397,7 +397,7 @@ void DrawPressureAndTrend(int x, int y, float pressure, String slope) {
 //#########################################################################################
 void DisplayPrecipitationSection(int x, int y) {
   display.drawRect(x, y - 1, 167, 56, GxEPD_BLACK); // precipitation outline
-  u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB10_te);
   if (WxForecast[1].Rainfall > 0.005) { // Ignore small amounts
     drawString(x + 5, y + 15, String(WxForecast[1].Rainfall, 2) + (Units == "M" ? "mm" : "in"), LEFT); // Only display rainfall total today if > 0
     addraindrop(x + 65 - (Units == "I" ? 10 : 0), y + 16, 7);
@@ -408,7 +408,7 @@ void DisplayPrecipitationSection(int x, int y) {
 //#########################################################################################
 void DrawAstronomySection(int x, int y) {
   display.drawRect(x, y, 159, 99, GxEPD_BLACK);
-  u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB14_te);
   drawString(x + 5, y + 2, "Sun Rise/Set", LEFT);
   drawString(x + 20, y + 30, ConvertUnixTime(WxConditions[0].Sunrise + WxConditions[0].Timezone).substring(0, (Units == "M" ? 5 : 7)), LEFT);
   drawString(x + 20, y + 50, ConvertUnixTime(WxConditions[0].Sunset + WxConditions[0].Timezone).substring(0, (Units == "M" ? 5 : 7)), LEFT);
@@ -828,7 +828,7 @@ void CloudCover(int x, int y, int CCover) {
   addcloud(x - 9, y - 3, Small * 0.5, 2); // Cloud top left
   addcloud(x + 3, y - 3, Small * 0.5, 2); // Cloud top right
   addcloud(x, y,         Small * 0.5, 2); // Main cloud
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
   drawString(x + 15, y - 5, String(CCover) + "%", LEFT);
 }
 //#########################################################################################
@@ -846,7 +846,7 @@ void Visibility(int x, int y, String Visi) {
     display.drawPixel(x + r * cos(i), 1 + y + r / 2 + r * sin(i), GxEPD_BLACK);
   }
   display.fillCircle(x, y, r / 4, GxEPD_BLACK);
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
   drawString(x + 12, y - 3, Visi, LEFT);
 }
 //#########################################################################################
@@ -864,9 +864,9 @@ void addmoon(int x, int y, int scale, bool IconSize) {
 }
 //#########################################################################################
 void Nodata(int x, int y, bool IconSize, String IconName) {
-  if (IconSize == LargeIcon) u8g2Fonts.setFont(u8g2_font_helvB24_tf); else u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  if (IconSize == LargeIcon) u8g2Fonts.setFont(u8g2_font_helvB24_te); else u8g2Fonts.setFont(u8g2_font_helvB10_te);
   drawString(x - 3, y - 8, "?", CENTER);
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
 }
 
 //#########################################################################################
@@ -949,7 +949,7 @@ void DrawBattery(int x, int y) {
     w = display.width();
     h = display.height();
     display.fillRect(w/4, h/4, w/2, h/2, GxEPD_WHITE);
-    u8g2Fonts.setFont(u8g2_font_helvB24_tf);
+    u8g2Fonts.setFont(u8g2_font_helvB24_te);
     drawString(w/2, h/2 , String("BATTERY!"), CENTER);
   }
 }
@@ -990,7 +990,7 @@ void DrawGraph(int x_pos, int y_pos, int gwidth, int gheight, float Y1Min, float
   last_x = x_pos + 1;
   last_y = y_pos + (Y1Max - constrain(DataArray[1], Y1Min, Y1Max)) / (Y1Max - Y1Min) * gheight;
   display.drawRect(x_pos, y_pos, gwidth + 3, gheight + 2, GxEPD_BLACK);
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
   drawString(x_pos + gwidth / 2, y_pos - 12, title, CENTER);
   // Draw the graph
   last_x = x_pos;
@@ -1109,7 +1109,7 @@ void InitialiseDisplay() {
   u8g2Fonts.setFontDirection(0);             // left to right (this is default)
   u8g2Fonts.setForegroundColor(GxEPD_BLACK); // apply Adafruit GFX color
   u8g2Fonts.setBackgroundColor(GxEPD_WHITE); // apply Adafruit GFX color
-  u8g2Fonts.setFont(u8g2_font_helvB10_tf);   // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
+  u8g2Fonts.setFont(u8g2_font_helvB10_te);   // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
   display.fillScreen(GxEPD_WHITE);
   display.setFullWindow();
 }
@@ -1134,3 +1134,4 @@ void InitialiseDisplay() {
   Version 12.5
   1. Modified for GxEPD2 changes
 */
+

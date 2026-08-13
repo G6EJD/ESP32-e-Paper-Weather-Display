@@ -55,12 +55,12 @@ GxEPD2_BW<GxEPD2_290_T5, GxEPD2_290_T5::HEIGHT> display(GxEPD2_290_T5(/*CS=D8*/ 
 
 U8G2_FOR_ADAFRUIT_GFX u8g2Fonts;  // Select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
 // Using fonts:
-// u8g2_font_helvB08_tf
-// u8g2_font_helvB10_tf
-// u8g2_font_helvB12_tf
-// u8g2_font_helvB14_tf
-// u8g2_font_helvB18_tf
-// u8g2_font_helvB24_tf
+// u8g2_font_helvB08_te
+// u8g2_font_helvB10_te
+// u8g2_font_helvB12_te
+// u8g2_font_helvB14_te
+// u8g2_font_helvB18_te
+// u8g2_font_helvB24_te
 
 //################# LIBRARIES ##########################
 String version = "6.5";       // Version of this program
@@ -146,7 +146,7 @@ void DisplayWeather() {             // 2.9" e-paper display is 296x128 resolutio
 }
 //#########################################################################################
 void Draw_Heading_Section() {
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
   drawString(27, 15, City, CENTER);
   drawString(2, 1, time_str, LEFT);
   drawString(SCREEN_WIDTH, 1, date_str, RIGHT);
@@ -155,16 +155,16 @@ void Draw_Heading_Section() {
 //#########################################################################################
 void Draw_Main_Weather_Section() {
   DisplayWXicon(205, 45, WxConditions[0].Icon, LargeIcon);
-  u8g2Fonts.setFont(u8g2_font_helvB14_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB14_te);
   drawString(3, 35, String(WxConditions[0].Temperature, 1) + "° / " + String(WxConditions[0].Humidity, 0) + "%", LEFT);
-  u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB10_te);
   DrawWind(275, 42, WxConditions[0].Winddir, WxConditions[0].Windspeed);
   if (WxConditions[0].Rainfall > 0.005 || WxConditions[0].Snowfall > 0.005) {
     if (WxConditions[0].Rainfall > 0.005) drawString(170, 66, String(WxConditions[0].Rainfall, 1) + (Units == "M" ? "mm " : "in ") + TXT_PRECIPITATION_SOON, LEFT);
     else drawString(170, 66, String(WxConditions[0].Snowfall, 1) + (Units == "M" ? "mm " : "in ") + TXT_PRECIPITATION_SOON, LEFT); // Rain has precedence over snow if both reported!
   }
   DrawPressureTrend(3, 52, WxConditions[0].Pressure, WxConditions[0].Trend);
-  u8g2Fonts.setFont(u8g2_font_helvB12_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB12_te);
   String Wx_Description = WxConditions[0].Forecast0;
   if (WxConditions[0].Forecast1 != "") Wx_Description += " & " +  WxConditions[0].Forecast1;
   if (WxConditions[0].Forecast2 != "" && WxConditions[0].Forecast1 != WxConditions[0].Forecast2) Wx_Description += " & " +  WxConditions[0].Forecast2;
@@ -174,7 +174,7 @@ void Draw_Main_Weather_Section() {
 //#########################################################################################
 void Draw_3hr_Forecast(int x, int y, int index) {
   DisplayWXicon(x + 2, y, WxForecast[index].Icon, SmallIcon);
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
   drawString(x + 4, y - 22, WxForecast[index].Period.substring(11, 16), CENTER);
   drawString(x - 15, y + 15, String(WxForecast[index].High, 0) + "°/" + String(WxForecast[index].Low, 0) + "°", LEFT);
   display.drawLine(x + 28, 77, x + 28, 129, GxEPD_BLACK);
@@ -182,7 +182,7 @@ void Draw_3hr_Forecast(int x, int y, int index) {
 //#########################################################################################
 void DisplayAstronomySection(int x, int y) {
   display.drawRect(x, y + 13, 173, 52, GxEPD_BLACK);
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
   drawString(x + 5, y + 18, ConvertUnixTime(WxConditions[0].Sunrise + WxConditions[0].Timezone).substring(0, (Units == "M"?5:7)) + " " + TXT_SUNRISE, LEFT);
   drawString(x + 5, y + 34, ConvertUnixTime(WxConditions[0].Sunset + WxConditions[0].Timezone).substring(0, (Units == "M"?5:7)) + " " + TXT_SUNSET, LEFT);
   time_t now = time(NULL);
@@ -271,9 +271,9 @@ void DrawWind(int x, int y, float angle, float windspeed) {
     dy = Cradius * sin(m * PI / 180); // calculate Y position
     display.drawLine(x + dx, y + dy, x + dx * 0.8, y + dy * 0.8, GxEPD_BLACK);
   }
-  u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB10_te);
   drawString(x - 2, y + Cradius + 10, WindDegToDirection(angle), CENTER);
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
   drawString(x, y - Cradius - 14, String(windspeed, 1) + (Units == "M" ? " m/s" : " mph"), CENTER);
 }
 //#########################################################################################
@@ -659,7 +659,7 @@ void CloudCover(int x, int y, int CCover) {
   addcloud(x - 9, y - 3, Small * 0.6, 2); // Cloud top left
   addcloud(x + 3, y - 3, Small * 0.6, 2); // Cloud top right
   addcloud(x, y,         Small * 0.6, 2); // Main cloud
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
   drawString(x + 15, y - 5, String(CCover) + "%", LEFT);
 }
 //#########################################################################################
@@ -677,7 +677,7 @@ void Visibility(int x, int y, String Visi) {
     display.drawPixel(x + r * cos(i), 1 + y + r / 2 + r * sin(i), GxEPD_BLACK);
   }
   display.fillCircle(x, y, r / 4, GxEPD_BLACK);
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
   drawString(x + 12, y - 3, Visi, LEFT);
 }
 //#########################################################################################
@@ -695,9 +695,9 @@ void addmoon(int x, int y, int scale, bool IconSize) {
 }
 //#########################################################################################
 void Nodata(int x, int y, bool IconSize, String IconName) {
-  if (IconSize == LargeIcon) u8g2Fonts.setFont(u8g2_font_helvB24_tf); else u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+  if (IconSize == LargeIcon) u8g2Fonts.setFont(u8g2_font_helvB24_te); else u8g2Fonts.setFont(u8g2_font_helvB10_te);
   drawString(x - 3, y - 8, "?", CENTER);
-  u8g2Fonts.setFont(u8g2_font_helvB08_tf);
+  u8g2Fonts.setFont(u8g2_font_helvB08_te);
 }
 //#########################################################################################
 void drawString(int x, int y, String text, alignmentType alignment) {
@@ -719,7 +719,7 @@ void drawStringMaxWidth(int x, int y, unsigned int text_width, String text, alig
   if (alignment == CENTER) x = x - w / 2;
   u8g2Fonts.setCursor(x, y);
   if (text.length() > text_width * 2) {
-    u8g2Fonts.setFont(u8g2_font_helvB10_tf);
+    u8g2Fonts.setFont(u8g2_font_helvB10_te);
     text_width = 42;
     y = y - 3;
   }
@@ -744,7 +744,7 @@ void InitialiseDisplay() {
   u8g2Fonts.setFontDirection(0);             // left to right (this is default)
   u8g2Fonts.setForegroundColor(GxEPD_BLACK); // apply Adafruit GFX color
   u8g2Fonts.setBackgroundColor(GxEPD_WHITE); // apply Adafruit GFX color
-  u8g2Fonts.setFont(u8g2_font_helvB10_tf);   // Explore u8g2 fonts from here: https://github.com/olikraus/u8g2/wiki/fntlistall
+  u8g2Fonts.setFont(u8g2_font_helvB10_te);   // Explore u8g2 fonts from here: https://github.com/olikraus/u8g2/wiki/fntlistall
   display.fillScreen(GxEPD_WHITE);
   display.setFullWindow();
 
@@ -764,7 +764,7 @@ void InitialiseDisplay() {
   1.  display.init(115200); becomes display.init(0); to stop blank screen following update to GxEPD2
 
   Version 6.3 changed u8g2 fonts selection
-   1.  Omitted 'FONT(' and added _tf to font names either Regular (R) or Bold (B)
+   1.  Omitted 'FONT(' and added _te to font names either Regular (R) or Bold (B)
   
   Version 6.4
    1. Added an extra 20-secs sleep delay to allow for slow ESP32 RTC timers
@@ -773,3 +773,4 @@ void InitialiseDisplay() {
   1. Modified for GxEPD2 changes
 
 */
+
